@@ -61,5 +61,34 @@ namespace KakiEQ_WinUI.Helpers
             throw new NotImplementedException();
         }
     }
+
+    public sealed class ImagePathToImageSourceConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, string language)
+        {
+            if (value is not string path || string.IsNullOrWhiteSpace(path))
+                return null!;
+
+            try
+            {
+                Uri uri;
+                if (System.IO.File.Exists(path))
+                    uri = new Uri(System.IO.Path.GetFullPath(path));
+                else if (!Uri.TryCreate(path, UriKind.Absolute, out uri!))
+                    return null!;
+
+                return new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(uri);
+            }
+            catch
+            {
+                return null!;
+            }
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, string language)
+        {
+            throw new NotImplementedException();
+        }
+    }
 }
 

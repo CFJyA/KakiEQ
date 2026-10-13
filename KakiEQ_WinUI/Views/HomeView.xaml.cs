@@ -51,10 +51,16 @@ namespace KakiEQ_WinUI.Views
             MainViewModel.Instance?.NavigateArtistsCommand.Execute(null);
         }
 
+        private void NavigatePlaylists_Click(object sender, RoutedEventArgs e)
+        {
+            MainViewModel.Instance?.NavigatePlaylistsCommand.Execute(null);
+        }
+
         private void NavigateEqualizer_Click(object sender, RoutedEventArgs e)
         {
             MainViewModel.Instance?.NavigateEqualizerCommand.Execute(null);
         }
+
     }
 }
 

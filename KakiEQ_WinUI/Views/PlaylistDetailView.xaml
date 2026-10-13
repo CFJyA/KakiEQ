@@ -37,7 +37,7 @@
                     <Border Width="150" Height="150" CornerRadius="16" Background="#221C2B">
                         <Grid>
                             <FontIcon Glyph="&#xE93C;" FontSize="54" Foreground="#BB86FC" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            <Image Source="{x:Bind ViewModel.CurrentPlaylist.CoverImagePath, Mode=OneWay}" Stretch="UniformToFill"/>
+                            <Image Source="{x:Bind ViewModel.CurrentPlaylist.CoverImagePath, Mode=OneWay, Converter={StaticResource ImagePathToImageSourceConverter}}" Stretch="UniformToFill"/>
                         </Grid>
                     </Border>
 

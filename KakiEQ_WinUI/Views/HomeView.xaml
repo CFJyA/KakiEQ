@@ -142,6 +142,21 @@
                 </Button>
             </Grid>
 
+            <!-- Acceso rápido: Playlists -->
+            <Button Height="56" HorizontalAlignment="Left" Width="220"
+                    Background="#1A1A1A" BorderBrush="#2A2A2A" BorderThickness="1" CornerRadius="14"
+                    Click="NavigatePlaylists_Click" Margin="0,12,0,0">
+                <StackPanel Orientation="Horizontal" Padding="12,6" Spacing="12">
+                    <Border Background="#2B1445" Width="36" Height="36" CornerRadius="8">
+                        <FontIcon Glyph="&#xE8F1;" Foreground="#BB86FC" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="Playlists" FontWeight="SemiBold" FontSize="14" Foreground="White"/>
+                        <TextBlock Text="Tus listas" FontSize="11" Foreground="#888888"/>
+                    </StackPanel>
+                </StackPanel>
+            </Button>
+
             <!-- 3. Sugerencias (Material Cards Grid) -->
             <StackPanel Spacing="16">
                 <Grid>

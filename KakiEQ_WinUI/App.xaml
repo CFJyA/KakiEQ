@@ -16,6 +16,7 @@
             <helpers:BoolToVisibilityConverter x:Key="BoolToVisConverter" />
             <helpers:BoolToAccentBrushConverter x:Key="BoolToAccentConverter" />
             <helpers:BoolToHeartBrushConverter x:Key="BoolToHeartConverter" />
+            <helpers:ImagePathToImageSourceConverter x:Key="ImagePathToImageSourceConverter" />
 
             <!-- Paleta de Colores Material Design (Itztli / Yolpaki) -->
             <SolidColorBrush x:Key="AppBackground" Color="#121212" />
