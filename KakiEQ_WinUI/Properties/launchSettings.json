@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "KakiEQ_WinUI (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "KakiEQ_WinUI (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

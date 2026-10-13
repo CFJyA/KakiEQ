@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Application
+    x:Class="KakiEQ_WinUI.App"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:KakiEQ_WinUI"
+    xmlns:views="using:KakiEQ_WinUI.Views"
+    xmlns:helpers="using:KakiEQ_WinUI.Helpers">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <!-- Converters -->
+            <helpers:BoolToVisibilityConverter x:Key="BoolToVisConverter" />
+            <helpers:BoolToAccentBrushConverter x:Key="BoolToAccentConverter" />
+            <helpers:BoolToHeartBrushConverter x:Key="BoolToHeartConverter" />
+
+            <!-- Paleta de Colores Material Design (Itztli / Yolpaki) -->
+            <SolidColorBrush x:Key="AppBackground" Color="#121212" />
+            <SolidColorBrush x:Key="AppSurface" Color="#181818" />
+            <SolidColorBrush x:Key="AppSurfaceContainer" Color="#1E1E1E" />
+            <SolidColorBrush x:Key="AppSurfaceElevated" Color="#252525" />
+            <SolidColorBrush x:Key="AppBorder" Color="#2A2A2A" />
+
+            <!-- Acento Yolpaki (Púrpura / Lila Material) -->
+            <SolidColorBrush x:Key="AppAccent" Color="#BB86FC" />
+            <SolidColorBrush x:Key="AppAccentContainer" Color="#381E72" />
+            <SolidColorBrush x:Key="AppSecondary" Color="#03DAC6" />
+            <SolidColorBrush x:Key="AppTextPrimary" Color="#FFFFFF" />
+            <SolidColorBrush x:Key="AppTextSecondary" Color="#B3B3B3" />
+            <SolidColorBrush x:Key="AppTextMuted" Color="#757575" />
+
+            <!-- DataTemplates for Views -->
+            <DataTemplate x:Key="HomeViewTemplate">
+                <views:HomeView />
+            </DataTemplate>
+            <DataTemplate x:Key="LibraryViewTemplate">
+                <views:LibraryView />
+            </DataTemplate>
+            <DataTemplate x:Key="ArtistsViewTemplate">
+                <views:ArtistsView />
+            </DataTemplate>
+            <DataTemplate x:Key="ArtistDetailViewTemplate">
+                <views:ArtistDetailView />
+            </DataTemplate>
+            <DataTemplate x:Key="AlbumsViewTemplate">
+                <views:AlbumsView />
+            </DataTemplate>
+            <DataTemplate x:Key="AlbumDetailViewTemplate">
+                <views:AlbumDetailView />
+            </DataTemplate>
+            <DataTemplate x:Key="PlaylistsViewTemplate">
+                <views:PlaylistsView />
+            </DataTemplate>
+            <DataTemplate x:Key="PlaylistDetailViewTemplate">
+                <views:PlaylistDetailView />
+            </DataTemplate>
+            <DataTemplate x:Key="EqualizerViewTemplate">
+                <views:EqualizerView />
+            </DataTemplate>
+
+            <!-- Main Navigation View Selector -->
+            <helpers:MainViewTemplateSelector x:Key="MainViewSelector"
+                HomeTemplate="{StaticResource HomeViewTemplate}"
+                LibraryTemplate="{StaticResource LibraryViewTemplate}"
+                ArtistsTemplate="{StaticResource ArtistsViewTemplate}"
+                ArtistDetailTemplate="{StaticResource ArtistDetailViewTemplate}"
+                AlbumsTemplate="{StaticResource AlbumsViewTemplate}"
+                AlbumDetailTemplate="{StaticResource AlbumDetailViewTemplate}"
+                PlaylistsTemplate="{StaticResource PlaylistsViewTemplate}"
+                PlaylistDetailTemplate="{StaticResource PlaylistDetailViewTemplate}"
+                EqualizerTemplate="{StaticResource EqualizerViewTemplate}" />
+
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>
+
