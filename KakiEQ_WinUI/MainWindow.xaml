@@ -212,7 +212,7 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="240"/>
                     <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="220"/>
+                    <ColumnDefinition Width="240"/>
                 </Grid.ColumnDefinitions>
 
                 <!-- Left: Track Info (Clickable to open Now Playing Overlay) -->
@@ -308,14 +308,22 @@
                     </Grid>
                 </StackPanel>
 
-                <!-- Right: Extra Controls (Heart Like, EQ Shortcut, Volume) -->
-                <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Spacing="10">
+                <!-- Right: Extra Controls (Heart Like, Playlist, EQ Shortcut, Volume) -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Spacing="8">
                     <!-- Like (Heart) Button -->
                     <Button Command="{x:Bind ViewModel.LikeTrackCommand}"
                             Background="Transparent" BorderThickness="0" Padding="0" Width="34" Height="34" CornerRadius="17"
                             ToolTipService.ToolTip="Añadir a Favoritos (Yollotl)">
                         <FontIcon Glyph="&#xEB52;" FontSize="16"
                                   Foreground="{x:Bind ViewModel.LikeBrush, Mode=OneWay}"/>
+                    </Button>
+
+                    <!-- Add to Playlist Button -->
+                    <Button x:Name="PlayerAddToPlaylistBtn"
+                            Click="PlayerAddToPlaylist_Click"
+                            Background="Transparent" BorderThickness="0" Padding="0" Width="34" Height="34" CornerRadius="17"
+                            Foreground="{ThemeResource AppTextPrimary}" ToolTipService.ToolTip="Añadir canción actual a una playlist">
+                        <FontIcon Glyph="&#xE8F1;" FontSize="15"/>
                     </Button>
 
                     <!-- EQ Shortcut -->

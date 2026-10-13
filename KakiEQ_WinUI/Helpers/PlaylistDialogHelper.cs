@@ -18,9 +18,13 @@ namespace KakiEQ_WinUI.Helpers
     {
         /// <summary>
         /// Shows the complete dialog to create a playlist (Image picker, Name, Description).
-        /// Optionally adds the specified track to the playlist right after creation.
+        /// Optionally adds the specified track or multiple tracks to the playlist right after creation.
         /// </summary>
-        public static async Task<Playlist?> ShowCreatePlaylistDialogAsync(XamlRoot xamlRoot, Track? initialTrackToAdd = null)
+        public static async Task<Playlist?> ShowCreatePlaylistDialogAsync(
+            XamlRoot xamlRoot,
+            Track? initialTrackToAdd = null,
+            IEnumerable<Track>? initialTracksToAdd = null,
+            string? collectionName = null)
         {
             if (xamlRoot == null) return null;
 
@@ -202,7 +206,8 @@ namespace KakiEQ_WinUI.Helpers
             };
             rootPanel.Children.Add(descBox);
 
-            // 4. Initial Track To Add indicator (if applicable)
+            // 4. Initial Track / Tracks To Add indicator (if applicable)
+            var multipleTracksList = initialTracksToAdd?.ToList();
             if (initialTrackToAdd != null)
             {
                 var trackBorder = new Border
@@ -224,6 +229,35 @@ namespace KakiEQ_WinUI.Helpers
                 trackRow.Children.Add(new TextBlock
                 {
                     Text = $"Se añadirá: {initialTrackToAdd.Title} - {initialTrackToAdd.Artist}",
+                    FontSize = 12,
+                    Foreground = GetThemeBrush(xamlRoot, "AppAccentText"),
+                    TextTrimming = TextTrimming.CharacterEllipsis,
+                    VerticalAlignment = VerticalAlignment.Center
+                });
+                trackBorder.Child = trackRow;
+                rootPanel.Children.Add(trackBorder);
+            }
+            else if (multipleTracksList != null && multipleTracksList.Any())
+            {
+                var trackBorder = new Border
+                {
+                    Background = GetThemeBrush(xamlRoot, "AppAccentSurface"),
+                    BorderBrush = GetThemeBrush(xamlRoot, "AppBorder"),
+                    BorderThickness = new Thickness(1),
+                    CornerRadius = new CornerRadius(10),
+                    Padding = new Thickness(12, 8, 12, 8)
+                };
+                var trackRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
+                trackRow.Children.Add(new FontIcon
+                {
+                    Glyph = "\uE8F1",
+                    FontSize = 14,
+                    Foreground = GetThemeBrush(xamlRoot, "AppAccent"),
+                    VerticalAlignment = VerticalAlignment.Center
+                });
+                trackRow.Children.Add(new TextBlock
+                {
+                    Text = $"Se añadirán {multipleTracksList.Count} canciones de \"{collectionName ?? "álbum"}\"",
                     FontSize = 12,
                     Foreground = GetThemeBrush(xamlRoot, "AppAccentText"),
                     TextTrimming = TextTrimming.CharacterEllipsis,
@@ -270,6 +304,11 @@ namespace KakiEQ_WinUI.Helpers
                         {
                             await dbService.AddTrackToPlaylistAsync(newPl.Name, initialTrackToAdd);
                         }
+                        else if (multipleTracksList != null && multipleTracksList.Any())
+                        {
+                            await dbService.AddTracksToPlaylistAsync(newPl.Name, multipleTracksList);
+                        }
+
                         if (MainViewModel.Instance != null)
                         {
                             await MainViewModel.Instance.LoadGlobalPlaylistsAsync();
@@ -280,9 +319,19 @@ namespace KakiEQ_WinUI.Helpers
                             }
                         }
 
-                        string feedback = initialTrackToAdd != null
-                            ? $"Playlist '{newPl.Name}' creada con \"{initialTrackToAdd.Title}\""
-                            : $"Playlist '{newPl.Name}' creada con éxito";
+                        string feedback;
+                        if (initialTrackToAdd != null)
+                        {
+                            feedback = $"Playlist '{newPl.Name}' creada con \"{initialTrackToAdd.Title}\"";
+                        }
+                        else if (multipleTracksList != null && multipleTracksList.Any())
+                        {
+                            feedback = $"Playlist '{newPl.Name}' creada con {multipleTracksList.Count} canciones de \"{collectionName ?? "álbum"}\"";
+                        }
+                        else
+                        {
+                            feedback = $"Playlist '{newPl.Name}' creada con éxito";
+                        }
 
                         MainWindow.Instance?.ShowToast(feedback);
                     }
@@ -377,6 +426,103 @@ namespace KakiEQ_WinUI.Helpers
                                 await pvm.LoadPlaylistsAsync();
                             }
                             MainWindow.Instance?.ShowToast($"\"{track.Title}\" añadida a {pl.Name}");
+                        }
+                    };
+                    items.Add(plItem);
+                }
+            }
+            else
+            {
+                var emptyItem = new MenuFlyoutItem
+                {
+                    Text = "(No hay playlists creadas aún)",
+                    IsEnabled = false
+                };
+                items.Add(emptyItem);
+            }
+        }
+
+        /// <summary>
+        /// Shows a standalone MenuFlyout targeting an anchor element for adding multiple tracks (e.g. from an album) to playlists.
+        /// </summary>
+        public static void ShowAddTracksToPlaylistFlyout(FrameworkElement anchor, IEnumerable<Track> tracks, string collectionTitle, XamlRoot xamlRoot)
+        {
+            if (anchor == null || tracks == null) return;
+            var trackList = tracks.ToList();
+            if (!trackList.Any()) return;
+
+            var flyout = new MenuFlyout();
+
+            var headerItem = new MenuFlyoutItem
+            {
+                Text = $"Añadir álbum \"{collectionTitle}\" ({trackList.Count} canciones) a:",
+                IsEnabled = false
+            };
+            flyout.Items.Add(headerItem);
+            flyout.Items.Add(new MenuFlyoutSeparator());
+
+            PopulateMultipleTracksPlaylistItems(flyout.Items, trackList, collectionTitle, xamlRoot);
+
+            flyout.ShowAt(anchor);
+        }
+
+        /// <summary>
+        /// Creates a MenuFlyoutSubItem ("Añadir a Playlist...") for a collection of tracks.
+        /// </summary>
+        public static MenuFlyoutSubItem CreateAddTracksToPlaylistSubItem(IEnumerable<Track> tracks, string collectionTitle, XamlRoot xamlRoot)
+        {
+            var subItem = new MenuFlyoutSubItem
+            {
+                Text = "Añadir álbum a Playlist...",
+                Icon = new FontIcon { Glyph = "\uE8F1" }
+            };
+
+            var trackList = tracks.ToList();
+            PopulateMultipleTracksPlaylistItems(subItem.Items, trackList, collectionTitle, xamlRoot);
+            return subItem;
+        }
+
+        private static void PopulateMultipleTracksPlaylistItems(IList<MenuFlyoutItemBase> items, List<Track> tracks, string collectionTitle, XamlRoot xamlRoot)
+        {
+            // 1. "+ Nueva Playlist..."
+            var createItem = new MenuFlyoutItem
+            {
+                Text = "Nueva Playlist...",
+                Icon = new FontIcon { Glyph = "\uE710" }
+            };
+            createItem.Click += async (s, e) =>
+            {
+                await ShowCreatePlaylistDialogAsync(xamlRoot, null, tracks, collectionTitle);
+            };
+            items.Add(createItem);
+
+            items.Add(new MenuFlyoutSeparator());
+
+            // 2. Existing playlists
+            var globalPlaylists = MainViewModel.Instance?.GlobalPlaylists?
+                .Where(p => !p.IsCreateCard)
+                .ToList();
+
+            if (globalPlaylists != null && globalPlaylists.Any())
+            {
+                foreach (var pl in globalPlaylists)
+                {
+                    var plItem = new MenuFlyoutItem
+                    {
+                        Text = pl.Name,
+                        Icon = new FontIcon { Glyph = "\uE8F1" }
+                    };
+                    plItem.Click += async (s, e) =>
+                    {
+                        if (MainViewModel.Instance?.DbService != null)
+                        {
+                            await MainViewModel.Instance.DbService.AddTracksToPlaylistAsync(pl.Name, tracks);
+                            await MainViewModel.Instance.LoadGlobalPlaylistsAsync();
+                            if (MainViewModel.Instance.CurrentView is PlaylistsViewModel pvm)
+                            {
+                                await pvm.LoadPlaylistsAsync();
+                            }
+                            MainWindow.Instance?.ShowToast($"{tracks.Count} canciones de \"{collectionTitle}\" añadidas a {pl.Name}");
                         }
                     };
                     items.Add(plItem);

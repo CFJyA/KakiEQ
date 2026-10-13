@@ -141,6 +141,42 @@ namespace KakiEQ_WinUI.Services.Data
             await SavePlaylistsAsync(playlists);
         }
 
+        public async Task AddTracksToPlaylistAsync(string playlistName, IEnumerable<Track> tracks)
+        {
+            var playlists = await GetAllPlaylistsAsync();
+            var playlist = playlists.FirstOrDefault(p => p.Name.Equals(playlistName, StringComparison.OrdinalIgnoreCase));
+
+            if (playlist == null)
+            {
+                playlist = new Playlist { Name = playlistName, TrackCount = 0 };
+                playlist.Id = playlists.Any() ? playlists.Max(p => p.Id) + 1 : 1;
+                playlist.CreatedAt = DateTime.Now;
+                playlists.Add(playlist);
+            }
+
+            if (playlist.TrackIds == null) playlist.TrackIds = new List<int>();
+            if (playlist.TrackFilePaths == null) playlist.TrackFilePaths = new List<string>();
+
+            foreach (var track in tracks)
+            {
+                if (!playlist.TrackIds.Contains(track.Id))
+                {
+                    playlist.TrackIds.Add(track.Id);
+                }
+                if (!string.IsNullOrEmpty(track.FilePath) && !playlist.TrackFilePaths.Contains(track.FilePath))
+                {
+                    playlist.TrackFilePaths.Add(track.FilePath);
+                }
+                if (string.IsNullOrEmpty(playlist.CoverImagePath) && !string.IsNullOrEmpty(track.CoverImagePath))
+                {
+                    playlist.CoverImagePath = track.CoverImagePath;
+                }
+            }
+
+            playlist.TrackCount = playlist.TrackIds.Count;
+            await SavePlaylistsAsync(playlists);
+        }
+
         public async Task<List<Track>> GetTracksForPlaylistAsync(string playlistName)
         {
             var playlists = await GetAllPlaylistsAsync();

@@ -94,6 +94,13 @@ namespace KakiEQ_WinUI
             }
         }
 
+        private void PlayerAddToPlaylist_Click(object sender, RoutedEventArgs e)
+        {
+            var track = ViewModel?.CurrentTrack;
+            if (track == null || sender is not FrameworkElement anchor) return;
+            Helpers.PlaylistDialogHelper.ShowAddToPlaylistFlyout(anchor, track, this.Content.XamlRoot);
+        }
+
         private void QueueItem_Click(object sender, ItemClickEventArgs e)
         {
             if (e.ClickedItem is Track track)
