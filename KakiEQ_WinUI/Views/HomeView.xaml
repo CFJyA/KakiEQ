@@ -13,7 +13,7 @@
         <StackPanel Spacing="28" HorizontalAlignment="Stretch">
 
             <!-- 1. Hero Welcome Banner (Material 3 Surface Elevation) -->
-            <Border Height="200" CornerRadius="20" Background="#1E162A" BorderBrush="#382650" BorderThickness="1">
+            <Border Height="200" CornerRadius="20" Background="{ThemeResource AppHeroBg}" BorderBrush="{ThemeResource AppHeroBorder}" BorderThickness="1">
                 <Grid Padding="32">
                     <Grid.Background>
                         <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
@@ -67,108 +67,111 @@
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
 
                 <Button Grid.Column="0" Height="72" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
-                        Background="#1A1A1A" BorderBrush="#2A2A2A" BorderThickness="1" CornerRadius="14"
+                        Background="{ThemeResource AppCardBackground}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1" CornerRadius="14"
                         Click="NavigateSongs_Click">
                     <Grid Padding="12,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-                        <Border Background="#261E38" Width="44" Height="44" CornerRadius="10">
-                            <FontIcon Glyph="&#xEC4F;" Foreground="#BB86FC" FontSize="20"/>
+                        <Border Background="{ThemeResource AppIconTileBg1}" Width="44" Height="44" CornerRadius="10">
+                            <FontIcon Glyph="&#xEC4F;" Foreground="{ThemeResource AppAccent}" FontSize="20"/>
                         </Border>
                         <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
-                            <TextBlock Text="Todas las Canciones" FontWeight="SemiBold" FontSize="14" Foreground="White"/>
-                            <TextBlock Text="Explora tu biblioteca" FontSize="11" Foreground="#888888"/>
+                            <TextBlock Text="Todas las Canciones" FontWeight="SemiBold" FontSize="14" Foreground="{ThemeResource AppTextPrimary}"/>
+                            <TextBlock Text="Explora tu biblioteca" FontSize="11" Foreground="{ThemeResource AppTextSubtle}"/>
                         </StackPanel>
                     </Grid>
                 </Button>
 
                 <Button Grid.Column="1" Height="72" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
-                        Background="#1A1A1A" BorderBrush="#2A2A2A" BorderThickness="1" CornerRadius="14"
+                        Background="{ThemeResource AppCardBackground}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1" CornerRadius="14"
                         Click="NavigateAlbums_Click">
                     <Grid Padding="12,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-                        <Border Background="#1C2D2B" Width="44" Height="44" CornerRadius="10">
-                            <FontIcon Glyph="&#xE93C;" Foreground="#03DAC6" FontSize="20"/>
+                        <Border Background="{ThemeResource AppIconTileBg2}" Width="44" Height="44" CornerRadius="10">
+                            <FontIcon Glyph="&#xE93C;" Foreground="{ThemeResource AppSecondary}" FontSize="20"/>
                         </Border>
                         <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
-                            <TextBlock Text="Colección Álbumes" FontWeight="SemiBold" FontSize="14" Foreground="White"/>
-                            <TextBlock Text="Portadas y detalles" FontSize="11" Foreground="#888888"/>
+                            <TextBlock Text="Colección Álbumes" FontWeight="SemiBold" FontSize="14" Foreground="{ThemeResource AppTextPrimary}"/>
+                            <TextBlock Text="Portadas y detalles" FontSize="11" Foreground="{ThemeResource AppTextSubtle}"/>
                         </StackPanel>
                     </Grid>
                 </Button>
 
                 <Button Grid.Column="2" Height="72" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
-                        Background="#1A1A1A" BorderBrush="#2A2A2A" BorderThickness="1" CornerRadius="14"
+                        Background="{ThemeResource AppCardBackground}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1" CornerRadius="14"
                         Click="NavigateArtists_Click">
                     <Grid Padding="12,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-                        <Border Background="#33241C" Width="44" Height="44" CornerRadius="10">
+                        <Border Background="{ThemeResource AppIconTileBg3}" Width="44" Height="44" CornerRadius="10">
                             <FontIcon Glyph="&#xE77B;" Foreground="#FFB74D" FontSize="20"/>
                         </Border>
                         <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
-                            <TextBlock Text="Artistas" FontWeight="SemiBold" FontSize="14" Foreground="White"/>
-                            <TextBlock Text="Discografías completas" FontSize="11" Foreground="#888888"/>
+                            <TextBlock Text="Artistas" FontWeight="SemiBold" FontSize="14" Foreground="{ThemeResource AppTextPrimary}"/>
+                            <TextBlock Text="Discografías completas" FontSize="11" Foreground="{ThemeResource AppTextSubtle}"/>
                         </StackPanel>
                     </Grid>
                 </Button>
 
                 <Button Grid.Column="3" Height="72" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
-                        Background="#1A1A1A" BorderBrush="#2A2A2A" BorderThickness="1" CornerRadius="14"
+                        Background="{ThemeResource AppCardBackground}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1" CornerRadius="14"
                         Click="NavigateEqualizer_Click">
                     <Grid Padding="12,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-                        <Border Background="#2B1E38" Width="44" Height="44" CornerRadius="10">
+                        <Border Background="{ThemeResource AppIconTileBg4}" Width="44" Height="44" CornerRadius="10">
                             <FontIcon Glyph="&#xE9E9;" Foreground="#CF94FD" FontSize="20"/>
                         </Border>
                         <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
-                            <TextBlock Text="Ecualizador DSP" FontWeight="SemiBold" FontSize="14" Foreground="White"/>
-                            <TextBlock Text="Ajusta frecuencias" FontSize="11" Foreground="#888888"/>
+                            <TextBlock Text="Ecualizador DSP" FontWeight="SemiBold" FontSize="14" Foreground="{ThemeResource AppTextPrimary}"/>
+                            <TextBlock Text="Ajusta frecuencias" FontSize="11" Foreground="{ThemeResource AppTextSubtle}"/>
+                        </StackPanel>
+                    </Grid>
+                </Button>
+                <Button Grid.Column="4" Height="72" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                        Background="{ThemeResource AppCardBackground}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1" CornerRadius="14"
+                        Click="NavigatePlaylists_Click">
+                    <Grid Padding="12,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Background="{ThemeResource AppIconTileBg5}" Width="44" Height="44" CornerRadius="10">
+                            <FontIcon Glyph="&#xE8F1;" Foreground="{ThemeResource AppAccent}" FontSize="20"/>
+                        </Border>
+                        <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="Playlists" FontWeight="SemiBold" FontSize="14" Foreground="{ThemeResource AppTextPrimary}"/>
+                            <TextBlock Text="Tus listas personales" FontSize="11" Foreground="{ThemeResource AppTextSubtle}"/>
                         </StackPanel>
                     </Grid>
                 </Button>
             </Grid>
 
-            <!-- Acceso rápido: Playlists -->
-            <Button Height="56" HorizontalAlignment="Left" Width="220"
-                    Background="#1A1A1A" BorderBrush="#2A2A2A" BorderThickness="1" CornerRadius="14"
-                    Click="NavigatePlaylists_Click" Margin="0,12,0,0">
-                <StackPanel Orientation="Horizontal" Padding="12,6" Spacing="12">
-                    <Border Background="#2B1445" Width="36" Height="36" CornerRadius="8">
-                        <FontIcon Glyph="&#xE8F1;" Foreground="#BB86FC" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                    </Border>
-                    <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="Playlists" FontWeight="SemiBold" FontSize="14" Foreground="White"/>
-                        <TextBlock Text="Tus listas" FontSize="11" Foreground="#888888"/>
-                    </StackPanel>
-                </StackPanel>
-            </Button>
-
             <!-- 3. Sugerencias (Material Cards Grid) -->
             <StackPanel Spacing="16">
                 <Grid>
                     <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                        <TextBlock Text="Recomendados para ti" FontSize="20" FontWeight="Bold" Foreground="White"/>
-                        <Border Background="#282828" CornerRadius="8" Padding="6,2" VerticalAlignment="Center">
-                            <TextBlock Text="Mix Kaki" FontSize="11" Foreground="#BB86FC"/>
+                        <TextBlock Text="Recomendados para ti" FontSize="20" FontWeight="Bold" Foreground="{ThemeResource AppTextPrimary}"/>
+                        <Border Background="{ThemeResource AppSurfaceElevated}" CornerRadius="8" Padding="6,2" VerticalAlignment="Center">
+                            <TextBlock Text="Mix Kaki" FontSize="11" Foreground="{ThemeResource AppAccent}"/>
                         </Border>
                     </StackPanel>
 
                     <Button HorizontalAlignment="Right" Command="{Binding RefreshSuggestionsCommand}"
-                            Background="Transparent" BorderThickness="0" Foreground="#888888" CornerRadius="8">
+                            Background="Transparent" BorderThickness="0" Foreground="{ThemeResource AppTextSubtle}" CornerRadius="8">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <FontIcon Glyph="&#xE72C;" FontSize="14"/>
                             <TextBlock Text="Actualizar" FontSize="12"/>
@@ -176,10 +179,21 @@
                     </Button>
                 </Grid>
 
-                <GridView ItemsSource="{x:Bind ViewModel.SuggestedTracks, Mode=OneWay}"
+                <GridView x:Name="SuggestedGridView"
+                          ItemsSource="{x:Bind ViewModel.SuggestedTracks, Mode=OneWay}"
                           SelectionMode="None"
                           IsItemClickEnabled="True"
-                          ItemClick="SuggestedTrack_ItemClick">
+                          ItemClick="SuggestedTrack_ItemClick"
+                          SizeChanged="SuggestedGridView_SizeChanged"
+                          Loaded="SuggestedGridView_Loaded">
+                    <GridView.ItemContainerStyle>
+                        <Style TargetType="GridViewItem">
+                            <Setter Property="Margin" Value="0"/>
+                            <Setter Property="Padding" Value="0"/>
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                            <Setter Property="VerticalContentAlignment" Value="Stretch"/>
+                        </Style>
+                    </GridView.ItemContainerStyle>
                     <GridView.ItemsPanel>
                         <ItemsPanelTemplate>
                             <ItemsWrapGrid Orientation="Horizontal"/>
@@ -187,8 +201,8 @@
                     </GridView.ItemsPanel>
                     <GridView.ItemTemplate>
                         <DataTemplate x:DataType="models:Track">
-                            <Border Width="168" Height="220" Margin="4" CornerRadius="16"
-                                    Background="#1A1A1A" BorderBrush="#262626" BorderThickness="1">
+                            <Border HorizontalAlignment="Stretch" Height="220" Margin="4" CornerRadius="16"
+                                    Background="{ThemeResource AppCardBackground}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1">
                                 <Grid>
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="148"/>
@@ -196,18 +210,18 @@
                                     </Grid.RowDefinitions>
 
                                     <!-- Cover Image or placeholder -->
-                                    <Border Grid.Row="0" CornerRadius="16,16,0,0" Background="#222222">
+                                    <Border Grid.Row="0" CornerRadius="16,16,0,0" Background="{ThemeResource AppCoverPlaceholderBg}">
                                         <Grid>
-                                            <FontIcon Glyph="&#xEC4F;" FontSize="40" Foreground="#444444" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            <FontIcon Glyph="&#xEC4F;" FontSize="40" Foreground="{ThemeResource AppCoverPlaceholderFg}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                             <Image Source="{x:Bind CoverImagePath}" Stretch="UniformToFill"/>
                                         </Grid>
                                     </Border>
 
                                     <!-- Bottom Info -->
                                     <StackPanel Grid.Row="1" Padding="12,8,12,8" VerticalAlignment="Center">
-                                        <TextBlock Text="{x:Bind Title}" FontWeight="SemiBold" FontSize="13" Foreground="White"
+                                        <TextBlock Text="{x:Bind Title}" FontWeight="SemiBold" FontSize="13" Foreground="{ThemeResource AppTextPrimary}"
                                                    TextTrimming="CharacterEllipsis" MaxLines="1"/>
-                                        <TextBlock Text="{x:Bind Artist}" FontSize="11" Foreground="#AAAAAA"
+                                        <TextBlock Text="{x:Bind Artist}" FontSize="11" Foreground="{ThemeResource AppTextSecondary}"
                                                    TextTrimming="CharacterEllipsis" MaxLines="1" Margin="0,2,0,0"/>
                                     </StackPanel>
                                 </Grid>
@@ -219,7 +233,7 @@
 
             <!-- 4. Recientemente Añadidos -->
             <StackPanel Spacing="16" Margin="0,0,0,24">
-                <TextBlock Text="Añadidos recientemente" FontSize="20" FontWeight="Bold" Foreground="White"/>
+                <TextBlock Text="Añadidos recientemente" FontSize="20" FontWeight="Bold" Foreground="{ThemeResource AppTextPrimary}"/>
 
                 <ListView ItemsSource="{x:Bind ViewModel.RecentlyAddedTracks, Mode=OneWay}"
                           SelectionMode="None"
@@ -235,22 +249,22 @@
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
 
-                                <Border Width="40" Height="40" CornerRadius="8" Background="#262626">
+                                <Border Width="40" Height="40" CornerRadius="8" Background="{ThemeResource AppCoverPlaceholderBg}">
                                     <Grid>
-                                        <FontIcon Glyph="&#xEC4F;" FontSize="18" Foreground="#555555" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        <FontIcon Glyph="&#xEC4F;" FontSize="18" Foreground="{ThemeResource AppCoverPlaceholderFg}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                         <Image Source="{x:Bind CoverImagePath}" Stretch="UniformToFill"/>
                                     </Grid>
                                 </Border>
 
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,0,0">
-                                    <TextBlock Text="{x:Bind Title}" FontWeight="SemiBold" FontSize="13" Foreground="White" TextTrimming="CharacterEllipsis"/>
-                                    <TextBlock Text="{x:Bind Artist}" FontSize="11" Foreground="#888888" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Text="{x:Bind Title}" FontWeight="SemiBold" FontSize="13" Foreground="{ThemeResource AppTextPrimary}" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Text="{x:Bind Artist}" FontSize="11" Foreground="{ThemeResource AppTextSecondary}" TextTrimming="CharacterEllipsis"/>
                                 </StackPanel>
 
-                                <TextBlock Grid.Column="2" Text="{x:Bind Album}" FontSize="12" Foreground="#888888"
+                                <TextBlock Grid.Column="2" Text="{x:Bind Album}" FontSize="12" Foreground="{ThemeResource AppTextSubtle}"
                                            VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
 
-                                <TextBlock Grid.Column="3" Text="{x:Bind DurationFormatted}" FontSize="12" Foreground="#777777"
+                                <TextBlock Grid.Column="3" Text="{x:Bind DurationFormatted}" FontSize="12" Foreground="{ThemeResource AppTextMuted}"
                                            VerticalAlignment="Center" Margin="16,0,8,0"/>
                             </Grid>
                         </DataTemplate>

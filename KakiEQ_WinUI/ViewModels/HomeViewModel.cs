@@ -33,7 +33,7 @@ namespace KakiEQ_WinUI.ViewModels
             if (allTracks.Count > 0)
             {
                 var rng = new Random();
-                var suggestions = allTracks.OrderBy(_ => rng.Next()).Take(8).ToList();
+                var suggestions = allTracks.OrderBy(_ => rng.Next()).Take(16).ToList();
                 var recents = allTracks.OrderByDescending(t => t.DateAdded).Take(6).ToList();
 
                 RunOnUIThread(() =>

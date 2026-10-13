@@ -16,14 +16,25 @@
         </Grid.RowDefinitions>
 
         <StackPanel Grid.Row="0" Margin="0,0,0,20">
-            <TextBlock Text="Álbumes" FontSize="26" FontWeight="Bold" Foreground="White"/>
-            <TextBlock Text="Explora tu colección de música organizada por álbumes" FontSize="13" Foreground="#888888" Margin="0,4,0,0"/>
+            <TextBlock Text="Álbumes" FontSize="26" FontWeight="Bold" Foreground="{ThemeResource AppTextPrimary}"/>
+            <TextBlock Text="Explora tu colección de música organizada por álbumes" FontSize="13" Foreground="{ThemeResource AppTextSubtle}" Margin="0,4,0,0"/>
         </StackPanel>
 
-        <GridView Grid.Row="1" ItemsSource="{x:Bind ViewModel.Albums, Mode=OneWay}"
+        <GridView x:Name="AlbumsGridView"
+                  Grid.Row="1" ItemsSource="{x:Bind ViewModel.Albums, Mode=OneWay}"
                   SelectionMode="None"
                   IsItemClickEnabled="True"
-                  ItemClick="Album_ItemClick">
+                  ItemClick="Album_ItemClick"
+                  SizeChanged="AlbumsGridView_SizeChanged"
+                  Loaded="AlbumsGridView_Loaded">
+            <GridView.ItemContainerStyle>
+                <Style TargetType="GridViewItem">
+                    <Setter Property="Margin" Value="0"/>
+                    <Setter Property="Padding" Value="0"/>
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                    <Setter Property="VerticalContentAlignment" Value="Stretch"/>
+                </Style>
+            </GridView.ItemContainerStyle>
             <GridView.ItemsPanel>
                 <ItemsPanelTemplate>
                     <ItemsWrapGrid Orientation="Horizontal"/>
@@ -31,8 +42,8 @@
             </GridView.ItemsPanel>
             <GridView.ItemTemplate>
                 <DataTemplate x:DataType="models:AlbumItem">
-                    <Border Width="170" Height="230" Margin="6" CornerRadius="16"
-                            Background="#1A1A1A" BorderBrush="#2A2A2A" BorderThickness="1">
+                    <Border HorizontalAlignment="Stretch" Height="230" Margin="6" CornerRadius="16"
+                            Background="{ThemeResource AppCardBackground}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1">
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="160"/>
@@ -40,19 +51,19 @@
                             </Grid.RowDefinitions>
 
                             <!-- Cover Artwork -->
-                            <Border Grid.Row="0" CornerRadius="16,16,0,0" Background="#242424">
+                            <Border Grid.Row="0" CornerRadius="16,16,0,0" Background="{ThemeResource AppCoverPlaceholderBg}">
                                 <Grid>
-                                    <FontIcon Glyph="&#xE93C;" FontSize="44" Foreground="#444444" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    <FontIcon Glyph="&#xE93C;" FontSize="44" Foreground="{ThemeResource AppCoverPlaceholderFg}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                     <Image Source="{x:Bind CoverImagePath}" Stretch="UniformToFill"/>
                                 </Grid>
                             </Border>
 
                             <!-- Bottom Tag -->
-                            <Border Grid.Row="1" Background="#1E1A26" BorderBrush="#2B2236" BorderThickness="0,1,0,0" CornerRadius="0,0,16,16" Padding="12,8">
+                            <Border Grid.Row="1" Background="{ThemeResource AppSurfaceElevated}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="0,1,0,0" CornerRadius="0,0,16,16" Padding="12,8">
                                 <StackPanel VerticalAlignment="Center">
-                                    <TextBlock Text="{x:Bind Title}" FontWeight="Bold" FontSize="13" Foreground="White"
+                                    <TextBlock Text="{x:Bind Title}" FontWeight="Bold" FontSize="13" Foreground="{ThemeResource AppTextPrimary}"
                                                TextTrimming="CharacterEllipsis" MaxLines="1"/>
-                                    <TextBlock Text="{x:Bind Artist}" FontSize="11" Foreground="#D0D0D0"
+                                    <TextBlock Text="{x:Bind Artist}" FontSize="11" Foreground="{ThemeResource AppTextSecondary}"
                                                TextTrimming="CharacterEllipsis" MaxLines="1" Margin="0,2,0,0"/>
                                 </StackPanel>
                             </Border>

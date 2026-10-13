@@ -16,26 +16,26 @@
             <Grid>
                 <StackPanel VerticalAlignment="Center" Spacing="4">
                     <StackPanel Orientation="Horizontal" Spacing="10">
-                        <TextBlock Text="Ecualizador Gráfico DSP" FontSize="26" FontWeight="Bold" Foreground="White"/>
-                        <Border Background="#2B1445" CornerRadius="10" Padding="8,3" VerticalAlignment="Center">
-                            <TextBlock Text="10 BANDAS" FontSize="11" FontWeight="Bold" Foreground="#D0BCFF"/>
+                        <TextBlock Text="Ecualizador Gráfico DSP" FontSize="26" FontWeight="Bold" Foreground="{ThemeResource AppTextPrimary}"/>
+                        <Border Background="{ThemeResource AppAccentContainer}" CornerRadius="10" Padding="8,3" VerticalAlignment="Center">
+                            <TextBlock Text="10 BANDAS" FontSize="11" FontWeight="Bold" Foreground="{ThemeResource AppAccentText}"/>
                         </Border>
                     </StackPanel>
                     <TextBlock Text="Ajuste paramétrico de alta fidelidad con procesamiento BASS DirectX" 
-                               FontSize="13" Foreground="#888888"/>
+                               FontSize="13" Foreground="{ThemeResource AppTextSubtle}"/>
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="16" VerticalAlignment="Center">
                     <!-- Toggle Switch -->
                     <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                        <TextBlock Text="EQ Activo" FontSize="13" Foreground="#B0B0B0" VerticalAlignment="Center"/>
+                        <TextBlock Text="EQ Activo" FontSize="13" Foreground="{ThemeResource AppTextSecondary}" VerticalAlignment="Center"/>
                         <ToggleSwitch IsOn="{Binding IsEnabled, Mode=TwoWay}"
                                       OnContent="" OffContent="" Margin="0"/>
                     </StackPanel>
 
                     <!-- Reset Button -->
                     <Button Command="{Binding ResetCommand}"
-                            Background="#1E1E1E" BorderBrush="#333333" Foreground="#D0BCFF"
+                            Background="{ThemeResource AppSurfaceContainer}" BorderBrush="{ThemeResource AppBorder}" Foreground="{ThemeResource AppAccent}"
                             CornerRadius="16" Padding="14,6">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <FontIcon Glyph="&#xE72C;" FontSize="13"/>
@@ -46,9 +46,9 @@
             </Grid>
 
             <!-- Presets Bar (Material Chips) -->
-            <Border Background="#181818" BorderBrush="#262626" BorderThickness="1" CornerRadius="16" Padding="16,12">
+            <Border Background="{ThemeResource AppCardBackground}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1" CornerRadius="16" Padding="16,12">
                 <StackPanel Orientation="Horizontal" Spacing="12">
-                    <TextBlock Text="Perfiles:" FontSize="13" FontWeight="SemiBold" Foreground="#888888" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <TextBlock Text="Perfiles:" FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource AppTextSubtle}" VerticalAlignment="Center" Margin="0,0,6,0"/>
 
                     <ListView ItemsSource="{Binding Presets}"
                               SelectedItem="{Binding SelectedPreset, Mode=TwoWay}"
@@ -62,8 +62,8 @@
                         </ListView.ItemsPanel>
                         <ListView.ItemTemplate>
                             <DataTemplate x:DataType="vm:EqualizerPreset">
-                                <Border Background="#252525" CornerRadius="14" Padding="14,6" Margin="4,0">
-                                    <TextBlock Text="{x:Bind Name}" FontSize="12" FontWeight="SemiBold" Foreground="White"/>
+                                <Border Background="{ThemeResource AppSurfaceElevated}" CornerRadius="14" Padding="14,6" Margin="4,0">
+                                    <TextBlock Text="{x:Bind Name}" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource AppTextPrimary}"/>
                                 </Border>
                             </DataTemplate>
                         </ListView.ItemTemplate>
@@ -72,7 +72,7 @@
             </Border>
 
             <!-- 10 Bands Equalizer Rack (Hardware Style Surface) -->
-            <Border Background="#161616" BorderBrush="#252525" BorderThickness="1" CornerRadius="20" Padding="28,24">
+            <Border Background="{ThemeResource AppCardBackground}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1" CornerRadius="20" Padding="28,24">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -82,9 +82,9 @@
 
                     <!-- dB Markers Reference Line (Top) -->
                     <Grid Grid.Row="0" Margin="0,0,0,12">
-                        <TextBlock Text="+15 dB" HorizontalAlignment="Left" FontSize="11" Foreground="#555555"/>
-                        <TextBlock Text="0 dB (Plano)" HorizontalAlignment="Center" FontSize="11" Foreground="#444444"/>
-                        <TextBlock Text="+15 dB" HorizontalAlignment="Right" FontSize="11" Foreground="#555555"/>
+                        <TextBlock Text="+15 dB" HorizontalAlignment="Left" FontSize="11" Foreground="{ThemeResource AppTextMuted}"/>
+                        <TextBlock Text="0 dB (Plano)" HorizontalAlignment="Center" FontSize="11" Foreground="{ThemeResource AppTextMuted}"/>
+                        <TextBlock Text="+15 dB" HorizontalAlignment="Right" FontSize="11" Foreground="{ThemeResource AppTextMuted}"/>
                     </Grid>
 
                     <!-- Sliders Grid -->
@@ -98,9 +98,9 @@
                             <DataTemplate x:DataType="models:EqualizerBand">
                                 <StackPanel Width="88" HorizontalAlignment="Center" VerticalAlignment="Stretch" Spacing="8">
                                     <!-- Current Gain Readout -->
-                                    <Border Background="#201A29" CornerRadius="6" Padding="6,2" HorizontalAlignment="Center">
+                                    <Border Background="{ThemeResource AppAccentSurface}" CornerRadius="6" Padding="6,2" HorizontalAlignment="Center">
                                         <TextBlock Text="{x:Bind GainFormatted, Mode=OneWay}" 
-                                                   FontSize="11" FontWeight="Bold" Foreground="#BB86FC"
+                                                   FontSize="11" FontWeight="Bold" Foreground="{ThemeResource AppAccent}"
                                                    HorizontalAlignment="Center"/>
                                     </Border>
 
@@ -113,7 +113,7 @@
                                             TickFrequency="5" TickPlacement="Outside"/>
 
                                     <!-- Frequency Label -->
-                                    <TextBlock Text="{x:Bind Label}" FontSize="12" FontWeight="SemiBold" Foreground="#A0A0A0"
+                                    <TextBlock Text="{x:Bind Label}" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource AppTextSecondary}"
                                                HorizontalAlignment="Center"/>
                                 </StackPanel>
                             </DataTemplate>
@@ -122,9 +122,9 @@
 
                     <!-- dB Markers Reference Line (Bottom) -->
                     <Grid Grid.Row="2" Margin="0,16,0,0">
-                        <TextBlock Text="-15 dB" HorizontalAlignment="Left" FontSize="11" Foreground="#555555"/>
-                        <TextBlock Text="Respuesta de Frecuencia (Sub-grave → Agudo)" HorizontalAlignment="Center" FontSize="11" Foreground="#555555"/>
-                        <TextBlock Text="-15 dB" HorizontalAlignment="Right" FontSize="11" Foreground="#555555"/>
+                        <TextBlock Text="-15 dB" HorizontalAlignment="Left" FontSize="11" Foreground="{ThemeResource AppTextMuted}"/>
+                        <TextBlock Text="Respuesta de Frecuencia (Sub-grave → Agudo)" HorizontalAlignment="Center" FontSize="11" Foreground="{ThemeResource AppTextMuted}"/>
+                        <TextBlock Text="-15 dB" HorizontalAlignment="Right" FontSize="11" Foreground="{ThemeResource AppTextMuted}"/>
                     </Grid>
                 </Grid>
             </Border>

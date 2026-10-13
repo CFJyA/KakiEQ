@@ -41,10 +41,34 @@ namespace KakiEQ_WinUI.ViewModels
             set { _currentView = value; OnPropertyChanged(); }
         }
 
-        private static readonly SolidColorBrush NavActiveBg = new(Windows.UI.Color.FromArgb(255, 56, 30, 114)); // #381E72
+        private bool _isLightTheme;
+        public bool IsLightTheme
+        {
+            get => _isLightTheme;
+            set
+            {
+                if (_isLightTheme != value)
+                {
+                    _isLightTheme = value;
+                    OnPropertyChanged();
+                    RefreshNavBrushes();
+                }
+            }
+        }
+
         private static readonly SolidColorBrush NavInactiveBg = new(Windows.UI.Color.FromArgb(0, 0, 0, 0)); // Transparent
-        private static readonly SolidColorBrush NavActiveFg = new(Windows.UI.Color.FromArgb(255, 208, 188, 255)); // #D0BCFF
-        private static readonly SolidColorBrush NavInactiveFg = new(Windows.UI.Color.FromArgb(255, 180, 180, 180)); // #B4B4B4
+
+        private SolidColorBrush NavActiveBg => IsLightTheme
+            ? new SolidColorBrush(Windows.UI.Color.FromArgb(255, 237, 231, 246)) // #EDE7F6
+            : new SolidColorBrush(Windows.UI.Color.FromArgb(255, 56, 30, 114));  // #381E72
+
+        private SolidColorBrush NavActiveFg => IsLightTheme
+            ? new SolidColorBrush(Windows.UI.Color.FromArgb(255, 124, 77, 255)) // #7C4DFF
+            : new SolidColorBrush(Windows.UI.Color.FromArgb(255, 208, 188, 255)); // #D0BCFF
+
+        private SolidColorBrush NavInactiveFg => IsLightTheme
+            ? new SolidColorBrush(Windows.UI.Color.FromArgb(255, 85, 85, 85))   // #555555
+            : new SolidColorBrush(Windows.UI.Color.FromArgb(255, 180, 180, 180)); // #B4B4B4
 
         private string _currentSectionTitle = "Inicio";
         public string CurrentSectionTitle
@@ -54,19 +78,24 @@ namespace KakiEQ_WinUI.ViewModels
             {
                 _currentSectionTitle = value;
                 OnPropertyChanged();
-                OnPropertyChanged(nameof(NavHomeBg));
-                OnPropertyChanged(nameof(NavHomeFg));
-                OnPropertyChanged(nameof(NavSongsBg));
-                OnPropertyChanged(nameof(NavSongsFg));
-                OnPropertyChanged(nameof(NavAlbumsBg));
-                OnPropertyChanged(nameof(NavAlbumsFg));
-                OnPropertyChanged(nameof(NavArtistsBg));
-                OnPropertyChanged(nameof(NavArtistsFg));
-                OnPropertyChanged(nameof(NavPlaylistsBg));
-                OnPropertyChanged(nameof(NavPlaylistsFg));
-                OnPropertyChanged(nameof(NavEqBg));
-                OnPropertyChanged(nameof(NavEqFg));
+                RefreshNavBrushes();
             }
+        }
+
+        public void RefreshNavBrushes()
+        {
+            OnPropertyChanged(nameof(NavHomeBg));
+            OnPropertyChanged(nameof(NavHomeFg));
+            OnPropertyChanged(nameof(NavSongsBg));
+            OnPropertyChanged(nameof(NavSongsFg));
+            OnPropertyChanged(nameof(NavAlbumsBg));
+            OnPropertyChanged(nameof(NavAlbumsFg));
+            OnPropertyChanged(nameof(NavArtistsBg));
+            OnPropertyChanged(nameof(NavArtistsFg));
+            OnPropertyChanged(nameof(NavPlaylistsBg));
+            OnPropertyChanged(nameof(NavPlaylistsFg));
+            OnPropertyChanged(nameof(NavEqBg));
+            OnPropertyChanged(nameof(NavEqFg));
         }
 
         public SolidColorBrush NavHomeBg => CurrentSectionTitle == "Inicio" ? NavActiveBg : NavInactiveBg;

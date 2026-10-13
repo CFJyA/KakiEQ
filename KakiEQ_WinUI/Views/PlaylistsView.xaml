@@ -18,13 +18,13 @@
         <!-- Header -->
         <Grid Grid.Row="0" Margin="0,0,0,20">
             <StackPanel VerticalAlignment="Center">
-                <TextBlock Text="Playlists" FontSize="26" FontWeight="Bold" Foreground="White"/>
-                <TextBlock Text="Crea listas de reproducción personalizadas para cada momento" FontSize="13" Foreground="#888888" Margin="0,4,0,0"/>
+                <TextBlock Text="Playlists" FontSize="26" FontWeight="Bold" Foreground="{ThemeResource AppTextPrimary}"/>
+                <TextBlock Text="Crea listas de reproducción personalizadas para cada momento" FontSize="13" Foreground="{ThemeResource AppTextSubtle}" Margin="0,4,0,0"/>
             </StackPanel>
 
             <Button HorizontalAlignment="Right" VerticalAlignment="Center"
                     Click="CreatePlaylist_Click"
-                    Background="#BB86FC" Foreground="#121212"
+                    Background="{ThemeResource AppAccent}" Foreground="#121212"
                     CornerRadius="20" Padding="16,8" FontWeight="SemiBold">
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <FontIcon Glyph="&#xE710;" FontSize="14"/>
@@ -48,7 +48,7 @@
                     <Grid Width="170" Height="220" Margin="6">
                         <!-- 1. Normal Playlist Card -->
                         <Border Visibility="{x:Bind IsNormalCardVisibility, Mode=OneTime}"
-                                Background="#1A1A1A" BorderBrush="#2A2A2A" BorderThickness="1" CornerRadius="16">
+                                Background="{ThemeResource AppCardBackground}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1" CornerRadius="16">
                             <Grid>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="150"/>
@@ -56,19 +56,19 @@
                                 </Grid.RowDefinitions>
 
                                 <!-- Cover Artwork / Icon -->
-                                <Border Grid.Row="0" CornerRadius="16,16,0,0" Background="#221C2B">
+                                <Border Grid.Row="0" CornerRadius="16,16,0,0" Background="{ThemeResource AppAccentSurface}">
                                     <Grid>
-                                        <FontIcon Glyph="&#xE8F1;" FontSize="44" Foreground="#BB86FC" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        <FontIcon Glyph="&#xE8F1;" FontSize="44" Foreground="{ThemeResource AppAccent}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                         <Image Source="{x:Bind CoverImagePath, Converter={StaticResource ImagePathToImageSourceConverter}}" Stretch="UniformToFill"/>
                                     </Grid>
                                 </Border>
 
                                 <!-- Bottom Info -->
-                                <Border Grid.Row="1" Background="#201A29" BorderBrush="#2C203B" BorderThickness="0,1,0,0" CornerRadius="0,0,16,16" Padding="12,8">
+                                <Border Grid.Row="1" Background="{ThemeResource AppSurfaceElevated}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="0,1,0,0" CornerRadius="0,0,16,16" Padding="12,8">
                                     <StackPanel VerticalAlignment="Center">
-                                        <TextBlock Text="{x:Bind Name}" FontWeight="Bold" FontSize="13" Foreground="White"
+                                        <TextBlock Text="{x:Bind Name}" FontWeight="Bold" FontSize="13" Foreground="{ThemeResource AppTextPrimary}"
                                                    TextTrimming="CharacterEllipsis" MaxLines="1"/>
-                                        <TextBlock Text="{x:Bind TrackCountFormatted}" FontSize="11" Foreground="#BB86FC"
+                                        <TextBlock Text="{x:Bind TrackCountFormatted}" FontSize="11" Foreground="{ThemeResource AppAccent}"
                                                    Margin="0,2,0,0"/>
                                     </StackPanel>
                                 </Border>
@@ -77,15 +77,15 @@
 
                         <!-- 2. '+' Create Playlist Card (Prompt Card) -->
                         <Border Visibility="{x:Bind IsCreateCardVisibility, Mode=OneTime}"
-                                Background="#171222" BorderBrush="#BB86FC" BorderThickness="1" CornerRadius="16">
+                                Background="{ThemeResource AppAccentSurface}" BorderBrush="{ThemeResource AppAccent}" BorderThickness="1" CornerRadius="16">
                             <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
                                 <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="14">
-                                    <Border Width="64" Height="64" CornerRadius="32" Background="#2B1445" HorizontalAlignment="Center">
-                                        <FontIcon Glyph="&#xE710;" FontSize="28" Foreground="#BB86FC" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    <Border Width="64" Height="64" CornerRadius="32" Background="{ThemeResource AppAccentContainer}" HorizontalAlignment="Center">
+                                        <FontIcon Glyph="&#xE710;" FontSize="28" Foreground="{ThemeResource AppAccent}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                     </Border>
                                     <StackPanel Spacing="3" HorizontalAlignment="Center">
-                                        <TextBlock Text="Crear Playlist" FontWeight="Bold" FontSize="14" Foreground="White" HorizontalAlignment="Center"/>
-                                        <TextBlock Text="Nueva lista" FontSize="11" Foreground="#BB86FC" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="Crear Playlist" FontWeight="Bold" FontSize="14" Foreground="{ThemeResource AppTextPrimary}" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="Nueva lista" FontSize="11" Foreground="{ThemeResource AppAccent}" HorizontalAlignment="Center"/>
                                     </StackPanel>
                                 </StackPanel>
                             </Grid>

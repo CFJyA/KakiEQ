@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using KakiEQ_WinUI.Helpers;
 using KakiEQ_WinUI.Models;
 using KakiEQ_WinUI.ViewModels;
 
@@ -16,6 +17,16 @@ namespace KakiEQ_WinUI.Views
             {
                 Bindings?.Update();
             };
+        }
+
+        private void SuggestedGridView_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            GridViewLayoutHelper.AdjustItemWidth(SuggestedGridView, minItemWidth: 168, itemHeight: 228);
+        }
+
+        private void SuggestedGridView_Loaded(object sender, RoutedEventArgs e)
+        {
+            GridViewLayoutHelper.AdjustItemWidth(SuggestedGridView, minItemWidth: 168, itemHeight: 228);
         }
 
         private void SuggestedTrack_ItemClick(object sender, ItemClickEventArgs e)

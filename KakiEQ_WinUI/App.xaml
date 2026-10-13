@@ -12,26 +12,100 @@
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
             </ResourceDictionary.MergedDictionaries>
 
+            <!-- Theme-aware Color Dictionaries -->
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Dark">
+                    <!-- Surfaces / Backgrounds -->
+                    <SolidColorBrush x:Key="AppBackground" Color="#121212" />
+                    <SolidColorBrush x:Key="AppSurface" Color="#181818" />
+                    <SolidColorBrush x:Key="AppSurfaceContainer" Color="#1E1E1E" />
+                    <SolidColorBrush x:Key="AppSurfaceElevated" Color="#252525" />
+                    <SolidColorBrush x:Key="AppBorder" Color="#2A2A2A" />
+                    <SolidColorBrush x:Key="AppCardBackground" Color="#1A1A1A" />
+                    <SolidColorBrush x:Key="AppTitleBarBg" Color="#141416" />
+                    <SolidColorBrush x:Key="AppTitleBarBorder" Color="#201C2B" />
+                    <SolidColorBrush x:Key="AppSidebarBg" Color="#15121E" />
+                    <SolidColorBrush x:Key="AppPlayerBg" Color="#15121E" />
+                    <SolidColorBrush x:Key="AppOverlayBg" Color="#F2121212" />
+
+                    <!-- Accent (same in both themes) -->
+                    <SolidColorBrush x:Key="AppAccent" Color="#BB86FC" />
+                    <SolidColorBrush x:Key="AppAccentContainer" Color="#381E72" />
+                    <SolidColorBrush x:Key="AppAccentSurface" Color="#261E38" />
+                    <SolidColorBrush x:Key="AppAccentText" Color="#D0BCFF" />
+                    <SolidColorBrush x:Key="AppSecondary" Color="#03DAC6" />
+                    <SolidColorBrush x:Key="AppDanger" Color="#FF8080" />
+
+                    <!-- Text -->
+                    <SolidColorBrush x:Key="AppTextPrimary" Color="#FFFFFF" />
+                    <SolidColorBrush x:Key="AppTextSecondary" Color="#B3B3B3" />
+                    <SolidColorBrush x:Key="AppTextMuted" Color="#757575" />
+                    <SolidColorBrush x:Key="AppTextSubtle" Color="#888888" />
+
+                    <!-- Hero / Gradient helpers -->
+                    <SolidColorBrush x:Key="AppHeroBg" Color="#1E162A" />
+                    <SolidColorBrush x:Key="AppHeroBorder" Color="#382650" />
+                    <SolidColorBrush x:Key="AppSettingsBg" Color="#1F1A2A" />
+                    <SolidColorBrush x:Key="AppSettingsBorder" Color="#38264D" />
+                    <SolidColorBrush x:Key="AppSidebarToggleBg" Color="#1D1728" />
+                    <SolidColorBrush x:Key="AppCoverPlaceholderBg" Color="#222222" />
+                    <SolidColorBrush x:Key="AppCoverPlaceholderFg" Color="#444444" />
+                    <SolidColorBrush x:Key="AppIconTileBg1" Color="#261E38" />
+                    <SolidColorBrush x:Key="AppIconTileBg2" Color="#1C2D2B" />
+                    <SolidColorBrush x:Key="AppIconTileBg3" Color="#33241C" />
+                    <SolidColorBrush x:Key="AppIconTileBg4" Color="#2B1E38" />
+                    <SolidColorBrush x:Key="AppIconTileBg5" Color="#2B1445" />
+                </ResourceDictionary>
+
+                <ResourceDictionary x:Key="Light">
+                    <!-- Surfaces / Backgrounds -->
+                    <SolidColorBrush x:Key="AppBackground" Color="#F5F5F5" />
+                    <SolidColorBrush x:Key="AppSurface" Color="#FFFFFF" />
+                    <SolidColorBrush x:Key="AppSurfaceContainer" Color="#F0F0F0" />
+                    <SolidColorBrush x:Key="AppSurfaceElevated" Color="#E8E8E8" />
+                    <SolidColorBrush x:Key="AppBorder" Color="#D6D6D6" />
+                    <SolidColorBrush x:Key="AppCardBackground" Color="#FFFFFF" />
+                    <SolidColorBrush x:Key="AppTitleBarBg" Color="#FAFAFA" />
+                    <SolidColorBrush x:Key="AppTitleBarBorder" Color="#E0D8EB" />
+                    <SolidColorBrush x:Key="AppSidebarBg" Color="#F8F5FC" />
+                    <SolidColorBrush x:Key="AppPlayerBg" Color="#F8F5FC" />
+                    <SolidColorBrush x:Key="AppOverlayBg" Color="#E6F5F5F5" />
+
+                    <!-- Accent (same in both themes) -->
+                    <SolidColorBrush x:Key="AppAccent" Color="#7C4DFF" />
+                    <SolidColorBrush x:Key="AppAccentContainer" Color="#EDE7F6" />
+                    <SolidColorBrush x:Key="AppAccentSurface" Color="#F3EDFF" />
+                    <SolidColorBrush x:Key="AppAccentText" Color="#4A148C" />
+                    <SolidColorBrush x:Key="AppSecondary" Color="#00897B" />
+                    <SolidColorBrush x:Key="AppDanger" Color="#D32F2F" />
+
+                    <!-- Text -->
+                    <SolidColorBrush x:Key="AppTextPrimary" Color="#1A1A1A" />
+                    <SolidColorBrush x:Key="AppTextSecondary" Color="#555555" />
+                    <SolidColorBrush x:Key="AppTextMuted" Color="#999999" />
+                    <SolidColorBrush x:Key="AppTextSubtle" Color="#777777" />
+
+                    <!-- Hero / Gradient helpers -->
+                    <SolidColorBrush x:Key="AppHeroBg" Color="#EDE7F6" />
+                    <SolidColorBrush x:Key="AppHeroBorder" Color="#D1C4E9" />
+                    <SolidColorBrush x:Key="AppSettingsBg" Color="#F3EDFF" />
+                    <SolidColorBrush x:Key="AppSettingsBorder" Color="#D1C4E9" />
+                    <SolidColorBrush x:Key="AppSidebarToggleBg" Color="#F3EDFF" />
+                    <SolidColorBrush x:Key="AppCoverPlaceholderBg" Color="#E0E0E0" />
+                    <SolidColorBrush x:Key="AppCoverPlaceholderFg" Color="#BDBDBD" />
+                    <SolidColorBrush x:Key="AppIconTileBg1" Color="#F3EDFF" />
+                    <SolidColorBrush x:Key="AppIconTileBg2" Color="#E0F2F1" />
+                    <SolidColorBrush x:Key="AppIconTileBg3" Color="#FFF3E0" />
+                    <SolidColorBrush x:Key="AppIconTileBg4" Color="#F3E5F5" />
+                    <SolidColorBrush x:Key="AppIconTileBg5" Color="#F3E5F5" />
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+
             <!-- Converters -->
             <helpers:BoolToVisibilityConverter x:Key="BoolToVisConverter" />
             <helpers:BoolToAccentBrushConverter x:Key="BoolToAccentConverter" />
             <helpers:BoolToHeartBrushConverter x:Key="BoolToHeartConverter" />
             <helpers:ImagePathToImageSourceConverter x:Key="ImagePathToImageSourceConverter" />
-
-            <!-- Paleta de Colores Material Design (Itztli / Yolpaki) -->
-            <SolidColorBrush x:Key="AppBackground" Color="#121212" />
-            <SolidColorBrush x:Key="AppSurface" Color="#181818" />
-            <SolidColorBrush x:Key="AppSurfaceContainer" Color="#1E1E1E" />
-            <SolidColorBrush x:Key="AppSurfaceElevated" Color="#252525" />
-            <SolidColorBrush x:Key="AppBorder" Color="#2A2A2A" />
-
-            <!-- Acento Yolpaki (Púrpura / Lila Material) -->
-            <SolidColorBrush x:Key="AppAccent" Color="#BB86FC" />
-            <SolidColorBrush x:Key="AppAccentContainer" Color="#381E72" />
-            <SolidColorBrush x:Key="AppSecondary" Color="#03DAC6" />
-            <SolidColorBrush x:Key="AppTextPrimary" Color="#FFFFFF" />
-            <SolidColorBrush x:Key="AppTextSecondary" Color="#B3B3B3" />
-            <SolidColorBrush x:Key="AppTextMuted" Color="#757575" />
 
             <!-- DataTemplates for Views -->
             <DataTemplate x:Key="HomeViewTemplate">

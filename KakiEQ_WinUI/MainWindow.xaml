@@ -15,7 +15,7 @@
         <MicaBackdrop />
     </Window.SystemBackdrop>
 
-    <Grid Background="#121212">
+    <Grid Background="{ThemeResource AppBackground}">
         <Grid.RowDefinitions>
             <RowDefinition Height="58"/>  <!-- 0: Custom Top Navigation / TitleBar -->
             <RowDefinition Height="*"/>   <!-- 1: Main Workspace: Floating Sidebar + Dynamic View Content -->
@@ -23,7 +23,7 @@
         </Grid.RowDefinitions>
 
         <!-- 0. TOP NAVIGATION BAR (Material 3 Top App Bar) -->
-        <Border Grid.Row="0" x:Name="AppTitleBar" Background="#141416" BorderBrush="#201C2B" BorderThickness="0,0,0,1" Height="58">
+        <Border Grid.Row="0" x:Name="AppTitleBar" Background="{ThemeResource AppTitleBarBg}" BorderBrush="{ThemeResource AppTitleBarBorder}" BorderThickness="0,0,0,1" Height="58">
             <Grid Padding="20,0,140,0"> <!-- Right padding leaves room for native caption buttons -->
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
@@ -33,12 +33,14 @@
 
                 <!-- Brand / Logo -->
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="12">
-                    <Border Background="#2B1445" Width="36" Height="36" CornerRadius="11">
-                        <FontIcon Glyph="&#xEC4F;" Foreground="#BB86FC" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    <Border Width="36" Height="36" CornerRadius="11">
+                        <Grid>
+                            <Image x:Name="AppLogoImage" Source="ms-appx:///Assets/Kaki_Oficial_Blanco.png" Width="32" Height="32" Stretch="Uniform"/>
+                        </Grid>
                     </Border>
                     <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="Kaki EQ" FontWeight="Bold" FontSize="17" Foreground="White"/>
-                        <TextBlock Text="Music Player" FontSize="10" Foreground="#888888"/>
+                        <TextBlock Text="Kaki EQ" FontWeight="Bold" FontSize="17" Foreground="{ThemeResource AppTextPrimary}"/>
+                        <TextBlock Text="Music Player" FontSize="10" Foreground="{ThemeResource AppTextSubtle}"/>
                     </StackPanel>
                 </StackPanel>
 
@@ -56,7 +58,7 @@
                                Visibility="{x:Bind ViewModel.ScanningVisibility, Mode=OneWay}"/>
 
                     <!-- Submenú Ajustes (Carpeta, Modo Oscuro/Claro, Acerca De) -->
-                    <DropDownButton Background="#1F1A2A" BorderBrush="#38264D" BorderThickness="1" Foreground="White"
+                    <DropDownButton Background="{ThemeResource AppSettingsBg}" BorderBrush="{ThemeResource AppSettingsBorder}" BorderThickness="1" Foreground="{ThemeResource AppTextPrimary}"
                                     CornerRadius="16" Padding="12,6" ToolTipService.ToolTip="Ajustes y opciones">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <FontIcon Glyph="&#xE713;" FontSize="13" Foreground="#BB86FC"/>
@@ -99,8 +101,8 @@
                 <!-- Vertical Rounded Pill Capsule -->
                 <Border x:Name="SidebarContainer"
                         Visibility="{x:Bind ViewModel.SidebarVisibility, Mode=OneWay}"
-                        Background="#15121E"
-                        BorderBrush="#BB86FC"
+                        Background="{ThemeResource AppSidebarBg}"
+                        BorderBrush="{ThemeResource AppAccent}"
                         BorderThickness="1"
                         CornerRadius="26"
                         Width="175"
@@ -184,10 +186,10 @@
                 <!-- Sidebar Toggle Pill Button (< / >) -->
                 <Button Command="{x:Bind ViewModel.ToggleSidebarCommand}"
                         Width="22" Height="38" CornerRadius="11" Padding="0"
-                        Background="#1D1728" BorderBrush="#BB86FC" BorderThickness="1"
+                        Background="{ThemeResource AppSidebarToggleBg}" BorderBrush="{ThemeResource AppAccent}" BorderThickness="1"
                         Margin="6,0,10,0" VerticalAlignment="Center"
                         ToolTipService.ToolTip="{x:Bind ViewModel.SidebarToggleTooltip, Mode=OneWay}">
-                    <FontIcon Glyph="{x:Bind ViewModel.SidebarToggleIconGlyph, Mode=OneWay}" FontSize="10" Foreground="#BB86FC"/>
+                    <FontIcon Glyph="{x:Bind ViewModel.SidebarToggleIconGlyph, Mode=OneWay}" FontSize="10" Foreground="{ThemeResource AppAccent}"/>
                 </Button>
             </StackPanel>
 
@@ -203,8 +205,8 @@
                 Margin="32,0,32,16"
                 Height="82"
                 CornerRadius="24"
-                Background="#15121E"
-                BorderBrush="#BB86FC"
+                Background="{ThemeResource AppPlayerBg}"
+                BorderBrush="{ThemeResource AppAccent}"
                 BorderThickness="1">
             <Grid Padding="20,4,20,4">
                 <Grid.ColumnDefinitions>
@@ -224,9 +226,9 @@
                         </Grid.ColumnDefinitions>
 
                         <!-- Album Cover Thumbnail -->
-                        <Border Grid.Column="0" Width="44" Height="44" CornerRadius="9" Background="#24202E">
+                        <Border Grid.Column="0" Width="44" Height="44" CornerRadius="9" Background="{ThemeResource AppCoverPlaceholderBg}">
                             <Grid>
-                                <FontIcon Glyph="&#xEC4F;" FontSize="20" Foreground="#555555" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <FontIcon Glyph="&#xEC4F;" FontSize="20" Foreground="{ThemeResource AppCoverPlaceholderFg}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 <Image Source="{x:Bind ViewModel.CurrentTrack.CoverImagePath, Mode=OneWay}" Stretch="UniformToFill"/>
                             </Grid>
                         </Border>
@@ -234,10 +236,10 @@
                         <!-- Title and Artist -->
                         <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="1">
                             <TextBlock Text="{x:Bind ViewModel.CurrentTrack.Title, Mode=OneWay, FallbackValue='Sin música seleccionada'}"
-                                       FontWeight="SemiBold" FontSize="13" Foreground="White"
+                                       FontWeight="SemiBold" FontSize="13" Foreground="{ThemeResource AppTextPrimary}"
                                        TextTrimming="CharacterEllipsis" MaxLines="1"/>
                             <TextBlock Text="{x:Bind ViewModel.CurrentTrack.Artist, Mode=OneWay, FallbackValue='Elige una canción para reproducir'}"
-                                       FontSize="11" Foreground="#999999"
+                                       FontSize="11" Foreground="{ThemeResource AppTextMuted}"
                                        TextTrimming="CharacterEllipsis" MaxLines="1"/>
                         </StackPanel>
                     </Grid>
@@ -257,7 +259,7 @@
                         <!-- Previous -->
                         <Button Command="{x:Bind ViewModel.PreviousCommand}"
                                 Background="Transparent" BorderThickness="0" Padding="0" Width="32" Height="32" CornerRadius="16"
-                                Foreground="White" ToolTipService.ToolTip="Anterior">
+                                Foreground="{ThemeResource AppTextPrimary}" ToolTipService.ToolTip="Anterior">
                             <FontIcon Glyph="&#xE892;" FontSize="15"/>
                         </Button>
 
@@ -272,7 +274,7 @@
                         <!-- Next -->
                         <Button Command="{x:Bind ViewModel.NextCommand}"
                                 Background="Transparent" BorderThickness="0" Padding="0" Width="32" Height="32" CornerRadius="16"
-                                Foreground="White" ToolTipService.ToolTip="Siguiente">
+                                Foreground="{ThemeResource AppTextPrimary}" ToolTipService.ToolTip="Siguiente">
                             <FontIcon Glyph="&#xE893;" FontSize="15"/>
                         </Button>
 
@@ -293,7 +295,7 @@
                         </Grid.ColumnDefinitions>
 
                         <TextBlock Grid.Column="0" Text="{x:Bind ViewModel.CurrentPositionFormatted, Mode=OneWay, FallbackValue='00:00'}"
-                                   FontSize="10" Foreground="#888888" VerticalAlignment="Center"/>
+                                   FontSize="10" Foreground="{ThemeResource AppTextSubtle}" VerticalAlignment="Center"/>
 
                         <Slider Grid.Column="1"
                                 Maximum="{x:Bind ViewModel.TotalDurationSeconds, Mode=OneWay, FallbackValue=100}"
@@ -302,7 +304,7 @@
                                 VerticalAlignment="Center" Margin="0" Height="20"/>
 
                         <TextBlock Grid.Column="2" Text="{x:Bind ViewModel.TotalDurationFormatted, Mode=OneWay, FallbackValue='00:00'}"
-                                   FontSize="10" Foreground="#888888" VerticalAlignment="Center"/>
+                                   FontSize="10" Foreground="{ThemeResource AppTextSubtle}" VerticalAlignment="Center"/>
                     </Grid>
                 </StackPanel>
 
@@ -336,7 +338,7 @@
 
         <!-- 3. NOW PLAYING FULL SCREEN OVERLAY -->
         <Grid Grid.RowSpan="3" x:Name="NowPlayingOverlay"
-              Background="#F2121212"
+              Background="{ThemeResource AppOverlayBg}"
               Visibility="{x:Bind ViewModel.NowPlayingExpandedVisibility, Mode=OneWay}"
               Canvas.ZIndex="100">
             <Grid Padding="48,36">
@@ -352,19 +354,19 @@
                 <!-- Top bar: Minimize button + header -->
                 <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="16" Margin="0,0,0,24">
                     <Button Command="{x:Bind ViewModel.CloseNowPlayingCommand}"
-                            Background="#22FFFFFF" Foreground="White" Width="44" Height="44" CornerRadius="22" Padding="0">
+                            Background="#22FFFFFF" Foreground="{ThemeResource AppTextPrimary}" Width="44" Height="44" CornerRadius="22" Padding="0">
                         <FontIcon Glyph="&#xE70D;" FontSize="18"/>
                     </Button>
-                    <TextBlock Text="REPRODUCIENDO AHORA" FontSize="20" FontWeight="Bold" Foreground="White" VerticalAlignment="Center"/>
+                    <TextBlock Text="REPRODUCIENDO AHORA" FontSize="20" FontWeight="Bold" Foreground="{ThemeResource AppTextPrimary}" VerticalAlignment="Center"/>
                 </StackPanel>
 
                 <!-- Left Column: Big Artwork, Track Info & Main Player Controls -->
                 <Grid Grid.Row="1" Grid.Column="0" Margin="0,0,48,0" VerticalAlignment="Center" HorizontalAlignment="Center">
                     <StackPanel Spacing="24" MaxWidth="500">
                         <!-- Big Cover Art with Glow / Shadow -->
-                        <Border Width="340" Height="340" CornerRadius="24" Background="#222222" HorizontalAlignment="Center">
+                        <Border Width="340" Height="340" CornerRadius="24" Background="{ThemeResource AppCoverPlaceholderBg}" HorizontalAlignment="Center">
                             <Grid>
-                                <FontIcon Glyph="&#xEC4F;" FontSize="80" Foreground="#444444" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <FontIcon Glyph="&#xEC4F;" FontSize="80" Foreground="{ThemeResource AppCoverPlaceholderFg}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 <Image Source="{x:Bind ViewModel.CurrentTrack.CoverImagePath, Mode=OneWay}" Stretch="UniformToFill"/>
                             </Grid>
                         </Border>
@@ -372,12 +374,12 @@
                         <!-- Track Title & Artist -->
                         <StackPanel Spacing="6" HorizontalAlignment="Center">
                             <TextBlock Text="{x:Bind ViewModel.CurrentTrack.Title, Mode=OneWay, FallbackValue='Sin Canción'}"
-                                       FontSize="26" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center"
+                                       FontSize="26" FontWeight="Bold" Foreground="{ThemeResource AppTextPrimary}" HorizontalAlignment="Center"
                                        TextTrimming="CharacterEllipsis"/>
                             <TextBlock Text="{x:Bind ViewModel.CurrentTrack.Artist, Mode=OneWay, FallbackValue='Desconocido'}"
-                                       FontSize="16" Foreground="#B0B0B0" HorizontalAlignment="Center"/>
+                                       FontSize="16" Foreground="{ThemeResource AppTextSecondary}" HorizontalAlignment="Center"/>
                             <TextBlock Text="{x:Bind ViewModel.CurrentTrack.Album, Mode=OneWay, FallbackValue=''}"
-                                       FontSize="13" Foreground="#777777" HorizontalAlignment="Center"/>
+                                       FontSize="13" Foreground="{ThemeResource AppTextMuted}" HorizontalAlignment="Center"/>
                         </StackPanel>
 
                         <!-- Seek Bar -->
@@ -389,7 +391,7 @@
                             </Grid.ColumnDefinitions>
 
                             <TextBlock Grid.Column="0" Text="{x:Bind ViewModel.CurrentPositionFormatted, Mode=OneWay, FallbackValue='00:00'}"
-                                       FontSize="12" Foreground="#888888" VerticalAlignment="Center"/>
+                                       FontSize="12" Foreground="{ThemeResource AppTextSubtle}" VerticalAlignment="Center"/>
 
                             <Slider Grid.Column="1"
                                     Maximum="{x:Bind ViewModel.TotalDurationSeconds, Mode=OneWay, FallbackValue=100}"
@@ -398,7 +400,7 @@
                                     VerticalAlignment="Center"/>
 
                             <TextBlock Grid.Column="2" Text="{x:Bind ViewModel.TotalDurationFormatted, Mode=OneWay, FallbackValue='00:00'}"
-                                       FontSize="12" Foreground="#888888" VerticalAlignment="Center"/>
+                                       FontSize="12" Foreground="{ThemeResource AppTextSubtle}" VerticalAlignment="Center"/>
                         </Grid>
 
                         <!-- Large Controls Row -->
@@ -411,7 +413,7 @@
 
                             <Button Command="{x:Bind ViewModel.PreviousCommand}"
                                     Background="Transparent" BorderThickness="0" Width="48" Height="48" CornerRadius="24"
-                                    Foreground="White">
+                                    Foreground="{ThemeResource AppTextPrimary}">
                                 <FontIcon Glyph="&#xE892;" FontSize="24"/>
                             </Button>
 
@@ -424,7 +426,7 @@
 
                             <Button Command="{x:Bind ViewModel.NextCommand}"
                                     Background="Transparent" BorderThickness="0" Width="48" Height="48" CornerRadius="24"
-                                    Foreground="White">
+                                    Foreground="{ThemeResource AppTextPrimary}">
                                 <FontIcon Glyph="&#xE893;" FontSize="24"/>
                             </Button>
 
@@ -444,7 +446,7 @@
                 </Grid>
 
                 <!-- Right Column: Cola de Reproducción (Active Queue) -->
-                <Border Grid.Row="1" Grid.Column="1" Background="#1A1A1A" BorderBrush="#282828" BorderThickness="1" CornerRadius="20" Padding="20">
+                <Border Grid.Row="1" Grid.Column="1" Background="{ThemeResource AppCardBackground}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1" CornerRadius="20" Padding="20">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
@@ -467,8 +469,8 @@
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
                                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                            <TextBlock Text="{x:Bind Title}" FontWeight="SemiBold" FontSize="13" Foreground="White" TextTrimming="CharacterEllipsis"/>
-                                            <TextBlock Text="{x:Bind Artist}" FontSize="11" Foreground="#888888" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="{x:Bind Title}" FontWeight="SemiBold" FontSize="13" Foreground="{ThemeResource AppTextPrimary}" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="{x:Bind Artist}" FontSize="11" Foreground="{ThemeResource AppTextSubtle}" TextTrimming="CharacterEllipsis"/>
                                         </StackPanel>
                                         <TextBlock Grid.Column="1" Text="{x:Bind DurationFormatted}" FontSize="11" Foreground="#666666"
                                                    VerticalAlignment="Center" Margin="8,0,0,0"/>

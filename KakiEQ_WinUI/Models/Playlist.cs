@@ -11,6 +11,7 @@ namespace KakiEQ_WinUI.Models
         public string Name { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
         public string? CoverImagePath { get; set; }
+        public string Description { get; set; } = string.Empty;
         public int TrackCount { get; set; }
         public List<int> TrackIds { get; set; } = new List<int>();
         public List<string> TrackFilePaths { get; set; } = new List<string>();
