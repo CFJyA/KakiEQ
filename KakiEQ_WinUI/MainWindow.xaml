@@ -193,11 +193,19 @@
                 </Button>
             </StackPanel>
 
-            <!-- Dynamic Main View Content -->
+            <!-- Dynamic Main View Content with Entrance Transitions -->
             <ContentControl Grid.Column="1"
+                            x:Name="MainViewPresenter"
                             Content="{x:Bind ViewModel.CurrentView, Mode=OneWay}"
                             ContentTemplateSelector="{StaticResource MainViewSelector}"
-                            HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
+                            HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
+                <ContentControl.ContentTransitions>
+                    <TransitionCollection>
+                        <EntranceThemeTransition FromVerticalOffset="24" IsStaggeringEnabled="False"/>
+                        <RepositionThemeTransition/>
+                    </TransitionCollection>
+                </ContentControl.ContentTransitions>
+            </ContentControl>
         </Grid>
 
         <!-- 2. FLOATING BOTTOM PLAYER BAR (Mockup Capsule Design) -->
@@ -349,6 +357,11 @@
               Background="{ThemeResource AppOverlayBg}"
               Visibility="{x:Bind ViewModel.NowPlayingExpandedVisibility, Mode=OneWay}"
               Canvas.ZIndex="100">
+            <Grid.Transitions>
+                <TransitionCollection>
+                    <EntranceThemeTransition FromVerticalOffset="60" IsStaggeringEnabled="False"/>
+                </TransitionCollection>
+            </Grid.Transitions>
             <Grid Padding="48,36">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>

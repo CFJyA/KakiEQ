@@ -61,6 +61,17 @@ namespace KakiEQ_WinUI.ViewModels
                 await MainViewModel.Instance.LoadGlobalPlaylistsAsync();
             }
         }
+
+        public async Task DeletePlaylistAsync(Playlist playlist)
+        {
+            if (playlist == null || playlist.IsCreateCard) return;
+            await _dbService.DeletePlaylistAsync(playlist.Id);
+            await LoadPlaylistsAsync();
+            if (MainViewModel.Instance != null)
+            {
+                await MainViewModel.Instance.LoadGlobalPlaylistsAsync();
+            }
+        }
     }
 }
 

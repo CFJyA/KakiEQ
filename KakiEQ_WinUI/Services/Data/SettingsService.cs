@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Text.Json;
+using KakiEQ_WinUI.Models;
 
 namespace KakiEQ_WinUI.Services.Data
 {
@@ -10,7 +11,9 @@ namespace KakiEQ_WinUI.Services.Data
         public float Volume { get; set; } = 0.8f;
         public bool EqualizerEnabled { get; set; } = true;
         public float[] EqualizerGains { get; set; } = new float[10];
-        public string ActivePresetName { get; set; } = "Flat";
+        public float PreampGain { get; set; } = 0f;
+        public string ActivePresetName { get; set; } = "Plano";
+        public System.Collections.Generic.List<EqualizerPreset> CustomPresets { get; set; } = new();
     }
 
     public class SettingsService

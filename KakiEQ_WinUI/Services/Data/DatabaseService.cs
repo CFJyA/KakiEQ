@@ -177,6 +177,20 @@ namespace KakiEQ_WinUI.Services.Data
             await SavePlaylistsAsync(playlists);
         }
 
+        public async Task UpdatePlaylistTracksOrderAsync(string playlistName, IEnumerable<Track> orderedTracks)
+        {
+            var playlists = await GetAllPlaylistsAsync();
+            var playlist = playlists.FirstOrDefault(p => p.Name.Equals(playlistName, StringComparison.OrdinalIgnoreCase));
+            if (playlist != null)
+            {
+                var trackList = orderedTracks.ToList();
+                playlist.TrackIds = trackList.Select(t => t.Id).ToList();
+                playlist.TrackFilePaths = trackList.Where(t => !string.IsNullOrEmpty(t.FilePath)).Select(t => t.FilePath).ToList();
+                playlist.TrackCount = playlist.TrackIds.Count;
+                await SavePlaylistsAsync(playlists);
+            }
+        }
+
         public async Task<List<Track>> GetTracksForPlaylistAsync(string playlistName)
         {
             var playlists = await GetAllPlaylistsAsync();
@@ -186,15 +200,36 @@ namespace KakiEQ_WinUI.Services.Data
                 return new List<Track>();
 
             var allTracks = await GetAllTracksAsync();
+            var trackByPath = allTracks.Where(t => !string.IsNullOrEmpty(t.FilePath))
+                                       .ToDictionary(t => t.FilePath, t => t, StringComparer.OrdinalIgnoreCase);
+            var trackById = allTracks.ToDictionary(t => t.Id, t => t);
+
             var result = new List<Track>();
 
-            foreach (var t in allTracks)
+            if (playlist.TrackFilePaths != null && playlist.TrackFilePaths.Count > 0)
             {
-                bool matchesId = playlist.TrackIds != null && playlist.TrackIds.Contains(t.Id);
-                bool matchesPath = playlist.TrackFilePaths != null && !string.IsNullOrEmpty(t.FilePath) && playlist.TrackFilePaths.Contains(t.FilePath);
-                if (matchesId || matchesPath)
+                foreach (var path in playlist.TrackFilePaths)
                 {
-                    result.Add(t);
+                    if (trackByPath.TryGetValue(path, out var track))
+                    {
+                        if (!result.Contains(track))
+                        {
+                            result.Add(track);
+                        }
+                    }
+                }
+            }
+            else if (playlist.TrackIds != null && playlist.TrackIds.Count > 0)
+            {
+                foreach (var id in playlist.TrackIds)
+                {
+                    if (trackById.TryGetValue(id, out var track))
+                    {
+                        if (!result.Contains(track))
+                        {
+                            result.Add(track);
+                        }
+                    }
                 }
             }
 

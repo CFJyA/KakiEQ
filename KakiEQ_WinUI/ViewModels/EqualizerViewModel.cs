@@ -1,6 +1,7 @@
 using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using KakiEQ_WinUI.Helpers;
@@ -10,12 +11,6 @@ using KakiEQ_WinUI.Services.Data;
 
 namespace KakiEQ_WinUI.ViewModels
 {
-    public class EqualizerPreset
-    {
-        public string Name { get; set; } = string.Empty;
-        public float[] Gains { get; set; } = new float[10];
-    }
-
     public class EqualizerViewModel : ViewModelBase
     {
         private readonly BassAudioEngine _audioEngine;
@@ -40,6 +35,24 @@ namespace KakiEQ_WinUI.ViewModels
             }
         }
 
+        private float _preampGain = 0f;
+        public float PreampGain
+        {
+            get => _preampGain;
+            set
+            {
+                if (Math.Abs(_preampGain - value) > 0.05f)
+                {
+                    _preampGain = value;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(PreampGainFormatted));
+                    SaveSettings();
+                }
+            }
+        }
+
+        public string PreampGainFormatted => PreampGain > 0 ? $"+{PreampGain:0.0} dB" : $"{PreampGain:0.0} dB";
+
         private EqualizerPreset? _selectedPreset;
         public EqualizerPreset? SelectedPreset
         {
@@ -56,6 +69,7 @@ namespace KakiEQ_WinUI.ViewModels
         }
 
         public ICommand ResetCommand { get; }
+        public event EventHandler? BandsChanged;
 
         public EqualizerViewModel(BassAudioEngine audioEngine, SettingsService settingsService)
         {
@@ -67,6 +81,7 @@ namespace KakiEQ_WinUI.ViewModels
 
             var savedSettings = _settingsService.LoadSettings();
             _isEnabled = savedSettings.EqualizerEnabled;
+            _preampGain = savedSettings.PreampGain;
             _audioEngine.Equalizer.IsEnabled = _isEnabled;
 
             for (int i = 0; i < bands.Length; i++)
@@ -91,25 +106,90 @@ namespace KakiEQ_WinUI.ViewModels
                     {
                         _audioEngine.Equalizer.SetBandGain(b.Index, b.Gain);
                         SaveSettings();
+                        BandsChanged?.Invoke(this, EventArgs.Empty);
                     }
                 };
 
                 Bands.Add(band);
             }
 
-            InitPresets();
+            InitPresets(savedSettings);
             ResetCommand = new RelayCommand(Reset);
         }
 
-        private void InitPresets()
+        private void InitPresets(AppSettings savedSettings)
         {
-            Presets.Add(new EqualizerPreset { Name = "Plano", Gains = new float[] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } });
-            Presets.Add(new EqualizerPreset { Name = "Bass Boost", Gains = new float[] { 7f, 6f, 4f, 2f, 0, 0, 0, 0, 0, 0 } });
-            Presets.Add(new EqualizerPreset { Name = "Rock", Gains = new float[] { 4.5f, 3.0f, -1.5f, -2.5f, -0.5f, 2.5f, 4.0f, 5.5f, 6.0f, 6.0f } });
-            Presets.Add(new EqualizerPreset { Name = "Pop", Gains = new float[] { -1.5f, -1.0f, 2.0f, 3.5f, 4.5f, 3.0f, 1.0f, -1.0f, -1.5f, -1.5f } });
-            Presets.Add(new EqualizerPreset { Name = "Jazz", Gains = new float[] { 3.5f, 2.5f, 1.0f, 1.5f, -1.5f, -1.5f, 0, 1.5f, 3.0f, 3.5f } });
-            Presets.Add(new EqualizerPreset { Name = "Voz / Podcast", Gains = new float[] { -2.0f, -3.5f, -2.0f, 1.5f, 4.0f, 4.5f, 3.5f, 1.5f, 0, -1.0f } });
-            Presets.Add(new EqualizerPreset { Name = "Electrónica", Gains = new float[] { 5.0f, 4.5f, 2.0f, 0, -2.0f, 1.5f, 3.0f, 4.0f, 5.0f, 5.5f } });
+            Presets.Clear();
+            // Default presets
+            Presets.Add(new EqualizerPreset { Name = "Plano", Gains = new float[] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, IsCustom = false });
+            Presets.Add(new EqualizerPreset { Name = "Bass Boost", Gains = new float[] { 7f, 6f, 4f, 2f, 0, 0, 0, 0, 0, 0 }, IsCustom = false });
+            Presets.Add(new EqualizerPreset { Name = "Rock", Gains = new float[] { 4.5f, 3.0f, -1.5f, -2.5f, -0.5f, 2.5f, 4.0f, 5.5f, 6.0f, 6.0f }, IsCustom = false });
+            Presets.Add(new EqualizerPreset { Name = "Pop", Gains = new float[] { -1.5f, -1.0f, 2.0f, 3.5f, 4.5f, 3.0f, 1.0f, -1.0f, -1.5f, -1.5f }, IsCustom = false });
+            Presets.Add(new EqualizerPreset { Name = "Jazz", Gains = new float[] { 3.5f, 2.5f, 1.0f, 1.5f, -1.5f, -1.5f, 0, 1.5f, 3.0f, 3.5f }, IsCustom = false });
+            Presets.Add(new EqualizerPreset { Name = "Voz / Podcast", Gains = new float[] { -2.0f, -3.5f, -2.0f, 1.5f, 4.0f, 4.5f, 3.5f, 1.5f, 0, -1.0f }, IsCustom = false });
+            Presets.Add(new EqualizerPreset { Name = "Electrónica", Gains = new float[] { 5.0f, 4.5f, 2.0f, 0, -2.0f, 1.5f, 3.0f, 4.0f, 5.0f, 5.5f }, IsCustom = false });
+
+            // User custom presets
+            if (savedSettings.CustomPresets != null)
+            {
+                foreach (var custom in savedSettings.CustomPresets)
+                {
+                    custom.IsCustom = true;
+                    Presets.Add(custom);
+                }
+            }
+
+            // Restore active preset
+            var active = Presets.FirstOrDefault(p => p.Name.Equals(savedSettings.ActivePresetName, StringComparison.OrdinalIgnoreCase));
+            if (active != null)
+            {
+                _selectedPreset = active;
+                OnPropertyChanged(nameof(SelectedPreset));
+            }
+        }
+
+        public void SaveCurrentAsPreset(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name)) return;
+            string trimmedName = name.Trim();
+
+            var currentGains = Bands.Select(b => b.Gain).ToArray();
+            var existing = Presets.FirstOrDefault(p => p.Name.Equals(trimmedName, StringComparison.OrdinalIgnoreCase));
+
+            if (existing != null && existing.IsCustom)
+            {
+                existing.Gains = currentGains;
+                SelectedPreset = existing;
+            }
+            else
+            {
+                var newPreset = new EqualizerPreset
+                {
+                    Name = trimmedName,
+                    Gains = currentGains,
+                    IsCustom = true
+                };
+                Presets.Add(newPreset);
+                SelectedPreset = newPreset;
+            }
+
+            SaveSettings();
+            MainWindow.Instance?.ShowToast($"Perfil de audio \"{trimmedName}\" guardado");
+        }
+
+        public void DeletePreset(EqualizerPreset preset)
+        {
+            if (preset == null || !preset.IsCustom) return;
+
+            Presets.Remove(preset);
+            SaveSettings();
+
+            if (SelectedPreset == preset)
+            {
+                SelectedPreset = Presets.FirstOrDefault();
+            }
+
+            MainWindow.Instance?.ShowToast($"Perfil \"{preset.Name}\" eliminado");
         }
 
         public void ApplyPreset(EqualizerPreset preset)
@@ -119,6 +199,7 @@ namespace KakiEQ_WinUI.ViewModels
                 Bands[i].Gain = preset.Gains[i];
             }
             SaveSettings();
+            BandsChanged?.Invoke(this, EventArgs.Empty);
         }
 
         public void Reset()
@@ -127,14 +208,18 @@ namespace KakiEQ_WinUI.ViewModels
             {
                 b.Gain = 0f;
             }
+            PreampGain = 0f;
             _audioEngine.Equalizer.Reset();
             SaveSettings();
+            BandsChanged?.Invoke(this, EventArgs.Empty);
+            SelectedPreset = Presets.FirstOrDefault(p => p.Name == "Plano");
         }
 
         private void SaveSettings()
         {
             var settings = _settingsService.LoadSettings();
             settings.EqualizerEnabled = IsEnabled;
+            settings.PreampGain = PreampGain;
             if (settings.EqualizerGains == null || settings.EqualizerGains.Length != Bands.Count)
             {
                 settings.EqualizerGains = new float[Bands.Count];
@@ -147,8 +232,9 @@ namespace KakiEQ_WinUI.ViewModels
             {
                 settings.ActivePresetName = SelectedPreset.Name;
             }
+
+            settings.CustomPresets = Presets.Where(p => p.IsCustom).ToList();
             _settingsService.SaveSettings(settings);
         }
     }
 }
-

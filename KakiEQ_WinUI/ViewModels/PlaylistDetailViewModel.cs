@@ -81,6 +81,34 @@ namespace KakiEQ_WinUI.ViewModels
             _ = LoadPlaylistDetailsAsync();
         }
 
+        public async Task ReorderTracksAsync()
+        {
+            for (int i = 0; i < Tracks.Count; i++)
+            {
+                Tracks[i].DisplayIndex = i + 1;
+            }
+
+            CurrentPlaylist.TrackIds = Tracks.Select(t => t.Id).ToList();
+            CurrentPlaylist.TrackFilePaths = Tracks.Where(t => !string.IsNullOrEmpty(t.FilePath)).Select(t => t.FilePath).ToList();
+            CurrentPlaylist.TrackCount = Tracks.Count;
+
+            await _dbService.UpdatePlaylistTracksOrderAsync(CurrentPlaylist.Name, Tracks);
+
+            TimeSpan totalSpan = TimeSpan.FromSeconds(Tracks.Sum(t => t.Duration.TotalSeconds));
+            TotalLength = $"{(int)totalSpan.TotalMinutes}m {totalSpan.Seconds}s";
+
+            OnPropertyChanged(nameof(TotalSongs));
+            OnPropertyChanged(nameof(TotalSongsText));
+            OnPropertyChanged(nameof(SongCountText));
+            OnPropertyChanged(nameof(TotalLength));
+        }
+
+        public async Task RefreshDetailsAsync()
+        {
+            await LoadPlaylistDetailsAsync();
+            OnPropertyChanged(nameof(CurrentPlaylist));
+        }
+
         private async Task LoadPlaylistDetailsAsync()
         {
             var playlistTracks = await _dbService.GetTracksForPlaylistAsync(CurrentPlaylist.Name);
@@ -88,9 +116,10 @@ namespace KakiEQ_WinUI.ViewModels
             RunOnUIThread(() =>
             {
                 Tracks.Clear();
-                foreach (var t in playlistTracks)
+                for (int i = 0; i < playlistTracks.Count; i++)
                 {
-                    Tracks.Add(t);
+                    playlistTracks[i].DisplayIndex = i + 1;
+                    Tracks.Add(playlistTracks[i]);
                 }
 
                 TimeSpan totalSpan = TimeSpan.FromSeconds(playlistTracks.Sum(t => t.Duration.TotalSeconds));
@@ -101,6 +130,7 @@ namespace KakiEQ_WinUI.ViewModels
                 OnPropertyChanged(nameof(TotalSongsText));
                 OnPropertyChanged(nameof(SongCountText));
                 OnPropertyChanged(nameof(TotalLength));
+                OnPropertyChanged(nameof(CurrentPlaylist));
             });
         }
     }

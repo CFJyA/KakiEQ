@@ -9,10 +9,10 @@
     xmlns:vm="using:KakiEQ_WinUI.ViewModels"
     mc:Ignorable="d">
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="28">
-        <StackPanel Spacing="28" MaxWidth="1100" HorizontalAlignment="Stretch">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="32,24,32,24">
+        <StackPanel Spacing="20" HorizontalAlignment="Stretch">
 
-            <!-- Header with Title, Bypass Toggle, and Reset -->
+            <!-- 1. Header with Title, DSP Badge, EQ Active Toggle, Save Profile & Reset Buttons -->
             <Grid>
                 <StackPanel VerticalAlignment="Center" Spacing="4">
                     <StackPanel Orientation="Horizontal" Spacing="10">
@@ -25,13 +25,24 @@
                                FontSize="13" Foreground="{ThemeResource AppTextSubtle}"/>
                 </StackPanel>
 
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="16" VerticalAlignment="Center">
+                <!-- Actions row on the right -->
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12" VerticalAlignment="Center">
                     <!-- Toggle Switch -->
-                    <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,0,6,0">
                         <TextBlock Text="EQ Activo" FontSize="13" Foreground="{ThemeResource AppTextSecondary}" VerticalAlignment="Center"/>
                         <ToggleSwitch IsOn="{Binding IsEnabled, Mode=TwoWay}"
                                       OnContent="" OffContent="" Margin="0"/>
                     </StackPanel>
+
+                    <!-- Save Profile Button (New requirement) -->
+                    <Button Click="SaveProfile_Click"
+                            Background="{ThemeResource AppAccent}" Foreground="#121212"
+                            CornerRadius="16" Padding="14,6" FontWeight="SemiBold">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <FontIcon Glyph="&#xE74E;" FontSize="13"/>
+                            <TextBlock Text="Guardar Perfil" FontSize="12" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
 
                     <!-- Reset Button -->
                     <Button Command="{Binding ResetCommand}"
@@ -45,83 +56,136 @@
                 </StackPanel>
             </Grid>
 
-            <!-- Presets Bar (Material Chips) -->
-            <Border Background="{ThemeResource AppCardBackground}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1" CornerRadius="16" Padding="16,12">
-                <StackPanel Orientation="Horizontal" Spacing="12">
-                    <TextBlock Text="Perfiles:" FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource AppTextSubtle}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+            <!-- 2. Presets Chips Bar (Standard + Custom profiles with delete capability) -->
+            <Border Background="{ThemeResource AppCardBackground}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1" CornerRadius="16" Padding="16,10">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
 
-                    <ListView ItemsSource="{Binding Presets}"
-                              SelectedItem="{Binding SelectedPreset, Mode=TwoWay}"
-                              SelectionMode="Single"
-                              ScrollViewer.HorizontalScrollBarVisibility="Auto"
-                              ScrollViewer.VerticalScrollBarVisibility="Disabled">
-                        <ListView.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <ItemsStackPanel Orientation="Horizontal"/>
-                            </ItemsPanelTemplate>
-                        </ListView.ItemsPanel>
-                        <ListView.ItemTemplate>
-                            <DataTemplate x:DataType="vm:EqualizerPreset">
-                                <Border Background="{ThemeResource AppSurfaceElevated}" CornerRadius="14" Padding="14,6" Margin="4,0">
-                                    <TextBlock Text="{x:Bind Name}" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource AppTextPrimary}"/>
-                                </Border>
-                            </DataTemplate>
-                        </ListView.ItemTemplate>
-                    </ListView>
-                </StackPanel>
+                    <TextBlock Grid.Column="0" Text="Perfiles:" FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource AppTextSubtle}" VerticalAlignment="Center" Margin="0,0,12,0"/>
+
+                    <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" HorizontalScrollMode="Enabled">
+                        <ListView ItemsSource="{Binding Presets}"
+                                  SelectedItem="{Binding SelectedPreset, Mode=TwoWay}"
+                                  SelectionMode="Single"
+                                  ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                                  ScrollViewer.VerticalScrollBarVisibility="Disabled">
+                            <ListView.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <ItemsStackPanel Orientation="Horizontal"/>
+                                </ItemsPanelTemplate>
+                            </ListView.ItemsPanel>
+                            <ListView.ItemTemplate>
+                                <DataTemplate x:DataType="models:EqualizerPreset">
+                                    <Border Background="{ThemeResource AppSurfaceElevated}" CornerRadius="14" Padding="12,5" Margin="4,0">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <TextBlock Text="{x:Bind Name}" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource AppTextPrimary}" VerticalAlignment="Center"/>
+                                            <!-- Delete button for custom presets -->
+                                            <Button Visibility="{x:Bind DeleteVisibility, Mode=OneWay}"
+                                                    Click="DeletePreset_Click" Tag="{x:Bind}"
+                                                    Background="Transparent" BorderThickness="0" Padding="0" Width="18" Height="18" CornerRadius="9"
+                                                    Foreground="{ThemeResource AppDanger}" ToolTipService.ToolTip="Eliminar este perfil">
+                                                <FontIcon Glyph="&#xE711;" FontSize="9"/>
+                                            </Button>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+                    </ScrollViewer>
+                </Grid>
             </Border>
 
-            <!-- 10 Bands Equalizer Rack (Hardware Style Surface) -->
-            <Border Background="{ThemeResource AppCardBackground}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1" CornerRadius="20" Padding="28,24">
+            <!-- 3. Hardware DSP Studio Rack (High-Fidelity Studio Look & Space Utilization) -->
+            <Border Background="{ThemeResource AppCardBackground}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1" CornerRadius="20" Padding="28,20">
                 <Grid>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="280"/>
-                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/> <!-- dB Markers Reference Line (Top) -->
+                        <RowDefinition Height="70"/>   <!-- Real-time DSP Response Curve Graphic -->
+                        <RowDefinition Height="310"/>  <!-- Sliders Row (Preamp + 10 Bands, full height!) -->
+                        <RowDefinition Height="Auto"/> <!-- dB Markers Reference Line (Bottom) -->
                     </Grid.RowDefinitions>
 
                     <!-- dB Markers Reference Line (Top) -->
-                    <Grid Grid.Row="0" Margin="0,0,0,12">
+                    <Grid Grid.Row="0" Margin="0,0,0,8">
                         <TextBlock Text="+15 dB" HorizontalAlignment="Left" FontSize="11" Foreground="{ThemeResource AppTextMuted}"/>
-                        <TextBlock Text="0 dB (Plano)" HorizontalAlignment="Center" FontSize="11" Foreground="{ThemeResource AppTextMuted}"/>
+                        <TextBlock Text="Curva de Respuesta de Frecuencia DSP" HorizontalAlignment="Center" FontSize="11" Foreground="{ThemeResource AppAccent}" FontWeight="SemiBold"/>
                         <TextBlock Text="+15 dB" HorizontalAlignment="Right" FontSize="11" Foreground="{ThemeResource AppTextMuted}"/>
                     </Grid>
 
-                    <!-- Sliders Grid -->
-                    <ItemsControl Grid.Row="1" ItemsSource="{Binding Bands}" HorizontalAlignment="Center">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <ItemsStackPanel Orientation="Horizontal" HorizontalAlignment="Center"/>
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="models:EqualizerBand">
-                                <StackPanel Width="88" HorizontalAlignment="Center" VerticalAlignment="Stretch" Spacing="8">
-                                    <!-- Current Gain Readout -->
-                                    <Border Background="{ThemeResource AppAccentSurface}" CornerRadius="6" Padding="6,2" HorizontalAlignment="Center">
-                                        <TextBlock Text="{x:Bind GainFormatted, Mode=OneWay}" 
-                                                   FontSize="11" FontWeight="Bold" Foreground="{ThemeResource AppAccent}"
+                    <!-- Real-time DSP Curve Canvas -->
+                    <Border Grid.Row="1" Background="{ThemeResource AppSurfaceContainer}" CornerRadius="10" Margin="0,0,0,14" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1">
+                        <Canvas x:Name="CurveCanvas" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" SizeChanged="CurveCanvas_SizeChanged"/>
+                    </Border>
+
+                    <!-- Sliders Row: Col 0 Preamp, Col 1 Divider, Col 2 The 10 Bands -->
+                    <Grid Grid.Row="2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/> <!-- Preamp -->
+                            <ColumnDefinition Width="Auto"/> <!-- Separator -->
+                            <ColumnDefinition Width="*"/>    <!-- 10 Bands -->
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Preamp Gain Column -->
+                        <StackPanel Grid.Column="0" Width="80" HorizontalAlignment="Center" Spacing="6" Margin="0,0,16,0">
+                            <!-- Label & Gain readout -->
+                            <TextBlock Text="PREAMP" FontSize="11" FontWeight="Bold" Foreground="{ThemeResource AppTextSubtle}" HorizontalAlignment="Center"/>
+                            <Border Background="{ThemeResource AppAccentSurface}" CornerRadius="6" Padding="6,2" HorizontalAlignment="Center">
+                                <TextBlock Text="{Binding PreampGainFormatted}" FontSize="11" FontWeight="Bold" Foreground="{ThemeResource AppAccent}" HorizontalAlignment="Center"/>
+                            </Border>
+
+                            <!-- Vertical Slider for Preamp -->
+                            <Slider Orientation="Vertical"
+                                    Minimum="-15" Maximum="15" StepFrequency="0.5"
+                                    Value="{Binding PreampGain, Mode=TwoWay}"
+                                    Height="230" Width="36"
+                                    HorizontalAlignment="Center"
+                                    TickFrequency="5" TickPlacement="Outside"/>
+
+                            <TextBlock Text="Ganancia" FontSize="11" Foreground="{ThemeResource AppTextSecondary}" HorizontalAlignment="Center"/>
+                        </StackPanel>
+
+                        <!-- Subtle Vertical Separator -->
+                        <Border Grid.Column="1" Width="1" Background="{ThemeResource AppBorder}" Margin="0,10,16,10"/>
+
+                        <!-- 10 Bands Equalizer Sliders (Expanded height and spacing) -->
+                        <ItemsControl Grid.Column="2" ItemsSource="{Binding Bands}" HorizontalAlignment="Center">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <ItemsStackPanel Orientation="Horizontal" HorizontalAlignment="Center"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="models:EqualizerBand">
+                                    <StackPanel Width="92" HorizontalAlignment="Center" VerticalAlignment="Stretch" Spacing="6" Margin="2,0">
+                                        <!-- Current Gain Readout -->
+                                        <Border Background="{ThemeResource AppAccentSurface}" CornerRadius="6" Padding="6,2" HorizontalAlignment="Center">
+                                            <TextBlock Text="{x:Bind GainFormatted, Mode=OneWay}" 
+                                                       FontSize="11" FontWeight="Bold" Foreground="{ThemeResource AppAccent}"
+                                                       HorizontalAlignment="Center"/>
+                                        </Border>
+
+                                        <!-- Vertical Slider (Height="230" for spacious precise control) -->
+                                        <Slider Orientation="Vertical"
+                                                Minimum="-15" Maximum="15" StepFrequency="0.5"
+                                                Value="{x:Bind Gain, Mode=TwoWay}"
+                                                Height="230" Width="38"
+                                                HorizontalAlignment="Center"
+                                                TickFrequency="5" TickPlacement="Outside"/>
+
+                                        <!-- Frequency Label -->
+                                        <TextBlock Text="{x:Bind Label}" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource AppTextSecondary}"
                                                    HorizontalAlignment="Center"/>
-                                    </Border>
-
-                                    <!-- Vertical Slider -->
-                                    <Slider Orientation="Vertical"
-                                            Minimum="-15" Maximum="15" StepFrequency="0.5"
-                                            Value="{x:Bind Gain, Mode=TwoWay}"
-                                            Height="210" Width="36"
-                                            HorizontalAlignment="Center"
-                                            TickFrequency="5" TickPlacement="Outside"/>
-
-                                    <!-- Frequency Label -->
-                                    <TextBlock Text="{x:Bind Label}" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource AppTextSecondary}"
-                                               HorizontalAlignment="Center"/>
-                                </StackPanel>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Grid>
 
                     <!-- dB Markers Reference Line (Bottom) -->
-                    <Grid Grid.Row="2" Margin="0,16,0,0">
+                    <Grid Grid.Row="3" Margin="0,12,0,0">
                         <TextBlock Text="-15 dB" HorizontalAlignment="Left" FontSize="11" Foreground="{ThemeResource AppTextMuted}"/>
                         <TextBlock Text="Respuesta de Frecuencia (Sub-grave → Agudo)" HorizontalAlignment="Center" FontSize="11" Foreground="{ThemeResource AppTextMuted}"/>
                         <TextBlock Text="-15 dB" HorizontalAlignment="Right" FontSize="11" Foreground="{ThemeResource AppTextMuted}"/>
@@ -129,7 +193,57 @@
                 </Grid>
             </Border>
 
+            <!-- 4. Quick Tone Enhancements Cards (Fills lower empty space nicely) -->
+            <Grid ColumnSpacing="14">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Bass Punch Card -->
+                <Button Grid.Column="0" Click="EnhanceBass_Click" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                        Background="{ThemeResource AppCardBackground}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1" CornerRadius="14" Padding="14,12">
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <Border Width="38" Height="38" CornerRadius="19" Background="{ThemeResource AppAccentContainer}" VerticalAlignment="Center">
+                            <FontIcon Glyph="&#xEC4F;" FontSize="16" Foreground="{ThemeResource AppAccent}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="Refuerzo de Bajos" FontWeight="Bold" FontSize="13" Foreground="{ThemeResource AppTextPrimary}"/>
+                            <TextBlock Text="+6 dB en 32Hz - 125Hz" FontSize="11" Foreground="{ThemeResource AppTextSubtle}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Button>
+
+                <!-- Vocal Presence Card -->
+                <Button Grid.Column="1" Click="EnhanceVocal_Click" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                        Background="{ThemeResource AppCardBackground}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1" CornerRadius="14" Padding="14,12">
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <Border Width="38" Height="38" CornerRadius="19" Background="#1C2D2B" VerticalAlignment="Center">
+                            <FontIcon Glyph="&#xE720;" FontSize="16" Foreground="{ThemeResource AppSecondary}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="Claridad Vocal" FontWeight="Bold" FontSize="13" Foreground="{ThemeResource AppTextPrimary}"/>
+                            <TextBlock Text="+4 dB en 1kHz - 4kHz" FontSize="11" Foreground="{ThemeResource AppTextSubtle}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Button>
+
+                <!-- Treble Air Card -->
+                <Button Grid.Column="2" Click="EnhanceTreble_Click" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                        Background="{ThemeResource AppCardBackground}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1" CornerRadius="14" Padding="14,12">
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <Border Width="38" Height="38" CornerRadius="19" Background="#33241C" VerticalAlignment="Center">
+                            <FontIcon Glyph="&#xE781;" FontSize="16" Foreground="#FFB74D" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="Brillo &amp; Aire" FontWeight="Bold" FontSize="13" Foreground="{ThemeResource AppTextPrimary}"/>
+                            <TextBlock Text="+5 dB en 8kHz - 16kHz" FontSize="11" Foreground="{ThemeResource AppTextSubtle}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Button>
+            </Grid>
+
         </StackPanel>
     </ScrollViewer>
 </UserControl>
-

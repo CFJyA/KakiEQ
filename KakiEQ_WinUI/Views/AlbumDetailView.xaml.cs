@@ -42,6 +42,18 @@ namespace KakiEQ_WinUI.Views
                     this.XamlRoot);
             }
         }
+
+        private void AddSingleTrackToPlaylist_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is FrameworkElement anchor && anchor.Tag is Track track)
+            {
+                var root = this.XamlRoot ?? MainWindow.Instance?.Content?.XamlRoot;
+                if (root != null)
+                {
+                    PlaylistDialogHelper.ShowAddToPlaylistFlyout(anchor, track, root);
+                }
+            }
+        }
     }
 }
 

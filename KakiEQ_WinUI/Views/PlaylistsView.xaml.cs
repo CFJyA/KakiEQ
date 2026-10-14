@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using KakiEQ_WinUI.Helpers;
 using KakiEQ_WinUI.Models;
 using KakiEQ_WinUI.ViewModels;
 
@@ -36,40 +37,69 @@ namespace KakiEQ_WinUI.Views
 
         private async void CreatePlaylist_Click(object sender, RoutedEventArgs e)
         {
-            var vm = ViewModel ?? DataContext as PlaylistsViewModel;
-            if (vm != null)
-            {
-                int realCount = vm.Playlists.Count(p => !p.IsCreateCard);
-                var inputTextBox = new TextBox
-                {
-                    PlaceholderText = "Nombre de la playlist",
-                    Text = $"Playlist {realCount + 1}"
-                };
+            var xamlRoot = this.XamlRoot ?? MainWindow.Instance?.Content?.XamlRoot;
+            if (xamlRoot == null) return;
 
+            var newPl = await PlaylistDialogHelper.ShowCreatePlaylistDialogAsync(xamlRoot);
+            if (newPl != null && ViewModel != null)
+            {
+                await ViewModel.LoadPlaylistsAsync();
+            }
+        }
+
+        private async void PlayPlaylist_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is FrameworkElement elem && elem.Tag is Playlist playlist)
+            {
+                var dbService = MainViewModel.Instance?.DbService;
+                if (dbService != null)
+                {
+                    var tracks = await dbService.GetTracksForPlaylistAsync(playlist.Name);
+                    if (tracks.Count > 0 && MainViewModel.Instance != null)
+                    {
+                        await MainViewModel.Instance.PlayTrackAsync(tracks[0], tracks);
+                    }
+                }
+            }
+        }
+
+        private async void EditPlaylist_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is FrameworkElement elem && elem.Tag is Playlist playlist)
+            {
                 var xamlRoot = this.XamlRoot ?? MainWindow.Instance?.Content?.XamlRoot;
                 if (xamlRoot == null) return;
 
-                var dialog = new ContentDialog
+                bool edited = await PlaylistDialogHelper.ShowEditPlaylistDialogAsync(xamlRoot, playlist);
+                if (edited && ViewModel != null)
                 {
-                    Title = "Nueva Playlist",
-                    Content = inputTextBox,
-                    PrimaryButtonText = "Crear",
+                    await ViewModel.LoadPlaylistsAsync();
+                }
+            }
+        }
+
+        private async void DeletePlaylist_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is FrameworkElement elem && elem.Tag is Playlist playlist)
+            {
+                var xamlRoot = this.XamlRoot ?? MainWindow.Instance?.Content?.XamlRoot;
+                if (xamlRoot == null) return;
+
+                var confirmDialog = new ContentDialog
+                {
+                    Title = "Eliminar Playlist",
+                    Content = $"¿Estás seguro de que deseas eliminar la playlist \"{playlist.Name}\"?",
+                    PrimaryButtonText = "Eliminar",
                     CloseButtonText = "Cancelar",
-                    DefaultButton = ContentDialogButton.Primary,
+                    DefaultButton = ContentDialogButton.Close,
                     XamlRoot = xamlRoot
                 };
 
-                try
+                var res = await confirmDialog.ShowAsync();
+                if (res == ContentDialogResult.Primary && ViewModel != null)
                 {
-                    var result = await dialog.ShowAsync();
-                    if (result == ContentDialogResult.Primary && !string.IsNullOrWhiteSpace(inputTextBox.Text))
-                    {
-                        await vm.CreatePlaylistAsync(inputTextBox.Text.Trim());
-                    }
-                }
-                catch
-                {
-                    // Ignore ContentDialog concurrency errors
+                    await ViewModel.DeletePlaylistAsync(playlist);
+                    MainWindow.Instance?.ShowToast($"Playlist \"{playlist.Name}\" eliminada");
                 }
             }
         }

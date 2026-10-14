@@ -47,8 +47,28 @@
                 <DataTemplate x:DataType="models:Playlist">
                     <Grid Width="170" Height="220" Margin="6">
                         <!-- 1. Normal Playlist Card -->
-                        <Border Visibility="{x:Bind IsNormalCardVisibility, Mode=OneTime}"
+                        <Border Visibility="{x:Bind IsNormalCardVisibility, Mode=OneWay}"
                                 Background="{ThemeResource AppCardBackground}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1" CornerRadius="16">
+                            <Border.ContextFlyout>
+                                <MenuFlyout>
+                                    <MenuFlyoutItem Text="Reproducir" Click="PlayPlaylist_Click" Tag="{x:Bind}">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon Glyph="&#xE768;"/>
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                    <MenuFlyoutItem Text="Editar detalles..." Click="EditPlaylist_Click" Tag="{x:Bind}">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon Glyph="&#xE70F;"/>
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                    <MenuFlyoutSeparator/>
+                                    <MenuFlyoutItem Text="Eliminar playlist" Click="DeletePlaylist_Click" Tag="{x:Bind}">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon Glyph="&#xE74D;" Foreground="{ThemeResource AppDanger}"/>
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                </MenuFlyout>
+                            </Border.ContextFlyout>
                             <Grid>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="150"/>
@@ -59,16 +79,16 @@
                                 <Border Grid.Row="0" CornerRadius="16,16,0,0" Background="{ThemeResource AppAccentSurface}">
                                     <Grid>
                                         <FontIcon Glyph="&#xE8F1;" FontSize="44" Foreground="{ThemeResource AppAccent}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                        <Image Source="{x:Bind CoverImagePath, Converter={StaticResource ImagePathToImageSourceConverter}}" Stretch="UniformToFill"/>
+                                        <Image Source="{x:Bind CoverImagePath, Mode=OneWay, Converter={StaticResource ImagePathToImageSourceConverter}}" Stretch="UniformToFill"/>
                                     </Grid>
                                 </Border>
 
                                 <!-- Bottom Info -->
                                 <Border Grid.Row="1" Background="{ThemeResource AppSurfaceElevated}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="0,1,0,0" CornerRadius="0,0,16,16" Padding="12,8">
                                     <StackPanel VerticalAlignment="Center">
-                                        <TextBlock Text="{x:Bind Name}" FontWeight="Bold" FontSize="13" Foreground="{ThemeResource AppTextPrimary}"
+                                        <TextBlock Text="{x:Bind Name, Mode=OneWay}" FontWeight="Bold" FontSize="13" Foreground="{ThemeResource AppTextPrimary}"
                                                    TextTrimming="CharacterEllipsis" MaxLines="1"/>
-                                        <TextBlock Text="{x:Bind TrackCountFormatted}" FontSize="11" Foreground="{ThemeResource AppAccent}"
+                                        <TextBlock Text="{x:Bind TrackCountFormatted, Mode=OneWay}" FontSize="11" Foreground="{ThemeResource AppAccent}"
                                                    Margin="0,2,0,0"/>
                                     </StackPanel>
                                 </Border>

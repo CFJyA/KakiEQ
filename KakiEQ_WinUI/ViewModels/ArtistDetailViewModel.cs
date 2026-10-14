@@ -59,6 +59,7 @@ namespace KakiEQ_WinUI.ViewModels
 
         public ICommand GoBackCommand { get; }
         public ICommand PlayAlbumCommand { get; }
+        public ICommand PlayAllArtistCommand { get; }
 
         public ArtistDetailViewModel(DatabaseService dbService, string artistName)
         {
@@ -75,6 +76,14 @@ namespace KakiEQ_WinUI.ViewModels
                 if (SelectedAlbumTracks.Any())
                 {
                     await MainViewModel.Instance!.PlayTrackAsync(SelectedAlbumTracks.First(), SelectedAlbumTracks.ToList());
+                }
+            });
+
+            PlayAllArtistCommand = new RelayCommand(async () =>
+            {
+                if (_allArtistTracks != null && _allArtistTracks.Any())
+                {
+                    await MainViewModel.Instance!.PlayTrackAsync(_allArtistTracks.First(), _allArtistTracks.ToList());
                 }
             });
 

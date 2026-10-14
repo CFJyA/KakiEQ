@@ -9,157 +9,247 @@
     xmlns:vm="using:KakiEQ_WinUI.ViewModels"
     mc:Ignorable="d">
 
-    <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="240"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
+    <Grid Padding="24,18,24,16">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="360"/>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
 
-        <!-- 1. Hero Header Banner -->
-        <Border Grid.Row="0" Background="#181422" BorderBrush="#251C33" BorderThickness="0,0,0,1">
-            <Grid Padding="32,24">
-                <Grid.Background>
-                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                        <GradientStop Color="#361556" Offset="0.0"/>
-                        <GradientStop Color="#151020" Offset="0.8"/>
-                    </LinearGradientBrush>
-                </Grid.Background>
+        <!-- LEFT COLUMN: Artist Sidebar (Matching Image 1: Circular Avatar, Name, Stats & Discography Play Button) -->
+        <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="0,0,14,0">
+            <StackPanel Width="330" HorizontalAlignment="Left" Spacing="14">
+                <!-- Back Button -->
+                <Button Command="{Binding GoBackCommand}"
+                        Background="#22FFFFFF" Foreground="{ThemeResource AppTextPrimary}" Width="40" Height="40"
+                        CornerRadius="20" Padding="0" HorizontalAlignment="Left"
+                        ToolTipService.ToolTip="Regresar a Artistas">
+                    <FontIcon Glyph="&#xE72B;" FontSize="15"/>
+                </Button>
 
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="24">
-                    <!-- Back Button -->
-                    <Button Command="{Binding GoBackCommand}"
-                            Background="#22FFFFFF" Foreground="{ThemeResource AppTextPrimary}" Width="42" Height="42"
-                            CornerRadius="21" Padding="0">
-                        <FontIcon Glyph="&#xE72B;" FontSize="16"/>
-                    </Button>
+                <!-- Large Circular Artist Avatar (Centered, 280x280) -->
+                <Border Width="280" Height="280" CornerRadius="140" Background="{ThemeResource AppCoverPlaceholderBg}" HorizontalAlignment="Center">
+                    <Grid>
+                        <FontIcon Glyph="&#xE77B;" FontSize="72" Foreground="{ThemeResource AppCoverPlaceholderFg}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <Image Source="{Binding BannerImagePath}" Stretch="UniformToFill"/>
+                    </Grid>
+                </Border>
 
-                    <!-- Circular Artist Avatar -->
-                    <Border Width="150" Height="150" CornerRadius="75" Background="{ThemeResource AppCoverPlaceholderBg}">
-                        <Grid>
-                            <FontIcon Glyph="&#xE77B;" FontSize="54" Foreground="{ThemeResource AppCoverPlaceholderFg}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            <Image Source="{Binding BannerImagePath}" Stretch="UniformToFill"/>
-                        </Grid>
+                <!-- Artist Name & Pill Badge -->
+                <StackPanel Spacing="4" Margin="0,2,0,0">
+                    <Border Background="{ThemeResource AppAccentContainer}" CornerRadius="8" Padding="8,3" HorizontalAlignment="Left" Margin="0,0,0,4">
+                        <TextBlock Text="ARTISTA" FontSize="10" FontWeight="Bold" Foreground="{ThemeResource AppAccentText}"/>
                     </Border>
+                    <TextBlock Text="{Binding ArtistName}" FontSize="28" FontWeight="Bold" Foreground="{ThemeResource AppTextPrimary}"
+                               TextTrimming="CharacterEllipsis" MaxLines="2"/>
+                </StackPanel>
 
-                    <!-- Info -->
-                    <StackPanel VerticalAlignment="Center" Spacing="8">
-                        <Border Background="{ThemeResource AppAccentContainer}" CornerRadius="10" Padding="8,3" HorizontalAlignment="Left">
-                            <TextBlock Text="ARTISTA" FontSize="11" FontWeight="Bold" Foreground="{ThemeResource AppAccentText}"/>
+                <!-- Information Subtitle -->
+                <TextBlock Text="INFORMACIÓN" FontSize="11" FontWeight="Bold" Foreground="{ThemeResource AppTextSubtle}" Margin="0,4,0,0"/>
+
+                <!-- Stat Cards (Matching Image 1: Álbumes & Canciones row 1, Duración Total row 2) -->
+                <StackPanel Spacing="10" Width="330">
+                    <!-- Row 1: Álbumes y Canciones -->
+                    <Grid ColumnSpacing="10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Álbumes -->
+                        <Border Grid.Column="0" Background="{ThemeResource AppCardBackground}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1" CornerRadius="14" Padding="14,10">
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="{Binding TotalAlbums}" FontSize="24" FontWeight="Bold" Foreground="{ThemeResource AppAccent}"/>
+                                <TextBlock Text="Álbumes" FontSize="11" Foreground="{ThemeResource AppTextSubtle}"/>
+                            </StackPanel>
                         </Border>
 
-                        <TextBlock Text="{Binding ArtistName}" FontSize="36" FontWeight="Bold" Foreground="{ThemeResource AppTextPrimary}"
-                                   TextTrimming="CharacterEllipsis"/>
-                        <TextBlock Text="{Binding Genre}" FontSize="15" Foreground="{ThemeResource AppTextSecondary}"/>
+                        <!-- Canciones -->
+                        <Border Grid.Column="1" Background="{ThemeResource AppCardBackground}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1" CornerRadius="14" Padding="14,10">
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="{Binding TotalSongs}" FontSize="24" FontWeight="Bold" Foreground="{ThemeResource AppSecondary}"/>
+                                <TextBlock Text="Canciones" FontSize="11" Foreground="{ThemeResource AppTextSubtle}"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
 
-                        <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,8,0,0">
-                            <Button Command="{Binding PlayAlbumCommand}"
-                                    Background="{ThemeResource AppAccent}" Foreground="#121212"
-                                    CornerRadius="20" Padding="20,8" FontWeight="SemiBold">
-                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <FontIcon Glyph="&#xE768;" FontSize="14"/>
-                                    <TextBlock Text="Reproducir Álbum" VerticalAlignment="Center"/>
-                                </StackPanel>
-                            </Button>
+                    <!-- Row 2: Duración Total -->
+                    <Border Background="{ThemeResource AppCardBackground}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1" CornerRadius="14" Padding="14,10">
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="{Binding TotalLength}" FontSize="20" FontWeight="Bold" Foreground="#FFB74D"/>
+                            <TextBlock Text="Duración Total" FontSize="11" Foreground="{ThemeResource AppTextSubtle}"/>
                         </StackPanel>
-                    </StackPanel>
+                    </Border>
                 </StackPanel>
-            </Grid>
-        </Border>
 
-        <!-- 2. Content 3 Columns -->
-        <Grid Grid.Row="1" Padding="32,24" ColumnSpacing="28">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="220"/>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="180"/>
-            </Grid.ColumnDefinitions>
+                <!-- Action Button: Reproducir Discografía (Full width 330px) -->
+                <Button Command="{Binding PlayAllArtistCommand}"
+                        HorizontalAlignment="Stretch" Height="42"
+                        Background="{ThemeResource AppAccent}" Foreground="#121212"
+                        CornerRadius="21" Padding="16,0" Margin="0,4,0,16">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="8">
+                        <FontIcon Glyph="&#xE768;" FontSize="14" Foreground="#121212"/>
+                        <TextBlock Text="Reproducir Discografía" VerticalAlignment="Center" FontSize="13" FontWeight="SemiBold" Foreground="#121212"/>
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </ScrollViewer>
 
-            <!-- LEFT: Albums List -->
-            <StackPanel Grid.Column="0" Spacing="12">
-                <TextBlock Text="{Binding TotalAlbumsText}" 
-                           FontSize="12" FontWeight="Bold" Foreground="{ThemeResource AppTextSubtle}"/>
+        <!-- Subtle Vertical Separator -->
+        <Border Grid.Column="1" Width="1" Background="{ThemeResource AppBorder}" Margin="0,4,20,12"/>
 
-                <ListView ItemsSource="{Binding Albums}"
+        <!-- RIGHT COLUMN: 50% / 50% Vertical Split (Álbumes en tiles arriba + Lista de canciones abajo) -->
+        <Grid Grid.Column="2">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>   <!-- Top 50%: Álbumes en TILES -->
+                <RowDefinition Height="Auto"/> <!-- Sutil separador horizontal -->
+                <RowDefinition Height="*"/>   <!-- Bottom 50%: Pistas del Álbum Seleccionado -->
+            </Grid.RowDefinitions>
+
+            <!-- 1. TOP HALF (50%): Álbumes en TILES -->
+            <Grid Grid.Row="0" Margin="0,0,0,8">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- Section Header -->
+                <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
+                    <TextBlock Text="{Binding TotalAlbumsText}" FontSize="13" FontWeight="Bold" Foreground="{ThemeResource AppTextPrimary}"/>
+                    <TextBlock Text="(Haz clic en un álbum para ver sus canciones)" FontSize="11" Foreground="{ThemeResource AppTextSubtle}" VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <!-- GridView con TILES de los álbumes -->
+                <GridView Grid.Row="1"
+                          ItemsSource="{Binding Albums}"
                           SelectedItem="{Binding SelectedAlbum, Mode=TwoWay}"
-                          SelectionMode="Single">
-                    <ListView.ItemTemplate>
+                          SelectionMode="Single"
+                          IsItemClickEnabled="True"
+                          ItemClick="Album_ItemClick"
+                          Padding="0,0,0,6">
+                    <GridView.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <ItemsWrapGrid Orientation="Horizontal"/>
+                        </ItemsPanelTemplate>
+                    </GridView.ItemsPanel>
+                    <GridView.ItemTemplate>
                         <DataTemplate x:DataType="models:AlbumItem">
-                            <Grid Padding="4,6">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="42"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <Border Width="36" Height="36" CornerRadius="6" Background="{ThemeResource AppCoverPlaceholderBg}">
+                            <Grid Width="145" Height="200" Margin="0,0,12,12">
+                                <Border Background="{ThemeResource AppCardBackground}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1" CornerRadius="14">
                                     <Grid>
-                                        <FontIcon Glyph="&#xE93C;" FontSize="14" Foreground="{ThemeResource AppCoverPlaceholderFg}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                        <Image Source="{x:Bind CoverImagePath}" Stretch="UniformToFill"/>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="145"/>
+                                            <RowDefinition Height="*"/>
+                                        </Grid.RowDefinitions>
+
+                                        <!-- Cover Tile -->
+                                        <Border Grid.Row="0" CornerRadius="14,14,0,0" Background="{ThemeResource AppCoverPlaceholderBg}">
+                                            <Grid>
+                                                <FontIcon Glyph="&#xE93C;" FontSize="32" Foreground="{ThemeResource AppCoverPlaceholderFg}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                <Image Source="{x:Bind CoverImagePath}" Stretch="UniformToFill"/>
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- Title & Artist -->
+                                        <StackPanel Grid.Row="1" Padding="8,6" VerticalAlignment="Center">
+                                            <TextBlock Text="{x:Bind Title}" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource AppTextPrimary}"
+                                                       TextTrimming="CharacterEllipsis" MaxLines="1"/>
+                                            <TextBlock Text="{x:Bind Artist}" FontSize="10" Foreground="{ThemeResource AppTextSubtle}"
+                                                       TextTrimming="CharacterEllipsis" MaxLines="1"/>
+                                        </StackPanel>
                                     </Grid>
                                 </Border>
-                                <TextBlock Grid.Column="1" Text="{x:Bind Title}" FontSize="13" Foreground="{ThemeResource AppTextPrimary}"
-                                           VerticalAlignment="Center" Margin="10,0,0,0" TextTrimming="CharacterEllipsis"/>
                             </Grid>
                         </DataTemplate>
-                    </ListView.ItemTemplate>
-                </ListView>
-            </StackPanel>
+                    </GridView.ItemTemplate>
+                </GridView>
+            </Grid>
 
-            <!-- CENTER: Selected Album Tracks -->
-            <StackPanel Grid.Column="1" Spacing="12">
-                <Grid>
-                    <TextBlock Text="{Binding SelectedAlbum.Title, FallbackValue='Pistas del Álbum'}" 
-                               FontSize="16" FontWeight="Bold" Foreground="{ThemeResource AppTextPrimary}" TextTrimming="CharacterEllipsis"/>
+            <!-- 2. Subtle Horizontal Separator between 50% Top and 50% Bottom -->
+            <Border Grid.Row="1" Height="1" Background="{ThemeResource AppBorder}" Margin="0,4,0,10"/>
+
+            <!-- 3. BOTTOM HALF (50%): Pistas del Álbum Seleccionado -->
+            <Grid Grid.Row="2">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- Selected Album Header with Play Album Button -->
+                <Grid Grid.Row="0" Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                        <!-- Small Cover Thumbnail -->
+                        <Border Width="42" Height="42" CornerRadius="10" Background="{ThemeResource AppCoverPlaceholderBg}">
+                            <Grid>
+                                <FontIcon Glyph="&#xE93C;" FontSize="20" Foreground="{ThemeResource AppCoverPlaceholderFg}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <Image Source="{Binding SelectedAlbum.CoverImagePath}" Stretch="UniformToFill"/>
+                            </Grid>
+                        </Border>
+                        <StackPanel VerticalAlignment="Center" Spacing="1">
+                            <TextBlock Text="{Binding SelectedAlbum.Title, FallbackValue='Selecciona un álbum'}"
+                                       FontSize="16" FontWeight="Bold" Foreground="{ThemeResource AppTextPrimary}"
+                                       TextTrimming="CharacterEllipsis" MaxWidth="360"/>
+                            <TextBlock Text="Pistas del álbum" FontSize="11" Foreground="{ThemeResource AppTextSubtle}"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- Botón Reproducir Álbum -->
+                    <Button Grid.Column="1" Command="{Binding PlayAlbumCommand}"
+                            Background="{ThemeResource AppAccent}" Foreground="#121212"
+                            CornerRadius="18" Padding="16,8" FontWeight="SemiBold" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" Spacing="7">
+                            <FontIcon Glyph="&#xE768;" FontSize="13" Foreground="#121212"/>
+                            <TextBlock Text="Reproducir Álbum" VerticalAlignment="Center" FontSize="12" FontWeight="SemiBold" Foreground="#121212"/>
+                        </StackPanel>
+                    </Button>
                 </Grid>
 
-                <ListView ItemsSource="{Binding SelectedAlbumTracks}"
-                          SelectionMode="None"
-                          IsItemClickEnabled="True"
-                          ItemClick="Track_ItemClick">
-                    <ListView.ItemTemplate>
-                        <DataTemplate x:DataType="models:Track">
-                            <Grid Padding="8,8" CornerRadius="8">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="32"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="60"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="{x:Bind TrackNumber}" FontSize="12" Foreground="{ThemeResource AppTextMuted}"
-                                           VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                                <TextBlock Grid.Column="1" Text="{x:Bind Title}" FontSize="14" FontWeight="SemiBold"
-                                           Foreground="{ThemeResource AppTextPrimary}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                                <TextBlock Grid.Column="2" Text="{x:Bind DurationFormatted}" FontSize="12" Foreground="{ThemeResource AppTextMuted}"
-                                           VerticalAlignment="Center" HorizontalAlignment="Right"/>
-                            </Grid>
-                        </DataTemplate>
-                    </ListView.ItemTemplate>
-                </ListView>
-            </StackPanel>
+                <!-- Scrollable Tracklist of selected album -->
+                <Border Grid.Row="1" Background="{ThemeResource AppCardBackground}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1" CornerRadius="14" Padding="4,4">
+                    <ListView ItemsSource="{Binding SelectedAlbumTracks}"
+                              SelectionMode="None"
+                              IsItemClickEnabled="True"
+                              ItemClick="Track_ItemClick"
+                              Padding="0,0,4,8">
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="models:Track">
+                                <Grid Padding="10,7" CornerRadius="6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="36"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="70"/>
+                                        <ColumnDefinition Width="36"/>
+                                    </Grid.ColumnDefinitions>
 
-            <!-- RIGHT: Stats -->
-            <StackPanel Grid.Column="2" Spacing="16">
-                <TextBlock Text="ESTADÍSTICAS" FontSize="12" FontWeight="Bold" Foreground="{ThemeResource AppTextSubtle}"/>
+                                    <!-- Track Number -->
+                                    <TextBlock Grid.Column="0" Text="{x:Bind TrackNumber}" FontSize="12" Foreground="{ThemeResource AppTextMuted}"
+                                               VerticalAlignment="Center" HorizontalAlignment="Center"/>
 
-                <Border Background="{ThemeResource AppCardBackground}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1" CornerRadius="14" Padding="16">
-                    <StackPanel Spacing="4">
-                        <TextBlock Text="{Binding TotalAlbums}" FontSize="28" FontWeight="Bold" Foreground="{ThemeResource AppAccent}"/>
-                        <TextBlock Text="Álbumes" FontSize="12" Foreground="{ThemeResource AppTextSubtle}"/>
-                    </StackPanel>
+                                    <!-- Title -->
+                                    <TextBlock Grid.Column="1" Text="{x:Bind Title}" FontSize="13" FontWeight="SemiBold"
+                                               Foreground="{ThemeResource AppTextPrimary}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+
+                                    <!-- Duration -->
+                                    <TextBlock Grid.Column="2" Text="{x:Bind DurationFormatted}" FontSize="11" Foreground="{ThemeResource AppTextMuted}"
+                                               VerticalAlignment="Center" HorizontalAlignment="Right"/>
+
+                                    <!-- Add to playlist button -->
+                                    <Button Grid.Column="3" Background="Transparent" BorderThickness="0" Foreground="{ThemeResource AppTextSubtle}"
+                                            Click="AddSingleTrackToPlaylist_Click" Tag="{x:Bind}" Padding="0" Width="28" Height="28" CornerRadius="14"
+                                            HorizontalAlignment="Right" ToolTipService.ToolTip="Añadir a playlist">
+                                        <FontIcon Glyph="&#xE8F1;" FontSize="11"/>
+                                    </Button>
+                                </Grid>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
                 </Border>
-
-                <Border Background="{ThemeResource AppCardBackground}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1" CornerRadius="14" Padding="16">
-                    <StackPanel Spacing="4">
-                        <TextBlock Text="{Binding TotalSongs}" FontSize="28" FontWeight="Bold" Foreground="{ThemeResource AppSecondary}"/>
-                        <TextBlock Text="Canciones" FontSize="12" Foreground="{ThemeResource AppTextSubtle}"/>
-                    </StackPanel>
-                </Border>
-
-                <Border Background="{ThemeResource AppCardBackground}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1" CornerRadius="14" Padding="16">
-                    <StackPanel Spacing="4">
-                        <TextBlock Text="{Binding TotalLength}" FontSize="16" FontWeight="Bold" Foreground="#FFB74D"/>
-                        <TextBlock Text="Duración" FontSize="12" Foreground="{ThemeResource AppTextSubtle}"/>
-                    </StackPanel>
-                </Border>
-            </StackPanel>
+            </Grid>
         </Grid>
     </Grid>
 </UserControl>
-
