@@ -89,6 +89,21 @@ namespace KakiEQ_WinUI.Views
                 }
                 flyout.Items.Add(playlistSubItem);
 
+                // Separator
+                flyout.Items.Add(new MenuFlyoutSeparator());
+
+                // Ver / Editar Metadatos
+                var editMetadataItem = new MenuFlyoutItem
+                {
+                    Text = "Ver / Editar Metadatos",
+                    Icon = new FontIcon { Glyph = "\uE70F" }
+                };
+                editMetadataItem.Click += (s, args) =>
+                {
+                    MainWindow.Instance?.OpenMetadataWindow(track);
+                };
+                flyout.Items.Add(editMetadataItem);
+
                 flyout.ShowAt(btn);
             }
         }

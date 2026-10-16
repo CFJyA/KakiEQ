@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="KakiEQ_WinUI.Views.MiniPlayerWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Title="Mini-reproductor Kaki EQ">
+
+    <!-- Gradient Background matching the Mockup in Image 3 -->
+    <Grid>
+        <Grid.Background>
+            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                <GradientStop Color="#542B7A" Offset="0.0"/>
+                <GradientStop Color="#371858" Offset="0.45"/>
+                <GradientStop Color="#230E39" Offset="1.0"/>
+            </LinearGradientBrush>
+        </Grid.Background>
+
+        <Grid.RowDefinitions>
+            <RowDefinition Height="46"/> <!-- Custom TitleBar -->
+            <RowDefinition Height="Auto"/> <!-- Song & Path info header -->
+            <RowDefinition Height="*"/> <!-- Center Artwork or Note illustration -->
+            <RowDefinition Height="Auto"/> <!-- Bottom Player Capsule -->
+        </Grid.RowDefinitions>
+
+        <!-- Custom TitleBar -->
+        <Border Grid.Row="0" x:Name="TitleBarBorder" Background="#26000000">
+            <Grid Padding="16,0,130,0">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="8">
+                    <FontIcon Glyph="&#xEC4F;" FontSize="13" Foreground="#D0BCFF"/>
+                    <TextBlock Text="Mini-reproductor Kaki EQ" FontSize="12" FontWeight="SemiBold" Foreground="#FFFFFF"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- 1. Top Song & Path Information (Image 3 mockup) -->
+        <Grid Grid.Row="1" Padding="20,10,20,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Line 1: Song / File Name + Path -->
+            <Grid Grid.Row="0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0" x:Name="SongTitleText"
+                           Text="Nombre canción/archivo"
+                           FontSize="15" FontWeight="Bold" Foreground="#FFFFFF"
+                           TextTrimming="CharacterEllipsis"/>
+
+                <TextBlock Grid.Column="1" x:Name="SongPathText"
+                           Text="Ruta"
+                           FontSize="11" Foreground="#CBB5E2"
+                           TextTrimming="CharacterEllipsis" MaxWidth="160"
+                           VerticalAlignment="Center" Margin="10,0,0,0"/>
+            </Grid>
+
+            <!-- Line 2: Artist (Omitted if no metadata, as requested) -->
+            <TextBlock Grid.Row="1" x:Name="ArtistNameText"
+                       Text="Nombre artista"
+                       FontSize="12" Foreground="#D9C2F5"
+                       TextTrimming="CharacterEllipsis" Margin="0,3,0,0"/>
+        </Grid>
+
+        <!-- 2. Center Artwork / Musical Note (Image 3 mockup) -->
+        <Grid Grid.Row="2" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="16,8,16,8">
+            <!-- Fallback Big Music Note Illustration (Styled like Image 3) -->
+            <Grid x:Name="NoteIllustrationContainer" Width="230" Height="230" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Viewbox Width="210" Height="210" Opacity="0.45">
+                    <Path Data="M 12 3 L 12 14.55 C 11.21 14.21 10.34 14 9.4 14 C 6.42 14 4 16.24 4 19 C 4 21.76 6.42 24 9.4 24 C 12.38 24 14.8 21.76 14.8 19 L 14.8 7 L 22 7 L 22 3 L 12 3 Z"
+                          Fill="#9960B8"/>
+                </Viewbox>
+                <!-- Subtle glow note overlay -->
+                <FontIcon Glyph="&#xEC4F;" FontSize="130" Foreground="#B380D4" Opacity="0.55"
+                          HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Grid>
+
+            <!-- Real Artwork Image (if available) -->
+            <Border x:Name="ArtworkBorder" Width="220" Height="220" CornerRadius="20" Background="#33000000" Visibility="Collapsed">
+                <Image x:Name="ArtworkImage" Stretch="UniformToFill"/>
+            </Border>
+        </Grid>
+
+        <!-- 3. Bottom Capsule Player Controls (Image 3 mockup) -->
+        <Border Grid.Row="3"
+                Margin="18,0,18,20"
+                Background="#2B1445"
+                BorderBrush="#63398B"
+                BorderThickness="1.5"
+                CornerRadius="20"
+                Padding="16,10">
+            <StackPanel Spacing="6">
+                <!-- Seek Bar & Timers -->
+                <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Column="0" x:Name="CurrentTimeText" Text="00:00" FontSize="10" Foreground="#CBB5E2" VerticalAlignment="Center"/>
+                    
+                    <Slider Grid.Column="1" x:Name="SeekSlider"
+                            Minimum="0" Maximum="100" Value="0"
+                            ValueChanged="SeekSlider_ValueChanged"
+                            VerticalAlignment="Center" Margin="0" Height="20"/>
+
+                    <TextBlock Grid.Column="2" x:Name="TotalTimeText" Text="00:00" FontSize="10" Foreground="#CBB5E2" VerticalAlignment="Center"/>
+                </Grid>
+
+                <!-- Control Buttons Row -->
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Shuffle -->
+                    <Button Grid.Column="0" Click="Shuffle_Click"
+                            Background="Transparent" BorderThickness="0" Padding="0" HorizontalAlignment="Center"
+                            ToolTipService.ToolTip="Aleatorio">
+                        <FontIcon x:Name="ShuffleIcon" Glyph="&#xE8B1;" FontSize="13" Foreground="#B090D0"/>
+                    </Button>
+
+                    <!-- Previous -->
+                    <Button Grid.Column="1" Click="Previous_Click"
+                            Background="Transparent" BorderThickness="0" Padding="0" HorizontalAlignment="Center"
+                            ToolTipService.ToolTip="Anterior / Reiniciar">
+                        <FontIcon Glyph="&#xE892;" FontSize="14" Foreground="#FFFFFF"/>
+                    </Button>
+
+                    <!-- Circular Play/Pause Button -->
+                    <Button Grid.Column="2" Click="PlayPause_Click"
+                            Width="38" Height="38" CornerRadius="19" Padding="0"
+                            Background="#BB86FC" Foreground="#121212"
+                            HorizontalAlignment="Center"
+                            ToolTipService.ToolTip="Reproducir / Pausar">
+                        <FontIcon x:Name="PlayPauseIcon" Glyph="&#xE769;" FontSize="15" Foreground="#121212"/>
+                    </Button>
+
+                    <!-- Next -->
+                    <Button Grid.Column="3" Click="Next_Click"
+                            Background="Transparent" BorderThickness="0" Padding="0" HorizontalAlignment="Center"
+                            ToolTipService.ToolTip="Siguiente">
+                        <FontIcon Glyph="&#xE893;" FontSize="14" Foreground="#FFFFFF"/>
+                    </Button>
+
+                    <!-- Repeat -->
+                    <Button Grid.Column="4" Click="Repeat_Click"
+                            Background="Transparent" BorderThickness="0" Padding="0" HorizontalAlignment="Center"
+                            ToolTipService.ToolTip="Repetir">
+                        <FontIcon x:Name="RepeatIcon" Glyph="&#xE8EE;" FontSize="13" Foreground="#B090D0"/>
+                    </Button>
+                </Grid>
+            </StackPanel>
+        </Border>
+
+    </Grid>
+</Window>

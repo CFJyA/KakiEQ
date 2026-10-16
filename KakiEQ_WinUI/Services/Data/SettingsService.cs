@@ -14,6 +14,11 @@ namespace KakiEQ_WinUI.Services.Data
         public float PreampGain { get; set; } = 0f;
         public string ActivePresetName { get; set; } = "Plano";
         public System.Collections.Generic.List<EqualizerPreset> CustomPresets { get; set; } = new();
+        public bool IsDarkMode { get; set; } = true;
+        public bool CrossfadeEnabled { get; set; } = false;
+        public int CrossfadeDurationSeconds { get; set; } = 3;
+        public bool StartWithWindows { get; set; } = false;
+        public string RunInBackgroundPreference { get; set; } = "Ask"; // "Ask", "Background", "Exit"
     }
 
     public class SettingsService

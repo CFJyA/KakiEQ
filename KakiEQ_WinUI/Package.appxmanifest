@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 
 <Package
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
@@ -50,6 +50,23 @@
         <uap:SplashScreen Image="Assets\Kaki_Oficial_Blanco.png"  BackgroundColor="transparent"/>
         <uap:LockScreen BadgeLogo="Assets\Kaki_Oficial_Blanco.png" Notification="badge"/>
       </uap:VisualElements>
+      <Extensions>
+        <uap:Extension Category="windows.fileTypeAssociation">
+          <uap:FileTypeAssociation Name="audio">
+            <uap:DisplayName>Archivo de Audio Kaki EQ</uap:DisplayName>
+            <uap:SupportedFileTypes>
+              <uap:FileType>.mp3</uap:FileType>
+              <uap:FileType>.flac</uap:FileType>
+              <uap:FileType>.wav</uap:FileType>
+              <uap:FileType>.m4a</uap:FileType>
+              <uap:FileType>.aac</uap:FileType>
+              <uap:FileType>.ogg</uap:FileType>
+              <uap:FileType>.opus</uap:FileType>
+              <uap:FileType>.wma</uap:FileType>
+            </uap:SupportedFileTypes>
+          </uap:FileTypeAssociation>
+        </uap:Extension>
+      </Extensions>
     </Application>
   </Applications>
 

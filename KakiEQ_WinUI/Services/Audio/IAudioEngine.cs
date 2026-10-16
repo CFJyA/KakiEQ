@@ -16,6 +16,8 @@ namespace KakiEQ_WinUI.Services.Audio
         TimeSpan CurrentPosition { get; }
         TimeSpan TotalDuration { get; }
         float Volume { get; }
+        bool CrossfadeEnabled { get; set; }
+        int CrossfadeDurationSeconds { get; set; }
 
         event EventHandler PlaybackPositionChanged;
         event EventHandler PlaybackStateChanged;

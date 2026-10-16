@@ -20,6 +20,12 @@ namespace KakiEQ_WinUI
         public static MainWindow? Instance { get; private set; }
         public MainViewModel ViewModel => MainViewModel.Instance ?? new MainViewModel();
 
+        private Services.SystemIntegration.TrayIconService? _trayService;
+        private Views.SettingsWindow? _settingsWindow;
+        private Views.MetadataWindow? _metadataWindow;
+        private Views.MiniPlayerWindow? _miniPlayerWindow;
+        private bool _isExiting = false;
+
         public MainWindow()
         {
             Instance = this;
@@ -35,8 +41,44 @@ namespace KakiEQ_WinUI
             {
                 appWindow.Resize(new SizeInt32(1150, 760));
                 UpdateWindowIcon(appWindow);
-                UpdateThemeVisuals(false);
+                
+                var settings = ViewModel.SettingsService.LoadSettings();
+                bool isLight = !settings.IsDarkMode;
+                if (Content is FrameworkElement fe)
+                {
+                    fe.RequestedTheme = isLight ? ElementTheme.Light : ElementTheme.Dark;
+                }
+                UpdateThemeVisuals(isLight);
+
+                // Intercept close event to offer background execution
+                appWindow.Closing += AppWindow_Closing;
             }
+
+            // Initialize System Tray Icon
+            IntPtr hwnd = WindowNative.GetWindowHandle(this);
+            _trayService = new Services.SystemIntegration.TrayIconService(hwnd);
+            _trayService.OpenRequested += RestoreFromTray;
+            _trayService.PlayPauseRequested += () => ViewModel.PlayPauseCommand.Execute(null);
+            _trayService.NextRequested += () => ViewModel.NextCommand.Execute(null);
+            _trayService.PreviousRequested += () => ViewModel.PreviousCommand.Execute(null);
+            _trayService.ExitRequested += ExitApplication;
+
+            // Monitor track change to update tray tooltip
+            ViewModel.PropertyChanged += (s, e) =>
+            {
+                if (e.PropertyName == nameof(ViewModel.CurrentTrack))
+                {
+                    var track = ViewModel.CurrentTrack;
+                    if (track != null)
+                    {
+                        _trayService.UpdateTooltip($"Kaki EQ: {track.Title} - {track.Artist}");
+                    }
+                    else
+                    {
+                        _trayService.UpdateTooltip("Kaki EQ - Music Player");
+                    }
+                }
+            };
 
             // Check if initial music folder needs to be selected
             _ = CheckInitialMusicFolderAsync();
@@ -68,6 +110,152 @@ namespace KakiEQ_WinUI
                 // Scan saved music folder in background
                 _ = ViewModel.ScanLibraryFolderAsync(settings.MusicFolderPath);
             }
+        }
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+        private async void AppWindow_Closing(AppWindow sender, AppWindowClosingEventArgs args)
+        {
+            if (_isExiting) return;
+
+            args.Cancel = true;
+
+            var settings = ViewModel.SettingsService.LoadSettings();
+            if (settings.RunInBackgroundPreference == "Background")
+            {
+                sender.Hide();
+                _trayService?.EnsureCreated();
+                return;
+            }
+            if (settings.RunInBackgroundPreference == "Exit")
+            {
+                ExitApplication();
+                return;
+            }
+
+            // Ask user whether to exit or run in background
+            var rememberCheckBox = new CheckBox
+            {
+                Content = "Recordar mi elección para siempre",
+                Margin = new Thickness(0, 14, 0, 0),
+                FontSize = 12
+            };
+
+            var contentStack = new StackPanel { Spacing = 8, MaxWidth = 420 };
+            contentStack.Children.Add(new TextBlock
+            {
+                Text = "¿Deseas cerrar Kaki EQ o mantenerlo reproduciéndose en segundo plano?",
+                FontSize = 13,
+                TextWrapping = TextWrapping.Wrap
+            });
+            contentStack.Children.Add(new TextBlock
+            {
+                Text = "Al ejecutarse en segundo plano, la música seguirá sonando y podrás controlarla desde la bandeja del sistema (área de iconos ocultos) y desde el control de medios nativo de Windows.",
+                FontSize = 11,
+                Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 170, 170, 170)),
+                TextWrapping = TextWrapping.Wrap
+            });
+            contentStack.Children.Add(rememberCheckBox);
+
+            var dialog = new ContentDialog
+            {
+                Title = "¿Cerrar o Segundo Plano?",
+                Content = contentStack,
+                PrimaryButtonText = "Segundo plano",
+                SecondaryButtonText = "Cerrar aplicación",
+                CloseButtonText = "Cancelar",
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = this.Content.XamlRoot
+            };
+
+            var result = await dialog.ShowAsync();
+            if (result == ContentDialogResult.Primary)
+            {
+                if (rememberCheckBox.IsChecked == true)
+                {
+                    settings.RunInBackgroundPreference = "Background";
+                    ViewModel.SettingsService.SaveSettings(settings);
+                }
+
+                sender.Hide();
+                _trayService?.EnsureCreated();
+            }
+            else if (result == ContentDialogResult.Secondary)
+            {
+                if (rememberCheckBox.IsChecked == true)
+                {
+                    settings.RunInBackgroundPreference = "Exit";
+                    ViewModel.SettingsService.SaveSettings(settings);
+                }
+
+                ExitApplication();
+            }
+        }
+
+        public void RestoreFromTray()
+        {
+            var appWindow = GetAppWindow();
+            if (appWindow != null)
+            {
+                appWindow.Show();
+                IntPtr hwnd = WindowNative.GetWindowHandle(this);
+                SetForegroundWindow(hwnd);
+            }
+        }
+
+        public void ExitApplication()
+        {
+            _isExiting = true;
+            _trayService?.Dispose();
+            _settingsWindow?.Close();
+            _metadataWindow?.Close();
+            _miniPlayerWindow?.Close();
+            Application.Current.Exit();
+        }
+
+        public void OpenSettings_Click(object sender, RoutedEventArgs e)
+        {
+            if (_settingsWindow != null)
+            {
+                _settingsWindow.Activate();
+                return;
+            }
+
+            _settingsWindow = new Views.SettingsWindow();
+            _settingsWindow.Closed += (s, ev) => _settingsWindow = null;
+            _settingsWindow.Activate();
+        }
+
+        public void OpenMetadata_Click(object sender, RoutedEventArgs e)
+        {
+            OpenMetadataWindow(ViewModel.CurrentTrack);
+        }
+
+        public void OpenMetadataWindow(Track? track = null)
+        {
+            if (_metadataWindow != null)
+            {
+                _metadataWindow.Activate();
+                return;
+            }
+
+            _metadataWindow = new Views.MetadataWindow(track);
+            _metadataWindow.Closed += (s, ev) => _metadataWindow = null;
+            _metadataWindow.Activate();
+        }
+
+        public void OpenMiniPlayer_Click(object sender, RoutedEventArgs e)
+        {
+            if (_miniPlayerWindow != null)
+            {
+                _miniPlayerWindow.Activate();
+                return;
+            }
+
+            _miniPlayerWindow = new Views.MiniPlayerWindow(ViewModel.CurrentTrack?.FilePath);
+            _miniPlayerWindow.Closed += (s, ev) => _miniPlayerWindow = null;
+            _miniPlayerWindow.Activate();
         }
 
         private async void PickFolder_Click(object sender, RoutedEventArgs e)

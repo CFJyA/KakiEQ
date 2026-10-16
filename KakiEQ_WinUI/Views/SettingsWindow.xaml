@@ -1,0 +1,269 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="KakiEQ_WinUI.Views.SettingsWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Title="Ajustes - Kaki EQ">
+
+    <Window.SystemBackdrop>
+        <MicaBackdrop />
+    </Window.SystemBackdrop>
+
+    <Grid Background="{ThemeResource AppBackground}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="54"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Custom TitleBar -->
+        <Border Grid.Row="0" x:Name="TitleBarBorder" Background="{ThemeResource AppTitleBarBg}" BorderBrush="{ThemeResource AppTitleBarBorder}" BorderThickness="0,0,0,1">
+            <Grid Padding="20,0,140,0">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="10">
+                    <FontIcon Glyph="&#xE713;" FontSize="15" Foreground="{ThemeResource AppAccent}"/>
+                    <TextBlock Text="Ajustes - Kaki EQ" FontSize="14" FontWeight="SemiBold" Foreground="{ThemeResource AppTextPrimary}"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Main Content -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="28,20,28,32">
+            <StackPanel MaxWidth="760" HorizontalAlignment="Stretch" Spacing="24">
+                
+                <!-- Page Header -->
+                <StackPanel Spacing="4">
+                    <TextBlock Text="Ajustes" FontSize="26" FontWeight="Bold" Foreground="{ThemeResource AppTextPrimary}"/>
+                    <TextBlock Text="Personaliza tu experiencia auditiva y configura las opciones de Kaki EQ." FontSize="13" Foreground="{ThemeResource AppTextSubtle}"/>
+                </StackPanel>
+
+                <!-- ================= 1. SELECCION DE LA CARPETA ================= -->
+                <StackPanel Spacing="10">
+                    <TextBlock Text="SELECCIÓN DE LA CARPETA" FontSize="11" FontWeight="Bold" Foreground="{ThemeResource AppAccent}"/>
+
+                    <Border Background="{ThemeResource AppCardBackground}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1" CornerRadius="16" Padding="20">
+                        <StackPanel Spacing="16">
+                            <Grid ColumnSpacing="16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <Border Grid.Column="0" Width="44" Height="44" CornerRadius="12" Background="{ThemeResource AppAccentContainer}" VerticalAlignment="Center">
+                                    <FontIcon Glyph="&#xED25;" FontSize="20" Foreground="{ThemeResource AppAccentText}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                    <TextBlock Text="Carpeta de Música" FontSize="15" FontWeight="SemiBold" Foreground="{ThemeResource AppTextPrimary}"/>
+                                    <TextBlock Text="Ubicación donde Kaki EQ busca tus archivos de audio y crea la biblioteca musical."
+                                               FontSize="12" Foreground="{ThemeResource AppTextSubtle}" TextWrapping="Wrap"/>
+                                </StackPanel>
+
+                                <Button Grid.Column="2" Click="PickFolder_Click"
+                                        Background="{ThemeResource AppAccent}" Foreground="#121212"
+                                        CornerRadius="16" Padding="14,8" VerticalAlignment="Center">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <FontIcon Glyph="&#xED25;" FontSize="13" Foreground="#121212"/>
+                                        <TextBlock Text="Elegir carpeta..." FontSize="12" FontWeight="SemiBold" Foreground="#121212"/>
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+
+                            <!-- Path Visualization Box -->
+                            <Border Background="{ThemeResource AppSurfaceElevated}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1" CornerRadius="12" Padding="14,10">
+                                <Grid ColumnSpacing="10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <FontIcon Grid.Column="0" Glyph="&#xE8B7;" FontSize="14" Foreground="{ThemeResource AppAccent}" VerticalAlignment="Center"/>
+                                    
+                                    <TextBlock Grid.Column="1" x:Name="MusicFolderPathText"
+                                               Text="C:\Users\...\Music"
+                                               FontSize="12" Foreground="{ThemeResource AppTextPrimary}"
+                                               TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+
+                                    <Button Grid.Column="2" Click="Rescan_Click"
+                                            Background="Transparent" BorderThickness="0" Padding="8,4" CornerRadius="8"
+                                            ToolTipService.ToolTip="Volver a escanear esta carpeta">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <FontIcon Glyph="&#xE72C;" FontSize="12" Foreground="{ThemeResource AppAccent}"/>
+                                            <TextBlock Text="Re-escanear" FontSize="11" Foreground="{ThemeResource AppAccent}"/>
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- ================= 2. AJUSTES GENERALES ================= -->
+                <StackPanel Spacing="10">
+                    <TextBlock Text="AJUSTES GENERALES" FontSize="11" FontWeight="Bold" Foreground="{ThemeResource AppAccent}"/>
+
+                    <Border Background="{ThemeResource AppCardBackground}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1" CornerRadius="16" Padding="20">
+                        <StackPanel Spacing="18">
+
+                            <!-- Modo Oscuro / Claro -->
+                            <Grid ColumnSpacing="16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <Border Grid.Column="0" Width="40" Height="40" CornerRadius="10" Background="{ThemeResource AppAccentSurface}" VerticalAlignment="Center">
+                                    <FontIcon Glyph="&#xE708;" FontSize="17" Foreground="{ThemeResource AppAccent}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                    <TextBlock Text="Modo Oscuro" FontSize="14" FontWeight="SemiBold" Foreground="{ThemeResource AppTextPrimary}"/>
+                                    <TextBlock Text="Alterna entre la apariencia oscura y clara de la interfaz con efecto visual adaptativo."
+                                               FontSize="12" Foreground="{ThemeResource AppTextSubtle}" TextWrapping="Wrap"/>
+                                </StackPanel>
+
+                                <ToggleSwitch Grid.Column="2" x:Name="DarkModeToggle"
+                                              OnContent="Activado" OffContent="Desactivado"
+                                              Toggled="DarkModeToggle_Toggled" VerticalAlignment="Center"/>
+                            </Grid>
+
+                            <Border Height="1" Background="{ThemeResource AppBorder}"/>
+
+                            <!-- Crossfade Toggle & Slider -->
+                            <Grid ColumnSpacing="16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <Border Grid.Column="0" Width="40" Height="40" CornerRadius="10" Background="{ThemeResource AppAccentSurface}" VerticalAlignment="Center">
+                                    <FontIcon Glyph="&#xE805;" FontSize="17" Foreground="{ThemeResource AppAccent}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                    <TextBlock Text="Efecto Crossfade (Transición Suave)" FontSize="14" FontWeight="SemiBold" Foreground="{ThemeResource AppTextPrimary}"/>
+                                    <TextBlock Text="Desvanece la canción actual y funde la siguiente suavemente para evitar pausas o silencios."
+                                               FontSize="12" Foreground="{ThemeResource AppTextSubtle}" TextWrapping="Wrap"/>
+                                </StackPanel>
+
+                                <ToggleSwitch Grid.Column="2" x:Name="CrossfadeToggle"
+                                              OnContent="Activado" OffContent="Desactivado"
+                                              Toggled="CrossfadeToggle_Toggled" VerticalAlignment="Center"/>
+                            </Grid>
+
+                            <!-- Crossfade Duration Slider (nested container) -->
+                            <Border x:Name="CrossfadeSliderContainer" Background="{ThemeResource AppSurfaceElevated}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1" CornerRadius="12" Padding="16,12" Margin="56,0,0,0">
+                                <StackPanel Spacing="8">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="Duración del fundido (Crossfade)" FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource AppTextPrimary}"/>
+                                        <TextBlock Grid.Column="1" x:Name="CrossfadeValueLabel" Text="3 s" FontSize="13" FontWeight="Bold" Foreground="{ThemeResource AppAccent}"/>
+                                    </Grid>
+                                    <Slider x:Name="CrossfadeSlider" Minimum="1" Maximum="10" StepFrequency="1" TickFrequency="1" SnapsTo="Ticks"
+                                            ValueChanged="CrossfadeSlider_ValueChanged"/>
+                                    <Grid>
+                                        <TextBlock Text="1 segundo" FontSize="10" Foreground="{ThemeResource AppTextSubtle}" HorizontalAlignment="Left"/>
+                                        <TextBlock Text="10 segundos" FontSize="10" Foreground="{ThemeResource AppTextSubtle}" HorizontalAlignment="Right"/>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Height="1" Background="{ThemeResource AppBorder}"/>
+
+                            <!-- Inicio con Windows -->
+                            <Grid ColumnSpacing="16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <Border Grid.Column="0" Width="40" Height="40" CornerRadius="10" Background="{ThemeResource AppAccentSurface}" VerticalAlignment="Center">
+                                    <FontIcon Glyph="&#xE7E8;" FontSize="17" Foreground="{ThemeResource AppAccent}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                    <TextBlock Text="Iniciar con Windows" FontSize="14" FontWeight="SemiBold" Foreground="{ThemeResource AppTextPrimary}"/>
+                                    <TextBlock Text="Abrir Kaki EQ automáticamente al iniciar sesión en el equipo para tener tu música siempre lista."
+                                               FontSize="12" Foreground="{ThemeResource AppTextSubtle}" TextWrapping="Wrap"/>
+                                </StackPanel>
+
+                                <ToggleSwitch Grid.Column="2" x:Name="StartupToggle"
+                                              OnContent="Activado" OffContent="Desactivado"
+                                              Toggled="StartupToggle_Toggled" VerticalAlignment="Center"/>
+                            </Grid>
+
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- ================= 3. ACERCA DE ================= -->
+                <StackPanel Spacing="10">
+                    <TextBlock Text="ACERCA DE" FontSize="11" FontWeight="Bold" Foreground="{ThemeResource AppAccent}"/>
+
+                    <Border Background="{ThemeResource AppCardBackground}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1" CornerRadius="16" Padding="20">
+                        <StackPanel Spacing="16">
+                            
+                            <!-- App Title and summary -->
+                            <Grid ColumnSpacing="16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <Border Grid.Column="0" Width="52" Height="52" CornerRadius="14" Background="{ThemeResource AppAccentContainer}">
+                                    <Image Source="ms-appx:///Assets/Kaki_Oficial_Blanco.png" Width="42" Height="42" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                    <TextBlock Text="Kaki EQ v2.0 - WinUI 3 Edition" FontSize="16" FontWeight="Bold" Foreground="{ThemeResource AppAccent}"/>
+                                    <TextBlock Text="Reproductor de audio de alta fidelidad con ecualización gráfica paramétrica DSP de 10 bandas y estética Material Design 3 (Itztli / Yolpaki)."
+                                               FontSize="12" Foreground="{ThemeResource AppTextPrimary}" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Technical Specs Badges -->
+                            <Border Background="{ThemeResource AppSurfaceElevated}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1" CornerRadius="12" Padding="14,10">
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="• Motor de audio: ManagedBass (BASS DirectX Engine)" FontSize="12" Foreground="{ThemeResource AppTextSecondary}"/>
+                                    <TextBlock Text="• Plataforma: Windows App SDK / WinUI 3 / .NET 8" FontSize="12" Foreground="{ThemeResource AppTextSecondary}"/>
+                                    <TextBlock Text="• Ecualizador paramétrico DSP: 32 Hz a 16 kHz (-15 dB a +15 dB)" FontSize="12" Foreground="{ThemeResource AppTextSecondary}"/>
+                                    <TextBlock Text="• Integración de sistema: Windows SMTC, System Tray y Reproducción en segundo plano" FontSize="12" Foreground="{ThemeResource AppTextSecondary}"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Codex Yolpaki Card -->
+                            <Border Background="{ThemeResource AppSurfaceElevated}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1" CornerRadius="14" Padding="16,12">
+                                <Grid ColumnSpacing="16">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <Image Grid.Column="0" Source="ms-appx:///Assets/CY_L_Oficial_Transparente.png" Width="52" Height="52" Stretch="Uniform" VerticalAlignment="Center"/>
+
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3">
+                                        <TextBlock Text="Desarrollado por Codex Yolpaki" FontWeight="Bold" FontSize="14" Foreground="{ThemeResource AppTextPrimary}"/>
+                                        <TextBlock Text="Innovación en software, audio digital y diseño de experiencias interactivas."
+                                                   FontSize="11" Foreground="{ThemeResource AppTextSecondary}" TextWrapping="Wrap"/>
+                                        <TextBlock Text="© 2026 Codex Yolpaki • Todos los derechos reservados" FontSize="10" Foreground="{ThemeResource AppTextSubtle}"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Window>

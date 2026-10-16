@@ -13,6 +13,7 @@ using KakiEQ_WinUI.Helpers;
 using KakiEQ_WinUI.Models;
 using KakiEQ_WinUI.Services.Audio;
 using KakiEQ_WinUI.Services.Data;
+using KakiEQ_WinUI.Services.SystemIntegration;
 
 namespace KakiEQ_WinUI.ViewModels
 {
@@ -25,6 +26,7 @@ namespace KakiEQ_WinUI.ViewModels
         private readonly LibraryService _libService;
         private readonly SettingsService _settingsService;
         private readonly BassAudioEngine _audioEngine;
+        private readonly SmtcService _smtcService;
         private readonly DispatcherQueueTimer _timer;
         private readonly DispatcherQueue _dispatcherQueue;
 
@@ -32,6 +34,7 @@ namespace KakiEQ_WinUI.ViewModels
         public LibraryService LibService => _libService;
         public SettingsService SettingsService => _settingsService;
         public BassAudioEngine AudioEngine => _audioEngine;
+        public SmtcService SmtcService => _smtcService;
 
         // --- Current View & Navigation ---
         private object? _currentView;
@@ -183,6 +186,7 @@ namespace KakiEQ_WinUI.ViewModels
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(PlayPauseIconGlyph));
                 OnPropertyChanged(nameof(PlayPauseTooltip));
+                _smtcService?.UpdatePlaybackState(value);
             }
         }
 
@@ -356,12 +360,34 @@ namespace KakiEQ_WinUI.ViewModels
             _libService = new LibraryService(_dbService);
             _settingsService = new SettingsService();
             _audioEngine = new BassAudioEngine();
+            _smtcService = new SmtcService();
 
             var savedSettings = _settingsService.LoadSettings();
             _volume = savedSettings.Volume * 100.0;
             _audioEngine.SetVolume(savedSettings.Volume);
+            _audioEngine.CrossfadeEnabled = savedSettings.CrossfadeEnabled;
+            _audioEngine.CrossfadeDurationSeconds = savedSettings.CrossfadeDurationSeconds;
+            _isLightTheme = !savedSettings.IsDarkMode;
 
-            // Timer for tracking playback progression
+            // Wire SMTC Events
+            _smtcService.PlayRequested += () =>
+            {
+                if (!IsPlaying && CurrentTrack != null) PlayPauseCommand?.Execute(null);
+            };
+            _smtcService.PauseRequested += () =>
+            {
+                if (IsPlaying) PlayPauseCommand?.Execute(null);
+            };
+            _smtcService.NextRequested += () =>
+            {
+                NextCommand?.Execute(null);
+            };
+            _smtcService.PreviousRequested += () =>
+            {
+                PreviousCommand?.Execute(null);
+            };
+
+            // Timer for tracking playback progression and crossfade trigger
             _timer = _dispatcherQueue.CreateTimer();
             _timer.Interval = TimeSpan.FromMilliseconds(400);
             _timer.Tick += (s, e) =>
@@ -369,6 +395,7 @@ namespace KakiEQ_WinUI.ViewModels
                 if (_audioEngine.IsPlaying)
                 {
                     CurrentPositionSeconds = _audioEngine.CurrentPosition.TotalSeconds;
+                    _audioEngine.CheckCrossfadeProgress();
                 }
             };
 
@@ -384,6 +411,22 @@ namespace KakiEQ_WinUI.ViewModels
                     else
                     {
                         await PlayNextAsync();
+                    }
+                });
+            };
+
+            // Setup crossfade transition before track finishes
+            _audioEngine.TrackCrossfadeTriggered += (s, e) =>
+            {
+                _dispatcherQueue.TryEnqueue(async () =>
+                {
+                    if (IsRepeat && CurrentTrack != null)
+                    {
+                        await PlayTrackAsync(CurrentTrack, isCrossfade: true);
+                    }
+                    else
+                    {
+                        await PlayNextAsync(isCrossfade: true);
                     }
                 });
             };
@@ -551,7 +594,7 @@ namespace KakiEQ_WinUI.ViewModels
             });
         }
 
-        public async Task PlayTrackAsync(Track track, List<Track>? contextQueue = null)
+        public async Task PlayTrackAsync(Track track, List<Track>? contextQueue = null, bool isCrossfade = false)
         {
             if (contextQueue != null)
             {
@@ -572,14 +615,19 @@ namespace KakiEQ_WinUI.ViewModels
             TotalDurationSeconds = track.Duration.TotalSeconds;
             CurrentPositionSeconds = 0;
 
-            await _audioEngine.LoadFileAsync(track.FilePath);
-            await _audioEngine.PlayAsync();
+            await _audioEngine.LoadFileAsync(track.FilePath, isCrossfade);
+            if (!isCrossfade)
+            {
+                await _audioEngine.PlayAsync();
+            }
 
             IsPlaying = true;
             _timer.Start();
+
+            _smtcService?.UpdateMetadata(track, true);
         }
 
-        public async Task PlayNextAsync()
+        public async Task PlayNextAsync(bool isCrossfade = false)
         {
             if (CurrentQueue == null || CurrentQueue.Count == 0) return;
 
@@ -598,7 +646,7 @@ namespace KakiEQ_WinUI.ViewModels
             }
 
             var nextTrack = CurrentQueue[CurrentQueueIndex];
-            await PlayTrackAsync(nextTrack);
+            await PlayTrackAsync(nextTrack, isCrossfade: isCrossfade);
         }
 
         public async Task PlayPreviousAsync()

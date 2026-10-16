@@ -48,7 +48,35 @@ namespace KakiEQ_WinUI
         /// <param name="args">Details about the launch request and process.</param>
         protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
         {
-            _window = new MainWindow();
+            string? audioFilePath = null;
+            try
+            {
+                var cmdArgs = Environment.GetCommandLineArgs();
+                for (int i = 1; i < cmdArgs.Length; i++)
+                {
+                    string candidate = cmdArgs[i].Trim('"', ' ');
+                    if (File.Exists(candidate))
+                    {
+                        string ext = System.IO.Path.GetExtension(candidate).ToLowerInvariant();
+                        if (ext is ".mp3" or ".flac" or ".wav" or ".m4a" or ".aac" or ".ogg" or ".wma" or ".opus")
+                        {
+                            audioFilePath = candidate;
+                            break;
+                        }
+                    }
+                }
+            }
+            catch { }
+
+            if (!string.IsNullOrEmpty(audioFilePath))
+            {
+                _window = new Views.MiniPlayerWindow(audioFilePath);
+            }
+            else
+            {
+                _window = new MainWindow();
+            }
+
             _window.Activate();
         }
     }

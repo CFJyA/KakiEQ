@@ -40,9 +40,14 @@ namespace KakiEQ_WinUI.Services.Audio
             }
         }
 
+        public bool CrossfadeEnabled { get; set; } = false;
+        public int CrossfadeDurationSeconds { get; set; } = 3;
+        private bool _crossfadeTriggeredForCurrentTrack = false;
+
         public event EventHandler? PlaybackPositionChanged;
         public event EventHandler? PlaybackStateChanged;
         public event EventHandler? TrackEnded;
+        public event EventHandler? TrackCrossfadeTriggered;
 
         public BassAudioEngine()
         {
@@ -52,8 +57,51 @@ namespace KakiEQ_WinUI.Services.Audio
 
         public Task LoadFileAsync(string filePath)
         {
+            return LoadFileAsync(filePath, isCrossfade: false);
+        }
+
+        public Task LoadFileAsync(string filePath, bool isCrossfade)
+        {
             return Task.Run(() =>
             {
+                _crossfadeTriggeredForCurrentTrack = false;
+
+                if (isCrossfade && CrossfadeEnabled && _stream != 0 && Bass.ChannelIsActive(_stream) == PlaybackState.Playing)
+                {
+                    int oldStream = _stream;
+                    int newStream = Bass.CreateStream(filePath, 0, 0, BassFlags.Default);
+                    if (newStream != 0)
+                    {
+                        // Start new stream muted and slide volume up
+                        Bass.ChannelSetAttribute(newStream, ChannelAttribute.Volume, 0f);
+                        _equalizer.AttachToStream(newStream);
+                        Bass.ChannelPlay(newStream);
+
+                        int crossfadeMs = Math.Clamp(CrossfadeDurationSeconds, 1, 10) * 1000;
+                        Bass.ChannelSlideAttribute(newStream, ChannelAttribute.Volume, _volume, crossfadeMs);
+                        Bass.ChannelSlideAttribute(oldStream, ChannelAttribute.Volume, 0f, crossfadeMs);
+
+                        _stream = newStream;
+
+                        // Setup auto-next on new stream completion
+                        _endSyncProc = (handle, channel, data, user) =>
+                        {
+                            TrackEnded?.Invoke(this, EventArgs.Empty);
+                        };
+                        _endSyncHandle = Bass.ChannelSetSync(_stream, SyncFlags.End, 0, _endSyncProc);
+
+                        // Free old stream after crossfade completes
+                        _ = Task.Delay(crossfadeMs + 300).ContinueWith(_ =>
+                        {
+                            Bass.StreamFree(oldStream);
+                        });
+
+                        PlaybackStateChanged?.Invoke(this, EventArgs.Empty);
+                        return;
+                    }
+                }
+
+                // Normal (non-crossfade) loading
                 if (_stream != 0)
                 {
                     Bass.StreamFree(_stream);
@@ -76,6 +124,22 @@ namespace KakiEQ_WinUI.Services.Audio
 
                 PlaybackStateChanged?.Invoke(this, EventArgs.Empty);
             });
+        }
+
+        public void CheckCrossfadeProgress()
+        {
+            if (!CrossfadeEnabled || _crossfadeTriggeredForCurrentTrack || _stream == 0) return;
+            if (!IsPlaying) return;
+
+            var total = TotalDuration;
+            if (total.TotalSeconds <= CrossfadeDurationSeconds + 2) return;
+
+            var current = CurrentPosition;
+            if (current >= total - TimeSpan.FromSeconds(CrossfadeDurationSeconds))
+            {
+                _crossfadeTriggeredForCurrentTrack = true;
+                TrackCrossfadeTriggered?.Invoke(this, EventArgs.Empty);
+            }
         }
 
         public Task PlayAsync()
