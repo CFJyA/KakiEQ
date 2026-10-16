@@ -108,12 +108,29 @@ namespace KakiEQ_WinUI.Views
             }
         }
 
-        private void RemoveTrack_Click(object sender, RoutedEventArgs e)
+        private void MoreButton_Click(object sender, RoutedEventArgs e)
         {
             var vm = ViewModel ?? DataContext as PlaylistDetailViewModel;
-            if (sender is Button btn && btn.Tag is Track track && vm != null)
+            if (sender is FrameworkElement btn && ((btn.Tag as Track) ?? (btn.DataContext as Track)) is Track track)
             {
-                vm.RemoveTrackCommand.Execute(track);
+                TrackContextMenuHelper.ShowAtTarget(
+                    track,
+                    btn,
+                    null,
+                    onRemoveFromPlaylist: () => vm?.RemoveTrackCommand.Execute(track));
+            }
+        }
+
+        private void TrackRow_RightTapped(object sender, Microsoft.UI.Xaml.Input.RightTappedRoutedEventArgs e)
+        {
+            var vm = ViewModel ?? DataContext as PlaylistDetailViewModel;
+            if (sender is FrameworkElement row && ((row.Tag as Track) ?? (row.DataContext as Track)) is Track track)
+            {
+                TrackContextMenuHelper.ShowAtTarget(
+                    track,
+                    row,
+                    e.GetPosition(row),
+                    onRemoveFromPlaylist: () => vm?.RemoveTrackCommand.Execute(track));
             }
         }
     }

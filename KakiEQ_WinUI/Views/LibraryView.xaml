@@ -85,7 +85,8 @@
 
             <ListView.ItemTemplate>
                 <DataTemplate x:DataType="models:Track">
-                    <Grid Padding="8,8" CornerRadius="10">
+                    <Grid Padding="8,8" CornerRadius="10" Background="Transparent"
+                          RightTapped="TrackRow_RightTapped" Tag="{x:Bind}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="48"/>
                             <ColumnDefinition Width="2.5*"/>

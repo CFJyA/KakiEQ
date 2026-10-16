@@ -51,6 +51,7 @@ namespace KakiEQ_WinUI.Views
         {
             CurrentInstance = this;
             InitializeComponent();
+            FolderTracksListView.ItemsSource = FolderPlaylist;
 
             ExtendsContentIntoTitleBar = true;
             SetTitleBar(TitleBarBorder);
@@ -410,6 +411,10 @@ namespace KakiEQ_WinUI.Views
                 ArtworkContainer.Visibility = Visibility.Collapsed;
                 ToggleListText.Text = "Carátula";
                 ToggleListIcon.Glyph = "\uEB9F";
+                if (FolderTracksListView.ItemsSource != FolderPlaylist)
+                {
+                    FolderTracksListView.ItemsSource = FolderPlaylist;
+                }
                 UpdatePlaylistPlayingState();
             }
         }

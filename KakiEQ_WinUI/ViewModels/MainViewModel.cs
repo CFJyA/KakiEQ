@@ -206,10 +206,14 @@ namespace KakiEQ_WinUI.ViewModels
                 _isCurrentTrackLiked = value;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(LikeBrush));
+                OnPropertyChanged(nameof(LikeGlyph));
+                OnPropertyChanged(nameof(LikeTooltipText));
             }
         }
 
         public SolidColorBrush LikeBrush => IsCurrentTrackLiked ? HeartBrush : InactiveBrush;
+        public string LikeGlyph => IsCurrentTrackLiked ? "\uEB52" : "\uEB51";
+        public string LikeTooltipText => IsCurrentTrackLiked ? "Quitar de Favoritos (Yollotl)" : "Añadir a Favoritos (Yollotl)";
 
         private bool _isShuffle;
         public bool IsShuffle

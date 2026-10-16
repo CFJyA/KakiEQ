@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
@@ -10,8 +11,26 @@ namespace KakiEQ_WinUI.ViewModels
     public class ArtistsViewModel : ViewModelBase
     {
         private readonly DatabaseService _dbService;
+        private readonly List<ArtistItem> _allArtists = new();
+        private string _searchQuery = string.Empty;
 
         public ObservableCollection<ArtistItem> Artists { get; } = new();
+
+        public string SearchQuery
+        {
+            get => _searchQuery;
+            set
+            {
+                if (_searchQuery != value)
+                {
+                    _searchQuery = value;
+                    OnPropertyChanged();
+                    FilterArtists();
+                }
+            }
+        }
+
+        public string TotalArtistsCountFormatted => $"{Artists.Count} {(Artists.Count == 1 ? "artista" : "artistas")}";
 
         public ArtistsViewModel(DatabaseService dbService)
         {
@@ -32,14 +51,25 @@ namespace KakiEQ_WinUI.ViewModels
 
             RunOnUIThread(() =>
             {
-                Artists.Clear();
-                foreach (var artist in uniqueArtists)
-                {
-                    Artists.Add(artist);
-                }
-                OnPropertyChanged(nameof(Artists));
+                _allArtists.Clear();
+                _allArtists.AddRange(uniqueArtists);
+                FilterArtists();
             });
+        }
+
+        private void FilterArtists()
+        {
+            string query = (_searchQuery ?? string.Empty).Trim().ToLowerInvariant();
+            var filtered = string.IsNullOrEmpty(query)
+                ? _allArtists
+                : _allArtists.Where(a => a.Name != null && a.Name.ToLowerInvariant().Contains(query)).ToList();
+
+            Artists.Clear();
+            foreach (var artist in filtered)
+            {
+                Artists.Add(artist);
+            }
+            OnPropertyChanged(nameof(TotalArtistsCountFormatted));
         }
     }
 }
-

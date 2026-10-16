@@ -156,6 +156,7 @@
                     </Grid>
 
                     <ListView Grid.Row="1" x:Name="FolderTracksListView"
+                              ItemsSource="{x:Bind FolderPlaylist, Mode=OneWay}"
                               SelectionMode="None"
                               IsItemClickEnabled="True"
                               ItemClick="FolderTracksListView_ItemClick"
@@ -204,8 +205,8 @@
                 BorderBrush="#63398B"
                 BorderThickness="1.5"
                 CornerRadius="20"
-                Padding="16,10">
-            <StackPanel Spacing="6">
+                Padding="16,8">
+            <StackPanel Spacing="4">
                 <!-- Seek Bar & Timers -->
                 <Grid ColumnSpacing="8">
                     <Grid.ColumnDefinitions>
@@ -214,14 +215,14 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
-                    <TextBlock Grid.Column="0" x:Name="CurrentTimeText" Text="00:00" FontSize="10" Foreground="#CBB5E2" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="0" x:Name="CurrentTimeText" Text="00:00" FontSize="11" Foreground="#CBB5E2" VerticalAlignment="Center"/>
                     
                     <Slider Grid.Column="1" x:Name="SeekSlider"
                             Minimum="0" Maximum="100" Value="0"
                             ValueChanged="SeekSlider_ValueChanged"
-                            VerticalAlignment="Center" Margin="0" Height="20"/>
+                            VerticalAlignment="Center" Margin="0" MinHeight="0" Height="30"/>
 
-                    <TextBlock Grid.Column="2" x:Name="TotalTimeText" Text="00:00" FontSize="10" Foreground="#CBB5E2" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="2" x:Name="TotalTimeText" Text="00:00" FontSize="11" Foreground="#CBB5E2" VerticalAlignment="Center"/>
                 </Grid>
 
                 <!-- Control Buttons Row -->

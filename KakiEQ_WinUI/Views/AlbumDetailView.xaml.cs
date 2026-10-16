@@ -54,6 +54,22 @@ namespace KakiEQ_WinUI.Views
                 }
             }
         }
+
+        private void MoreButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is FrameworkElement btn && ((btn.Tag as Track) ?? (btn.DataContext as Track)) is Track track)
+            {
+                TrackContextMenuHelper.ShowAtTarget(track, btn);
+            }
+        }
+
+        private void TrackRow_RightTapped(object sender, Microsoft.UI.Xaml.Input.RightTappedRoutedEventArgs e)
+        {
+            if (sender is FrameworkElement row && ((row.Tag as Track) ?? (row.DataContext as Track)) is Track track)
+            {
+                TrackContextMenuHelper.ShowAtTarget(track, row, e.GetPosition(row));
+            }
+        }
     }
 }
 

@@ -15,10 +15,31 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <StackPanel Grid.Row="0" Margin="0,0,0,20">
-            <TextBlock Text="Álbumes" FontSize="26" FontWeight="Bold" Foreground="{ThemeResource AppTextPrimary}"/>
-            <TextBlock Text="Explora tu colección de música organizada por álbumes" FontSize="13" Foreground="{ThemeResource AppTextSubtle}" Margin="0,4,0,0"/>
-        </StackPanel>
+        <Grid Grid.Row="0" Margin="0,0,0,20">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="0">
+                <TextBlock Text="Álbumes" FontSize="26" FontWeight="Bold" Foreground="{ThemeResource AppTextPrimary}"/>
+                <TextBlock Text="Explora tu colección de música organizada por álbumes" FontSize="13" Foreground="{ThemeResource AppTextSubtle}" Margin="0,4,0,0"/>
+            </StackPanel>
+
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="12">
+                <!-- Search Bar -->
+                <TextBox Width="260"
+                         Text="{x:Bind ViewModel.SearchQuery, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         PlaceholderText="Buscar álbumes o artistas..."
+                         Background="{ThemeResource AppSurfaceContainer}" BorderBrush="{ThemeResource AppBorder}" CornerRadius="12" Padding="12,6"/>
+
+                <!-- Albums Count Pill -->
+                <Border Background="{ThemeResource AppSurfaceElevated}" CornerRadius="12" Padding="10,6">
+                    <TextBlock Text="{x:Bind ViewModel.TotalAlbumsCountFormatted, Mode=OneWay}"
+                               FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource AppAccent}"/>
+                </Border>
+            </StackPanel>
+        </Grid>
 
         <GridView x:Name="AlbumsGridView"
                   Grid.Row="1" ItemsSource="{x:Bind ViewModel.Albums, Mode=OneWay}"

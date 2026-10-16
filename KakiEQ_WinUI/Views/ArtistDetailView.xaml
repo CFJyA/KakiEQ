@@ -218,7 +218,8 @@
                               Padding="0,0,4,8">
                         <ListView.ItemTemplate>
                             <DataTemplate x:DataType="models:Track">
-                                <Grid Padding="10,7" CornerRadius="6">
+                                <Grid Padding="10,7" CornerRadius="6" Background="Transparent"
+                                      RightTapped="TrackRow_RightTapped" Tag="{x:Bind}">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="36"/>
                                         <ColumnDefinition Width="*"/>
@@ -238,11 +239,11 @@
                                     <TextBlock Grid.Column="2" Text="{x:Bind DurationFormatted}" FontSize="11" Foreground="{ThemeResource AppTextMuted}"
                                                VerticalAlignment="Center" HorizontalAlignment="Right"/>
 
-                                    <!-- Add to playlist button -->
+                                    <!-- Options Menu (3 dots) -->
                                     <Button Grid.Column="3" Background="Transparent" BorderThickness="0" Foreground="{ThemeResource AppTextSubtle}"
-                                            Click="AddSingleTrackToPlaylist_Click" Tag="{x:Bind}" Padding="0" Width="28" Height="28" CornerRadius="14"
-                                            HorizontalAlignment="Right" ToolTipService.ToolTip="Añadir a playlist">
-                                        <FontIcon Glyph="&#xE8F1;" FontSize="11"/>
+                                            Click="MoreButton_Click" Tag="{x:Bind}" Padding="0" Width="28" Height="28" CornerRadius="14"
+                                            HorizontalAlignment="Right" ToolTipService.ToolTip="Más opciones">
+                                        <FontIcon Glyph="&#xE712;" FontSize="13"/>
                                     </Button>
                                 </Grid>
                             </DataTemplate>

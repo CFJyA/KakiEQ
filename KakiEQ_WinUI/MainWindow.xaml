@@ -202,7 +202,7 @@
         <!-- 2. FLOATING BOTTOM PLAYER BAR (Mockup Capsule Design) -->
         <Border Grid.Row="2"
                 Margin="32,0,32,16"
-                Height="82"
+                Height="86"
                 CornerRadius="24"
                 Background="{ThemeResource AppPlayerBg}"
                 BorderBrush="{ThemeResource AppAccent}"
@@ -211,7 +211,7 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="240"/>
                     <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="240"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
                 <!-- Left: Track Info (Clickable to open Now Playing Overlay) -->
@@ -286,7 +286,7 @@
                     </StackPanel>
 
                     <!-- Seek Bar row -->
-                    <Grid Width="450" ColumnSpacing="10" Margin="0,2,0,0">
+                    <Grid Width="450" ColumnSpacing="10" Margin="0,0,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
@@ -294,16 +294,16 @@
                         </Grid.ColumnDefinitions>
 
                         <TextBlock Grid.Column="0" Text="{x:Bind ViewModel.CurrentPositionFormatted, Mode=OneWay, FallbackValue='00:00'}"
-                                   FontSize="10" Foreground="{ThemeResource AppTextSubtle}" VerticalAlignment="Center"/>
+                                   FontSize="11" Foreground="{ThemeResource AppTextSubtle}" VerticalAlignment="Center"/>
 
                         <Slider Grid.Column="1"
                                 Maximum="{x:Bind ViewModel.TotalDurationSeconds, Mode=OneWay, FallbackValue=100}"
                                 Value="{x:Bind ViewModel.CurrentPositionSeconds, Mode=OneWay}"
                                 ValueChanged="SeekSlider_ValueChanged"
-                                VerticalAlignment="Center" Margin="0" Height="20"/>
+                                VerticalAlignment="Center" Margin="0" MinHeight="0" Height="30"/>
 
                         <TextBlock Grid.Column="2" Text="{x:Bind ViewModel.TotalDurationFormatted, Mode=OneWay, FallbackValue='00:00'}"
-                                   FontSize="10" Foreground="{ThemeResource AppTextSubtle}" VerticalAlignment="Center"/>
+                                   FontSize="11" Foreground="{ThemeResource AppTextSubtle}" VerticalAlignment="Center"/>
                     </Grid>
                 </StackPanel>
 
@@ -312,8 +312,8 @@
                     <!-- Like (Heart) Button -->
                     <Button Command="{x:Bind ViewModel.LikeTrackCommand}"
                             Background="Transparent" BorderThickness="0" Padding="0" Width="34" Height="34" CornerRadius="17"
-                            ToolTipService.ToolTip="Añadir a Favoritos (Yollotl)">
-                        <FontIcon Glyph="&#xEB52;" FontSize="16"
+                            ToolTipService.ToolTip="{x:Bind ViewModel.LikeTooltipText, Mode=OneWay}">
+                        <FontIcon Glyph="{x:Bind ViewModel.LikeGlyph, Mode=OneWay}" FontSize="16"
                                   Foreground="{x:Bind ViewModel.LikeBrush, Mode=OneWay}"/>
                     </Button>
 
@@ -456,8 +456,9 @@
                             </Button>
 
                             <Button Command="{x:Bind ViewModel.LikeTrackCommand}"
-                                    Background="Transparent" BorderThickness="0" Width="44" Height="44" CornerRadius="22">
-                                <FontIcon Glyph="&#xEB52;" FontSize="20"
+                                    Background="Transparent" BorderThickness="0" Width="44" Height="44" CornerRadius="22"
+                                    ToolTipService.ToolTip="{x:Bind ViewModel.LikeTooltipText, Mode=OneWay}">
+                                <FontIcon Glyph="{x:Bind ViewModel.LikeGlyph, Mode=OneWay}" FontSize="20"
                                           Foreground="{x:Bind ViewModel.LikeBrush, Mode=OneWay}"/>
                             </Button>
                         </StackPanel>
