@@ -247,15 +247,17 @@ namespace KakiEQ_WinUI
 
         public void OpenMiniPlayer_Click(object sender, RoutedEventArgs e)
         {
-            if (_miniPlayerWindow != null)
+            if (Views.MiniPlayerWindow.CurrentInstance != null)
             {
-                _miniPlayerWindow.Activate();
+                Views.MiniPlayerWindow.CurrentInstance.BringToForeground();
                 return;
             }
+
 
             _miniPlayerWindow = new Views.MiniPlayerWindow(ViewModel.CurrentTrack?.FilePath);
             _miniPlayerWindow.Closed += (s, ev) => _miniPlayerWindow = null;
             _miniPlayerWindow.Activate();
+            _miniPlayerWindow.BringToForeground();
         }
 
         private async void PickFolder_Click(object sender, RoutedEventArgs e)
@@ -295,6 +297,24 @@ namespace KakiEQ_WinUI
             {
                 _ = ViewModel.PlayTrackAsync(track);
             }
+        }
+
+        private void Queue_DragItemsCompleted(ListViewBase sender, DragItemsCompletedEventArgs args)
+        {
+            ViewModel.SyncQueueAfterReorder();
+        }
+
+        private void RemoveQueueTrack_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.Tag is Track track)
+            {
+                ViewModel.RemoveTrackFromQueue(track);
+            }
+        }
+
+        private void ClearQueue_Click(object sender, RoutedEventArgs e)
+        {
+            ViewModel.ClearQueue();
         }
 
         private void ToggleTheme_Click(object sender, RoutedEventArgs e)

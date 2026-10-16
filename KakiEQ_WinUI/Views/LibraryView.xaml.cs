@@ -51,21 +51,26 @@ namespace KakiEQ_WinUI.Views
                 // Play next
                 var playNextItem = new MenuFlyoutItem
                 {
-                    Text = "Reproducir siguiente",
+                    Text = "Reproducir a continuación",
                     Icon = new FontIcon { Glyph = "\uE895" }
                 };
                 playNextItem.Click += (s, args) =>
                 {
-                    if (MainViewModel.Instance?.CurrentQueue != null)
-                    {
-                        int insertIndex = MainViewModel.Instance.CurrentQueueIndex + 1;
-                        if (insertIndex >= 0 && insertIndex <= MainViewModel.Instance.CurrentQueue.Count)
-                        {
-                            MainViewModel.Instance.CurrentQueue.Insert(insertIndex, track);
-                        }
-                    }
+                    MainViewModel.Instance?.AddTrackNext(track);
                 };
                 flyout.Items.Add(playNextItem);
+
+                // Add to queue end
+                var addToQueueItem = new MenuFlyoutItem
+                {
+                    Text = "Añadir al final de la cola",
+                    Icon = new FontIcon { Glyph = "\uE8F1" }
+                };
+                addToQueueItem.Click += (s, args) =>
+                {
+                    MainViewModel.Instance?.AddTrackToQueue(track);
+                };
+                flyout.Items.Add(addToQueueItem);
 
                 // Add to playlist submenu
                 var playlistSubItem = new MenuFlyoutSubItem

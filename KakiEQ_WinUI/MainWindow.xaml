@@ -465,18 +465,44 @@
                 </Grid>
 
                 <!-- Right Column: Cola de Reproducción (Active Queue) -->
-                <Border Grid.Row="1" Grid.Column="1" Background="{ThemeResource AppCardBackground}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1" CornerRadius="20" Padding="20">
+                <Border Grid.Row="1" Grid.Column="1" Background="{ThemeResource AppCardBackground}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1" CornerRadius="20" Padding="16,14">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
 
-                        <TextBlock Grid.Row="0" Text="{x:Bind ViewModel.QueueCountText, Mode=OneWay}"
-                                   FontWeight="Bold" FontSize="13" Foreground="#BB86FC" Margin="0,0,0,14"/>
+                        <!-- Queue Header with Count and Clear Button -->
+                        <Grid Grid.Row="0" Margin="4,0,4,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
 
-                        <ListView Grid.Row="1" ItemsSource="{x:Bind ViewModel.CurrentQueue, Mode=OneWay}"
+                            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                <FontIcon Glyph="&#xE8F1;" FontSize="13" Foreground="#BB86FC"/>
+                                <TextBlock Text="{x:Bind ViewModel.QueueCountText, Mode=OneWay}"
+                                           FontWeight="Bold" FontSize="13" Foreground="#BB86FC" VerticalAlignment="Center"/>
+                            </StackPanel>
+
+                            <Button Grid.Column="1" Click="ClearQueue_Click"
+                                    Background="Transparent" BorderThickness="0" Padding="6,2" CornerRadius="8"
+                                    ToolTipService.ToolTip="Vaciar cola de reproducción">
+                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                    <FontIcon Glyph="&#xE74D;" FontSize="11" Foreground="{ThemeResource AppTextSubtle}"/>
+                                    <TextBlock Text="Limpiar" FontSize="11" Foreground="{ThemeResource AppTextSubtle}"/>
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+
+                        <!-- Reorderable Queue ListView -->
+                        <ListView Grid.Row="1" x:Name="QueueListView"
+                                  ItemsSource="{x:Bind ViewModel.CurrentQueue, Mode=OneWay}"
                                   SelectedIndex="{x:Bind ViewModel.CurrentQueueIndex, Mode=TwoWay}"
+                                  CanReorderItems="True"
+                                  AllowDrop="True"
+                                  CanDragItems="True"
+                                  DragItemsCompleted="Queue_DragItemsCompleted"
                                   SelectionMode="Single"
                                   IsItemClickEnabled="True"
                                   ItemClick="QueueItem_Click">
@@ -484,15 +510,30 @@
                                 <DataTemplate x:DataType="models:Track">
                                     <Grid Padding="4,6">
                                         <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="24"/>
                                             <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="28"/>
                                         </Grid.ColumnDefinitions>
-                                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+
+                                        <!-- Drag handle icon -->
+                                        <FontIcon Grid.Column="0" Glyph="&#xE76F;" FontSize="11" Foreground="{ThemeResource AppTextMuted}"
+                                                  VerticalAlignment="Center" HorizontalAlignment="Left"/>
+
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="4,0,8,0">
                                             <TextBlock Text="{x:Bind Title}" FontWeight="SemiBold" FontSize="13" Foreground="{ThemeResource AppTextPrimary}" TextTrimming="CharacterEllipsis"/>
                                             <TextBlock Text="{x:Bind Artist}" FontSize="11" Foreground="{ThemeResource AppTextSubtle}" TextTrimming="CharacterEllipsis"/>
                                         </StackPanel>
-                                        <TextBlock Grid.Column="1" Text="{x:Bind DurationFormatted}" FontSize="11" Foreground="#666666"
-                                                   VerticalAlignment="Center" Margin="8,0,0,0"/>
+
+                                        <TextBlock Grid.Column="2" Text="{x:Bind DurationFormatted}" FontSize="11" Foreground="#666666"
+                                                   VerticalAlignment="Center" Margin="4,0,4,0"/>
+
+                                        <!-- Remove from queue button -->
+                                        <Button Grid.Column="3" Click="RemoveQueueTrack_Click" Tag="{x:Bind}"
+                                                Background="Transparent" BorderThickness="0" Padding="0" Width="24" Height="24" CornerRadius="12"
+                                                HorizontalAlignment="Right" ToolTipService.ToolTip="Quitar de la cola">
+                                            <FontIcon Glyph="&#xE711;" FontSize="10" Foreground="{ThemeResource AppTextMuted}"/>
+                                        </Button>
                                     </Grid>
                                 </DataTemplate>
                             </ListView.ItemTemplate>

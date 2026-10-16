@@ -1,23 +1,11 @@
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Controls.Primitives;
-using Microsoft.UI.Xaml.Data;
-using Microsoft.UI.Xaml.Input;
-using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Navigation;
-using Microsoft.UI.Xaml.Shapes;
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Runtime.InteropServices.WindowsRuntime;
-using Windows.ApplicationModel;
-using Windows.ApplicationModel.Activation;
-using Windows.Foundation;
-using Windows.Foundation.Collections;
-
-// To learn more about WinUI, the WinUI project structure,
-// and more about our project templates, see: http://aka.ms/winui-project-info.
+using System.IO.Pipes;
+using System.Runtime.InteropServices;
+using System.Threading.Tasks;
+using Microsoft.UI.Dispatching;
+using Microsoft.UI.Xaml;
+using KakiEQ_WinUI.Views;
 
 namespace KakiEQ_WinUI
 {
@@ -27,10 +15,14 @@ namespace KakiEQ_WinUI
     public partial class App : Application
     {
         private Window? _window;
+        public static DispatcherQueue? AppDispatcherQueue { get; private set; }
+
+        [DllImport("user32.dll")]
+        private static extern bool AllowSetForegroundWindow(int dwProcessId);
+        private const int ASFW_ANY = -1;
 
         /// <summary>
-        /// Initializes the singleton application object.  This is the first line of authored code
-        /// executed, and as such is the logical equivalent of main() or WinMain().
+        /// Initializes the singleton application object.
         /// </summary>
         public App()
         {
@@ -57,7 +49,7 @@ namespace KakiEQ_WinUI
                     string candidate = cmdArgs[i].Trim('"', ' ');
                     if (File.Exists(candidate))
                     {
-                        string ext = System.IO.Path.GetExtension(candidate).ToLowerInvariant();
+                        string ext = Path.GetExtension(candidate).ToLowerInvariant();
                         if (ext is ".mp3" or ".flac" or ".wav" or ".m4a" or ".aac" or ".ogg" or ".wma" or ".opus")
                         {
                             audioFilePath = candidate;
@@ -68,9 +60,24 @@ namespace KakiEQ_WinUI
             }
             catch { }
 
+            // If an audio file was passed, attempt to pass it to an already running instance
             if (!string.IsNullOrEmpty(audioFilePath))
             {
-                _window = new Views.MiniPlayerWindow(audioFilePath);
+                if (TrySendToExistingInstance(audioFilePath))
+                {
+                    // Existing instance was notified, terminate this secondary process cleanly
+                    Environment.Exit(0);
+                    return;
+                }
+            }
+
+            // Primary instance initialization
+            AppDispatcherQueue = DispatcherQueue.GetForCurrentThread();
+            StartPipeServer();
+
+            if (!string.IsNullOrEmpty(audioFilePath))
+            {
+                _window = new MiniPlayerWindow(audioFilePath);
             }
             else
             {
@@ -78,6 +85,86 @@ namespace KakiEQ_WinUI
             }
 
             _window.Activate();
+        }
+
+        private static bool TrySendToExistingInstance(string filePath)
+        {
+            try
+            {
+                using var client = new NamedPipeClientStream(".", "KakiEQ_Playback_Pipe", PipeDirection.Out);
+                client.Connect(300); // 300ms connection timeout
+                using var writer = new StreamWriter(client) { AutoFlush = true };
+                writer.WriteLine(filePath);
+                try
+                {
+                    AllowSetForegroundWindow(ASFW_ANY);
+                }
+                catch { }
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static void StartPipeServer()
+        {
+            Task.Run(async () =>
+            {
+                while (true)
+                {
+                    try
+                    {
+                        using var server = new NamedPipeServerStream(
+                            "KakiEQ_Playback_Pipe",
+                            PipeDirection.In,
+                            1,
+                            PipeTransmissionMode.Byte,
+                            PipeOptions.Asynchronous);
+
+                        await server.WaitForConnectionAsync();
+
+                        using var reader = new StreamReader(server);
+                        string? filePath = await reader.ReadLineAsync();
+
+                        if (!string.IsNullOrWhiteSpace(filePath) && File.Exists(filePath))
+                        {
+                            AppDispatcherQueue?.TryEnqueue(() =>
+                            {
+                                HandleIncomingAudioFile(filePath);
+                            });
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[IPC] Server loop error: {ex.Message}");
+                        await Task.Delay(300);
+                    }
+                }
+            });
+        }
+
+        public static void HandleIncomingAudioFile(string filePath)
+        {
+            try
+            {
+                if (MiniPlayerWindow.CurrentInstance != null)
+                {
+                    MiniPlayerWindow.CurrentInstance.BringToForeground();
+                    _ = MiniPlayerWindow.CurrentInstance.LoadAndPlayAudioFileAsync(filePath);
+                }
+                else
+                {
+                    var mini = new MiniPlayerWindow(filePath);
+                    mini.Activate();
+                    mini.BringToForeground();
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[HandleIncomingAudioFile] Error: {ex.Message}");
+            }
         }
     }
 }

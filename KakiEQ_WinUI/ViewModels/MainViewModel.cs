@@ -629,24 +629,108 @@ namespace KakiEQ_WinUI.ViewModels
 
         public async Task PlayNextAsync(bool isCrossfade = false)
         {
-            if (CurrentQueue == null || CurrentQueue.Count == 0) return;
+            if (CurrentQueue == null || CurrentQueue.Count == 0)
+            {
+                // If queue is empty, pick a random song from library
+                var allLibTracks = await _dbService.GetAllTracksAsync();
+                if (allLibTracks.Count > 0)
+                {
+                    var randomTrack = allLibTracks[Random.Shared.Next(allLibTracks.Count)];
+                    CurrentQueue = new ObservableCollection<Track> { randomTrack };
+                    CurrentQueueIndex = 0;
+                    await PlayTrackAsync(randomTrack, isCrossfade: isCrossfade);
+                }
+                return;
+            }
 
             if (IsShuffle)
             {
-                var rng = new Random();
-                CurrentQueueIndex = rng.Next(CurrentQueue.Count);
+                CurrentQueueIndex = Random.Shared.Next(CurrentQueue.Count);
             }
             else
             {
-                CurrentQueueIndex++;
-                if (CurrentQueueIndex >= CurrentQueue.Count)
+                // Infinite playback: when reaching the last song in an album/playlist/artist, pick a random track from library so music never stops
+                if (CurrentQueueIndex + 1 >= CurrentQueue.Count)
                 {
-                    CurrentQueueIndex = 0;
+                    var allLibTracks = await _dbService.GetAllTracksAsync();
+                    if (allLibTracks.Count > 0)
+                    {
+                        var candidates = allLibTracks.Where(t => t.FilePath != CurrentTrack?.FilePath).ToList();
+                        if (candidates.Count == 0) candidates = allLibTracks;
+                        var nextRandomTrack = candidates[Random.Shared.Next(candidates.Count)];
+
+                        CurrentQueue.Add(nextRandomTrack);
+                        CurrentQueueIndex = CurrentQueue.Count - 1;
+                    }
+                    else
+                    {
+                        CurrentQueueIndex = 0;
+                    }
+                }
+                else
+                {
+                    CurrentQueueIndex++;
                 }
             }
 
-            var nextTrack = CurrentQueue[CurrentQueueIndex];
-            await PlayTrackAsync(nextTrack, isCrossfade: isCrossfade);
+            if (CurrentQueueIndex >= 0 && CurrentQueueIndex < CurrentQueue.Count)
+            {
+                var nextTrack = CurrentQueue[CurrentQueueIndex];
+                await PlayTrackAsync(nextTrack, isCrossfade: isCrossfade);
+            }
+        }
+
+        public void AddTrackNext(Track track)
+        {
+            if (track == null) return;
+            int insertIndex = CurrentQueueIndex >= 0 && CurrentQueueIndex < CurrentQueue.Count
+                ? CurrentQueueIndex + 1
+                : CurrentQueue.Count;
+            CurrentQueue.Insert(insertIndex, track);
+        }
+
+        public void AddTrackToQueue(Track track)
+        {
+            if (track == null) return;
+            CurrentQueue.Add(track);
+            if (CurrentTrack == null)
+            {
+                _ = PlayTrackAsync(track);
+            }
+        }
+
+        public void RemoveTrackFromQueue(Track track)
+        {
+            if (track == null) return;
+            CurrentQueue.Remove(track);
+            SyncQueueAfterReorder();
+        }
+
+        public void ClearQueue()
+        {
+            var cur = CurrentTrack;
+            CurrentQueue.Clear();
+            if (cur != null)
+            {
+                CurrentQueue.Add(cur);
+                CurrentQueueIndex = 0;
+            }
+            else
+            {
+                CurrentQueueIndex = -1;
+            }
+        }
+
+        public void SyncQueueAfterReorder()
+        {
+            if (CurrentTrack != null)
+            {
+                CurrentQueueIndex = CurrentQueue.IndexOf(CurrentTrack);
+            }
+            else
+            {
+                CurrentQueueIndex = -1;
+            }
         }
 
         public async Task PlayPreviousAsync()

@@ -5,11 +5,14 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:models="using:KakiEQ_WinUI.Models"
     mc:Ignorable="d"
     Title="Mini-reproductor Kaki EQ">
 
-    <!-- Gradient Background matching the Mockup in Image 3 -->
-    <Grid>
+    <!-- Gradient Background matching the Mockup in Image 3 + Drag & Drop support -->
+    <Grid AllowDrop="True"
+          DragOver="RootGrid_DragOver"
+          Drop="RootGrid_Drop">
         <Grid.Background>
             <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
                 <GradientStop Color="#542B7A" Offset="0.0"/>
@@ -19,14 +22,14 @@
         </Grid.Background>
 
         <Grid.RowDefinitions>
-            <RowDefinition Height="46"/> <!-- Custom TitleBar -->
-            <RowDefinition Height="Auto"/> <!-- Song & Path info header -->
-            <RowDefinition Height="*"/> <!-- Center Artwork or Note illustration -->
-            <RowDefinition Height="Auto"/> <!-- Bottom Player Capsule -->
+            <RowDefinition Height="42"/> <!-- Custom TitleBar -->
+            <RowDefinition Height="Auto"/> <!-- Header: Title, Path, Artist, Folder Badge & List Toggle -->
+            <RowDefinition Height="*"/> <!-- Center: Artwork View OR Folder Playlist View -->
+            <RowDefinition Height="Auto"/> <!-- Bottom Capsule Player -->
         </Grid.RowDefinitions>
 
         <!-- Custom TitleBar -->
-        <Border Grid.Row="0" x:Name="TitleBarBorder" Background="#26000000">
+        <Border Grid.Row="0" x:Name="TitleBarBorder" Background="#22000000">
             <Grid Padding="16,0,130,0">
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="8">
                     <FontIcon Glyph="&#xEC4F;" FontSize="13" Foreground="#D0BCFF"/>
@@ -35,9 +38,10 @@
             </Grid>
         </Border>
 
-        <!-- 1. Top Song & Path Information (Image 3 mockup) -->
-        <Grid Grid.Row="1" Padding="20,10,20,0">
+        <!-- 1. Top Song & Path Information (Image 3 mockup) + Folder Navigation Strip -->
+        <Grid Grid.Row="1" Padding="20,6,20,4">
             <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
@@ -57,39 +61,145 @@
                 <TextBlock Grid.Column="1" x:Name="SongPathText"
                            Text="Ruta"
                            FontSize="11" Foreground="#CBB5E2"
-                           TextTrimming="CharacterEllipsis" MaxWidth="160"
+                           TextTrimming="CharacterEllipsis" MaxWidth="150"
                            VerticalAlignment="Center" Margin="10,0,0,0"/>
             </Grid>
 
-            <!-- Line 2: Artist (Omitted if no metadata, as requested) -->
+            <!-- Line 2: Artist (Omitted if no metadata, as requested in Image 3) -->
             <TextBlock Grid.Row="1" x:Name="ArtistNameText"
                        Text="Nombre artista"
                        FontSize="12" Foreground="#D9C2F5"
-                       TextTrimming="CharacterEllipsis" Margin="0,3,0,0"/>
+                       TextTrimming="CharacterEllipsis" Margin="0,2,0,0"/>
+
+            <!-- Line 3: Folder Navigation Chip + Playlist Toggle Button -->
+            <Grid Grid.Row="2" Margin="0,8,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Folder Badge -->
+                <Border x:Name="FolderBadge" Grid.Column="0"
+                        Padding="8,3" Background="#26FFFFFF" CornerRadius="10"
+                        HorizontalAlignment="Left" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <FontIcon Glyph="&#xED25;" FontSize="11" Foreground="#D0BCFF"/>
+                        <TextBlock x:Name="FolderInfoText" Text="Carpeta (0 pistas)"
+                                   FontSize="11" Foreground="#E2D4F0" TextTrimming="CharacterEllipsis" MaxWidth="210"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Toggle Folder Playlist Button -->
+                <Button Grid.Column="1" Click="ToggleFolderList_Click"
+                        Background="#2EFFFFFF" BorderThickness="0" CornerRadius="10"
+                        Padding="8,3" VerticalAlignment="Center"
+                        ToolTipService.ToolTip="Ver/ocultar lista de canciones de la carpeta">
+                    <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                        <FontIcon x:Name="ToggleListIcon" Glyph="&#xE8FD;" FontSize="11" Foreground="#D0BCFF"/>
+                        <TextBlock x:Name="ToggleListText" Text="Lista" FontSize="11" Foreground="#FFFFFF"/>
+                    </StackPanel>
+                </Button>
+            </Grid>
         </Grid>
 
-        <!-- 2. Center Artwork / Musical Note (Image 3 mockup) -->
-        <Grid Grid.Row="2" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="16,8,16,8">
-            <!-- Fallback Big Music Note Illustration (Styled like Image 3) -->
-            <Grid x:Name="NoteIllustrationContainer" Width="230" Height="230" HorizontalAlignment="Center" VerticalAlignment="Center">
-                <Viewbox Width="210" Height="210" Opacity="0.45">
-                    <Path Data="M 12 3 L 12 14.55 C 11.21 14.21 10.34 14 9.4 14 C 6.42 14 4 16.24 4 19 C 4 21.76 6.42 24 9.4 24 C 12.38 24 14.8 21.76 14.8 19 L 14.8 7 L 22 7 L 22 3 L 12 3 Z"
-                          Fill="#9960B8"/>
-                </Viewbox>
-                <!-- Subtle glow note overlay -->
-                <FontIcon Glyph="&#xEC4F;" FontSize="130" Foreground="#B380D4" Opacity="0.55"
-                          HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        <!-- 2. Center Content: Artwork / Note Illustration OR Folder Playlist -->
+        <Grid Grid.Row="2" Margin="16,6,16,8">
+            <!-- View A: Artwork / Note Illustration (Image 3 mockup) -->
+            <Grid x:Name="ArtworkContainer" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Visible">
+                <!-- Fallback Big Music Note Illustration (Styled like Image 3) -->
+                <Grid x:Name="NoteIllustrationContainer" Width="220" Height="220" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Viewbox Width="200" Height="200" Opacity="0.45">
+                        <Path Data="M 12 3 L 12 14.55 C 11.21 14.21 10.34 14 9.4 14 C 6.42 14 4 16.24 4 19 C 4 21.76 6.42 24 9.4 24 C 12.38 24 14.8 21.76 14.8 19 L 14.8 7 L 22 7 L 22 3 L 12 3 Z"
+                              Fill="#9960B8"/>
+                    </Viewbox>
+                    <!-- Subtle glow note overlay -->
+                    <FontIcon Glyph="&#xEC4F;" FontSize="120" Foreground="#B380D4" Opacity="0.55"
+                              HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Grid>
+
+                <!-- Real Artwork Image (if available) -->
+                <Border x:Name="ArtworkBorder" Width="210" Height="210" CornerRadius="18" Background="#33000000" Visibility="Collapsed">
+                    <Image x:Name="ArtworkImage" Stretch="UniformToFill"/>
+                </Border>
             </Grid>
 
-            <!-- Real Artwork Image (if available) -->
-            <Border x:Name="ArtworkBorder" Width="220" Height="220" CornerRadius="20" Background="#33000000" Visibility="Collapsed">
-                <Image x:Name="ArtworkImage" Stretch="UniformToFill"/>
+            <!-- View B: Interactive Folder Tracklist Drawer -->
+            <Border x:Name="FolderListContainer"
+                    Visibility="Collapsed"
+                    Background="#301548"
+                    BorderBrush="#542B7A"
+                    BorderThickness="1"
+                    CornerRadius="16"
+                    Padding="6,6,6,4">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <Grid Grid.Row="0" Padding="8,4,8,6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                            <FontIcon Glyph="&#xE8FD;" FontSize="12" Foreground="#BB86FC"/>
+                            <TextBlock x:Name="FolderListHeader" Text="Canciones de la carpeta"
+                                       FontSize="12" FontWeight="SemiBold" Foreground="#FFFFFF"/>
+                        </StackPanel>
+                        <Button Grid.Column="1" Click="ToggleFolderList_Click"
+                                Width="26" Height="26" CornerRadius="13"
+                                Background="Transparent" BorderThickness="0" Padding="0"
+                                ToolTipService.ToolTip="Volver a la carátula">
+                            <FontIcon Glyph="&#xE711;" FontSize="11" Foreground="#CBB5E2"/>
+                        </Button>
+                    </Grid>
+
+                    <ListView Grid.Row="1" x:Name="FolderTracksListView"
+                              SelectionMode="None"
+                              IsItemClickEnabled="True"
+                              ItemClick="FolderTracksListView_ItemClick"
+                              ScrollViewer.VerticalScrollBarVisibility="Auto">
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="models:FolderTrackItem">
+                                <Grid Padding="6,4" Margin="0,1" CornerRadius="8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="26"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Playing icon or track number -->
+                                    <Grid Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                        <TextBlock Text="{x:Bind Index, Mode=OneWay}"
+                                                   FontSize="11" Foreground="#A68CB8"
+                                                   Visibility="{x:Bind IndexVisibility, Mode=OneWay}"
+                                                   HorizontalAlignment="Center"/>
+                                        <FontIcon Glyph="&#xE768;" FontSize="12" Foreground="#BB86FC"
+                                                  Visibility="{x:Bind PlayingGlyphVisibility, Mode=OneWay}"
+                                                  HorizontalAlignment="Center"/>
+                                    </Grid>
+
+                                    <!-- Title & Subtitle -->
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="6,0,0,0">
+                                        <TextBlock Text="{x:Bind DisplayTitle, Mode=OneWay}"
+                                                   FontSize="12.5" FontWeight="SemiBold"
+                                                   Foreground="{x:Bind TitleColorBrush, Mode=OneWay}"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Text="{x:Bind DisplaySubTitle, Mode=OneWay}"
+                                                   FontSize="10.5" Foreground="#B69DC7"
+                                                   TextTrimming="CharacterEllipsis" Margin="0,1,0,0"/>
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                </Grid>
             </Border>
         </Grid>
 
         <!-- 3. Bottom Capsule Player Controls (Image 3 mockup) -->
         <Border Grid.Row="3"
-                Margin="18,0,18,20"
+                Margin="18,0,18,18"
                 Background="#2B1445"
                 BorderBrush="#63398B"
                 BorderThickness="1.5"
