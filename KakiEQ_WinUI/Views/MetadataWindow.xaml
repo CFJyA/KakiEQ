@@ -134,7 +134,7 @@
                                                 Background="{ThemeResource AppSurfaceElevated}" BorderBrush="{ThemeResource AppAccent}" BorderThickness="1"
                                                 CornerRadius="10" Padding="8,4" Margin="0,4,0,0">
                                             <StackPanel Orientation="Horizontal" Spacing="6">
-                                                <FontIcon Glyph="&#xEC4B;" FontSize="12" Foreground="{ThemeResource AppAccent}"/>
+                                                <FontIcon Glyph="&#xE916;" FontSize="12" Foreground="{ThemeResource AppAccent}"/>
                                                 <TextBlock Text="Generar / Sincronizar LRC con Marcas de Tiempo" FontSize="11" FontWeight="SemiBold" Foreground="{ThemeResource AppTextPrimary}"/>
                                             </StackPanel>
                                         </Button>
@@ -154,7 +154,7 @@
                                 <FontIcon Grid.Column="0" Glyph="&#xE8B7;" FontSize="13" Foreground="{ThemeResource AppAccent}" VerticalAlignment="Center"/>
                                 <TextBlock Grid.Column="1" x:Name="DisplayPathText" Text="Ruta del archivo" FontSize="11" Foreground="{ThemeResource AppTextSubtle}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
                                 <Button Grid.Column="2" Click="OpenInExplorer_Click" Background="Transparent" BorderThickness="0" Padding="4" ToolTipService.ToolTip="Abrir ubicación en Explorador">
-                                    <FontIcon Glyph="&#xEC50;" FontSize="12" Foreground="{ThemeResource AppAccent}"/>
+                                    <FontIcon Glyph="&#xE8DA;" FontSize="12" Foreground="{ThemeResource AppAccent}"/>
                                 </Button>
                             </Grid>
                         </Border>
@@ -209,7 +209,7 @@
                             <TextBox x:Name="EditLyricsBox" Header="Letra de la Canción (LRC / Texto)" AcceptsReturn="True" TextWrapping="Wrap" Height="100" CornerRadius="8"/>
                             <Button Click="OpenLrcEditor_Click" HorizontalAlignment="Right" Background="{ThemeResource AppSurfaceElevated}" BorderBrush="{ThemeResource AppAccent}" BorderThickness="1" CornerRadius="8" Padding="8,3">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <FontIcon Glyph="&#xEC4B;" FontSize="11" Foreground="{ThemeResource AppAccent}"/>
+                                    <FontIcon Glyph="&#xE916;" FontSize="11" Foreground="{ThemeResource AppAccent}"/>
                                     <TextBlock Text="Asistente de Marcas de Tiempo (LRC)" FontSize="11" Foreground="{ThemeResource AppAccent}"/>
                                 </StackPanel>
                             </Button>
@@ -377,7 +377,7 @@
 
                         <StackPanel Grid.Column="0">
                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                <FontIcon Glyph="&#xEC4B;" FontSize="18" Foreground="{ThemeResource AppAccent}" VerticalAlignment="Center"/>
+                                <FontIcon Glyph="&#xE916;" FontSize="18" Foreground="{ThemeResource AppAccent}" VerticalAlignment="Center"/>
                                 <TextBlock Text="Sincronizador de Letras LRC (Marcas de Tiempo)" FontSize="18" FontWeight="Bold" Foreground="{ThemeResource AppTextPrimary}"/>
                             </StackPanel>
                             <TextBlock x:Name="LrcTrackInfoText" Text="Canción - Artista" FontSize="12" Foreground="{ThemeResource AppTextSubtle}" Margin="0,2,0,0"/>
@@ -477,7 +477,7 @@
                                             <TextBlock Grid.Column="1" Text="{x:Bind Text}" FontSize="13" Foreground="{ThemeResource AppTextPrimary}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
 
                                             <Button Grid.Column="2" Click="LrcStampSingleLine_Click" Tag="{x:Bind}" Background="Transparent" BorderThickness="0" Padding="4" ToolTipService.ToolTip="Establecer tiempo actual aquí">
-                                                <FontIcon Glyph="&#xEC4B;" FontSize="11" Foreground="{ThemeResource AppAccent}"/>
+                                                <FontIcon Glyph="&#xE916;" FontSize="11" Foreground="{ThemeResource AppAccent}"/>
                                             </Button>
                                         </Grid>
                                     </DataTemplate>
@@ -489,7 +489,7 @@
                                     HorizontalAlignment="Stretch" Height="48" Margin="0,10,0,0"
                                     Background="{ThemeResource AppAccent}" Foreground="#121212" CornerRadius="24">
                                 <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center">
-                                    <FontIcon Glyph="&#xEC4B;" FontSize="16" Foreground="#121212"/>
+                                    <FontIcon Glyph="&#xE916;" FontSize="16" Foreground="#121212"/>
                                     <TextBlock Text="MARCAR TIEMPO ACTUAL EN ESTA LÍNEA (ESPACIO)" FontWeight="Bold" FontSize="13" Foreground="#121212"/>
                                 </StackPanel>
                             </Button>

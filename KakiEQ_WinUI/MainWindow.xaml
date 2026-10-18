@@ -477,18 +477,52 @@
                                           ItemClick="LyricLine_ItemClick"
                                           Visibility="{x:Bind ViewModel.HasLyricsVisibility, Mode=OneWay}"
                                           HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
-                                          Padding="10,40,10,40">
+                                          Padding="10,180,10,180">
+                                    <ListView.ItemContainerStyle>
+                                        <Style TargetType="ListViewItem">
+                                            <Setter Property="Margin" Value="0"/>
+                                            <Setter Property="Padding" Value="0"/>
+                                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                            <Setter Property="Background" Value="Transparent"/>
+                                            <Setter Property="BorderThickness" Value="0"/>
+                                        </Style>
+                                    </ListView.ItemContainerStyle>
                                     <ListView.ItemTemplate>
                                         <DataTemplate x:DataType="models:LrcLine">
-                                            <Grid Padding="8,8" Margin="0,4" HorizontalAlignment="Stretch">
-                                                <TextBlock Text="{x:Bind Text}"
-                                                           FontSize="{x:Bind FontSizeFormatted, Mode=OneWay}"
-                                                           FontWeight="{x:Bind FontWeightFormatted, Mode=OneWay}"
-                                                           Opacity="{x:Bind OpacityFormatted, Mode=OneWay}"
-                                                           Foreground="White"
-                                                           TextWrapping="Wrap"
-                                                           TextAlignment="Left"/>
-                                            </Grid>
+                                            <Border CornerRadius="16"
+                                                    Background="{x:Bind ActiveBackgroundBrush, Mode=OneWay}"
+                                                    BorderBrush="{x:Bind ActiveBorderBrush, Mode=OneWay}"
+                                                    BorderThickness="1"
+                                                    Padding="18,10"
+                                                    Margin="0,4"
+                                                    HorizontalAlignment="Stretch">
+                                                <Grid ColumnSpacing="14">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <!-- Playback Indicator Pill (Visible only on active line) -->
+                                                    <Border Grid.Column="0"
+                                                            Visibility="{x:Bind ActiveIndicatorVisibility, Mode=OneWay}"
+                                                            Background="#BB86FC"
+                                                            CornerRadius="10"
+                                                            Padding="7,5"
+                                                            VerticalAlignment="Center">
+                                                        <FontIcon Glyph="&#xE768;" FontSize="11" Foreground="#121212"/>
+                                                    </Border>
+
+                                                    <TextBlock Grid.Column="1"
+                                                               Text="{x:Bind Text}"
+                                                               FontSize="{x:Bind FontSizeFormatted, Mode=OneWay}"
+                                                               FontWeight="{x:Bind FontWeightFormatted, Mode=OneWay}"
+                                                               Opacity="{x:Bind OpacityFormatted, Mode=OneWay}"
+                                                               Foreground="{x:Bind ActiveForeground, Mode=OneWay}"
+                                                               TextWrapping="Wrap"
+                                                               TextAlignment="Left"
+                                                               VerticalAlignment="Center"/>
+                                                </Grid>
+                                            </Border>
                                         </DataTemplate>
                                     </ListView.ItemTemplate>
                                 </ListView>

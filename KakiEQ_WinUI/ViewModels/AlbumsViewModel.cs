@@ -39,7 +39,7 @@ namespace KakiEQ_WinUI.ViewModels
             _ = LoadAlbumsAsync();
         }
 
-        private async Task LoadAlbumsAsync()
+        public async Task LoadAlbumsAsync()
         {
             var tracks = await _dbService.GetAllTracksAsync();
 

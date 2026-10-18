@@ -38,7 +38,7 @@ namespace KakiEQ_WinUI.ViewModels
             _ = LoadArtistsAsync();
         }
 
-        private async Task LoadArtistsAsync()
+        public async Task LoadArtistsAsync()
         {
             var tracks = await _dbService.GetAllTracksAsync();
             var artistTracksMap = new Dictionary<string, List<Track>>(StringComparer.OrdinalIgnoreCase);

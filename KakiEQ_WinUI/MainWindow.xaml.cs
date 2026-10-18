@@ -9,6 +9,7 @@ using Microsoft.UI.Xaml.Controls.Primitives;
 using Windows.Graphics;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
+using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using KakiEQ_WinUI.Models;
 using KakiEQ_WinUI.ViewModels;
@@ -76,19 +77,12 @@ namespace KakiEQ_WinUI
                 };
             }
 
-            // Auto-scroll synchronized lyrics to active line
+            // Smooth auto-scroll synchronized lyrics to center active line
             ViewModel.LyricLineChanged += (s, activeIndex) =>
             {
                 DispatcherQueue.TryEnqueue(() =>
                 {
-                    try
-                    {
-                        if (LyricsListView != null && activeIndex >= 0 && activeIndex < ViewModel.CurrentLyricsLines.Count)
-                        {
-                            LyricsListView.ScrollIntoView(ViewModel.CurrentLyricsLines[activeIndex]);
-                        }
-                    }
-                    catch { }
+                    ScrollToActiveLyric(activeIndex);
                 });
             };
 
@@ -410,6 +404,62 @@ namespace KakiEQ_WinUI
             {
                 ViewModel.SeekTo(line.Timestamp.TotalSeconds);
             }
+        }
+
+        private ScrollViewer? _lyricsScrollViewer;
+
+        private void ScrollToActiveLyric(int activeIndex)
+        {
+            try
+            {
+                if (LyricsListView == null || activeIndex < 0 || activeIndex >= ViewModel.CurrentLyricsLines.Count)
+                    return;
+
+                if (_lyricsScrollViewer == null)
+                {
+                    _lyricsScrollViewer = FindChild<ScrollViewer>(LyricsListView);
+                }
+
+                if (_lyricsScrollViewer != null)
+                {
+                    var container = LyricsListView.ContainerFromIndex(activeIndex) as ListViewItem;
+                    if (container != null && container.ActualHeight > 0)
+                    {
+                        var transform = container.TransformToVisual(_lyricsScrollViewer);
+                        var point = transform.TransformPoint(new Windows.Foundation.Point(0, 0));
+                        double currentVisualY = point.Y;
+                        double viewportHeight = _lyricsScrollViewer.ViewportHeight;
+                        double desiredVisualY = (viewportHeight - container.ActualHeight) / 2.0;
+                        double delta = currentVisualY - desiredVisualY;
+                        double targetOffset = _lyricsScrollViewer.VerticalOffset + delta;
+                        targetOffset = Math.Max(0, Math.Min(targetOffset, _lyricsScrollViewer.ScrollableHeight));
+
+                        _lyricsScrollViewer.ChangeView(null, targetOffset, null, disableAnimation: false);
+                    }
+                    else
+                    {
+                        LyricsListView.ScrollIntoView(ViewModel.CurrentLyricsLines[activeIndex]);
+                    }
+                }
+                else
+                {
+                    LyricsListView.ScrollIntoView(ViewModel.CurrentLyricsLines[activeIndex]);
+                }
+            }
+            catch { }
+        }
+
+        private static T? FindChild<T>(DependencyObject parent) where T : DependencyObject
+        {
+            int count = VisualTreeHelper.GetChildrenCount(parent);
+            for (int i = 0; i < count; i++)
+            {
+                var child = VisualTreeHelper.GetChild(parent, i);
+                if (child is T typedChild) return typedChild;
+                var found = FindChild<T>(child);
+                if (found != null) return found;
+            }
+            return null;
         }
 
         private void OpenLyricsMetadata_Click(object sender, RoutedEventArgs e)

@@ -522,6 +522,21 @@ namespace KakiEQ_WinUI.ViewModels
             set { _currentQueueIndex = value; OnPropertyChanged(); }
         }
 
+        // --- Cached ViewModels for Instant, Zero-Latency Navigation ---
+        private HomeViewModel? _homeVm;
+        private LibraryViewModel? _libraryVm;
+        private ArtistsViewModel? _artistsVm;
+        private AlbumsViewModel? _albumsVm;
+        private PlaylistsViewModel? _playlistsVm;
+        private EqualizerViewModel? _equalizerVm;
+
+        public HomeViewModel HomeVm => _homeVm ??= new HomeViewModel(_dbService);
+        public LibraryViewModel LibraryVm => _libraryVm ??= new LibraryViewModel(_dbService);
+        public ArtistsViewModel ArtistsVm => _artistsVm ??= new ArtistsViewModel(_dbService);
+        public AlbumsViewModel AlbumsVm => _albumsVm ??= new AlbumsViewModel(_dbService);
+        public PlaylistsViewModel PlaylistsVm => _playlistsVm ??= new PlaylistsViewModel(_dbService);
+        public EqualizerViewModel EqualizerVm => _equalizerVm ??= new EqualizerViewModel(_audioEngine, _settingsService);
+
         // --- Navigation Commands ---
         public ICommand ToggleSidebarCommand { get; }
         public ICommand NavigateHomeCommand { get; }
@@ -639,37 +654,37 @@ namespace KakiEQ_WinUI.ViewModels
             NavigateHomeCommand = new RelayCommand(() =>
             {
                 CurrentSectionTitle = "Inicio";
-                CurrentView = new HomeViewModel(_dbService);
+                CurrentView = HomeVm;
             });
 
             NavigateSongsCommand = new RelayCommand(() =>
             {
                 CurrentSectionTitle = "Canciones";
-                CurrentView = new LibraryViewModel(_dbService);
+                CurrentView = LibraryVm;
             });
 
             NavigateArtistsCommand = new RelayCommand(() =>
             {
                 CurrentSectionTitle = "Artistas";
-                CurrentView = new ArtistsViewModel(_dbService);
+                CurrentView = ArtistsVm;
             });
 
             NavigateAlbumsCommand = new RelayCommand(() =>
             {
                 CurrentSectionTitle = "Álbumes";
-                CurrentView = new AlbumsViewModel(_dbService);
+                CurrentView = AlbumsVm;
             });
 
             NavigatePlaylistsCommand = new RelayCommand(() =>
             {
                 CurrentSectionTitle = "Playlists";
-                CurrentView = new PlaylistsViewModel(_dbService);
+                CurrentView = PlaylistsVm;
             });
 
             NavigateEqualizerCommand = new RelayCommand(() =>
             {
                 CurrentSectionTitle = "Ecualizador";
-                CurrentView = new EqualizerViewModel(_audioEngine, _settingsService);
+                CurrentView = EqualizerVm;
             });
 
             // Player Commands
@@ -757,7 +772,7 @@ namespace KakiEQ_WinUI.ViewModels
 
             // Set initial view to Home
             CurrentSectionTitle = "Inicio";
-            CurrentView = new HomeViewModel(_dbService);
+            CurrentView = HomeVm;
             RefreshNavBrushes();
             _ = LoadGlobalPlaylistsAsync();
         }
@@ -783,19 +798,19 @@ namespace KakiEQ_WinUI.ViewModels
         public void NavigateToPlaylists()
         {
             CurrentSectionTitle = "Playlists";
-            CurrentView = new PlaylistsViewModel(_dbService);
+            CurrentView = PlaylistsVm;
         }
 
         public void NavigateToAlbums()
         {
             CurrentSectionTitle = "Álbumes";
-            CurrentView = new AlbumsViewModel(_dbService);
+            CurrentView = AlbumsVm;
         }
 
         public void NavigateToArtists()
         {
             CurrentSectionTitle = "Artistas";
-            CurrentView = new ArtistsViewModel(_dbService);
+            CurrentView = ArtistsVm;
         }
 
         public async Task LoadGlobalPlaylistsAsync()
@@ -1014,14 +1029,11 @@ namespace KakiEQ_WinUI.ViewModels
             ScanStatusText = string.Empty;
 
             await LoadGlobalPlaylistsAsync();
-            if (CurrentView is LibraryViewModel libVm)
-            {
-                await libVm.LoadLibraryAsync();
-            }
-            else if (CurrentView is HomeViewModel homeVm)
-            {
-                await homeVm.LoadSuggestionsAsync();
-            }
+            if (_libraryVm != null) await _libraryVm.LoadLibraryAsync();
+            if (_homeVm != null) await _homeVm.LoadSuggestionsAsync();
+            if (_albumsVm != null) await _albumsVm.LoadAlbumsAsync();
+            if (_artistsVm != null) await _artistsVm.LoadArtistsAsync();
+            if (_playlistsVm != null) await _playlistsVm.LoadPlaylistsAsync();
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
