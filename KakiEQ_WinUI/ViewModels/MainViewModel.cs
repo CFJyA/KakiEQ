@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -171,10 +172,60 @@ namespace KakiEQ_WinUI.ViewModels
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(HasTrack));
                 _ = UpdateLikeStateAsync();
+                _ = LoadLyricsForCurrentTrackAsync();
+                _ = UpdateBlurredCoverAsync(value);
             }
         }
 
         public bool HasTrack => CurrentTrack != null;
+
+        private ImageSource? _currentBlurredCover;
+        public ImageSource? CurrentBlurredCover
+        {
+            get => _currentBlurredCover;
+            set { _currentBlurredCover = value; OnPropertyChanged(); }
+        }
+
+        private async Task UpdateBlurredCoverAsync(Track? track)
+        {
+            if (track != null && !string.IsNullOrEmpty(track.CoverImagePath) && File.Exists(track.CoverImagePath))
+            {
+                // Show cover art as immediate preview
+                _dispatcherQueue.TryEnqueue(() =>
+                {
+                    try
+                    {
+                        CurrentBlurredCover = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(new Uri(Path.GetFullPath(track.CoverImagePath)));
+                    }
+                    catch
+                    {
+                        CurrentBlurredCover = null;
+                    }
+                });
+
+                string? blurPath = await Helpers.ImageBlurHelper.GetBlurredCoverAsync(track.CoverImagePath);
+                if (!string.IsNullOrEmpty(blurPath) && File.Exists(blurPath))
+                {
+                    _dispatcherQueue.TryEnqueue(() =>
+                    {
+                        try
+                        {
+                            CurrentBlurredCover = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(new Uri(Path.GetFullPath(blurPath)));
+                        }
+                        catch
+                        {
+                        }
+                    });
+                }
+            }
+            else
+            {
+                _dispatcherQueue.TryEnqueue(() =>
+                {
+                    CurrentBlurredCover = null;
+                });
+            }
+        }
 
         private bool _isPlaying;
         public bool IsPlaying
@@ -190,12 +241,146 @@ namespace KakiEQ_WinUI.ViewModels
             }
         }
 
-        public string PlayPauseIconGlyph => IsPlaying ? "\uE769" : "\uE768"; // Pause / Play Segoe glyphs
+        public string PlayPauseIconGlyph => IsPlaying ? "\uE769" : "\uF5B0"; // Pause / Play Solid glyph
         public string PlayPauseTooltip => IsPlaying ? "Pausar" : "Reproducir";
 
         private static readonly SolidColorBrush AccentBrush = new(Windows.UI.Color.FromArgb(255, 187, 134, 252));
-        private static readonly SolidColorBrush InactiveBrush = new(Windows.UI.Color.FromArgb(255, 119, 119, 119));
+        private static readonly SolidColorBrush InactiveBrush = new(Windows.UI.Color.FromArgb(255, 180, 180, 192));
         private static readonly SolidColorBrush HeartBrush = new(Windows.UI.Color.FromArgb(255, 255, 64, 129));
+
+        // --- NowPlaying Drawer & Lyrics State ---
+        private bool _isNowPlayingQueueVisible = false;
+        public bool IsNowPlayingQueueVisible
+        {
+            get => _isNowPlayingQueueVisible;
+            set
+            {
+                _isNowPlayingQueueVisible = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(NowPlayingQueueVisibility));
+                OnPropertyChanged(nameof(QueueToggleBrush));
+                OnPropertyChanged(nameof(QueueToggleForegroundBrush));
+            }
+        }
+
+        public Visibility NowPlayingQueueVisibility => IsNowPlayingQueueVisible ? Visibility.Visible : Visibility.Collapsed;
+        private static readonly SolidColorBrush QueueClosedBrush = new(Windows.UI.Color.FromArgb(255, 28, 28, 36));
+        public SolidColorBrush QueueToggleBrush => IsNowPlayingQueueVisible ? AccentBrush : QueueClosedBrush;
+        public SolidColorBrush QueueToggleForegroundBrush => IsNowPlayingQueueVisible ? new SolidColorBrush(Windows.UI.Color.FromArgb(255, 18, 18, 24)) : new SolidColorBrush(Microsoft.UI.Colors.White);
+
+        private bool _isLyricsVisible = false;
+        public bool IsLyricsVisible
+        {
+            get => _isLyricsVisible;
+            set
+            {
+                _isLyricsVisible = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(LyricsVisibility));
+                OnPropertyChanged(nameof(AlbumCoverVisibility));
+                OnPropertyChanged(nameof(LyricsBrush));
+                if (value && CurrentLyricsLines.Count == 0)
+                {
+                    _ = LoadLyricsForCurrentTrackAsync();
+                }
+            }
+        }
+
+        public Visibility LyricsVisibility => IsLyricsVisible ? Visibility.Visible : Visibility.Collapsed;
+        public Visibility AlbumCoverVisibility => IsLyricsVisible ? Visibility.Collapsed : Visibility.Visible;
+        public SolidColorBrush LyricsBrush => IsLyricsVisible ? AccentBrush : InactiveBrush;
+
+        public ObservableCollection<LrcLine> CurrentLyricsLines { get; } = new();
+        public bool HasLyrics => CurrentLyricsLines.Count > 0;
+        public Visibility HasLyricsVisibility => HasLyrics ? Visibility.Visible : Visibility.Collapsed;
+        public Visibility NoLyricsVisibility => !HasLyrics ? Visibility.Visible : Visibility.Collapsed;
+        private int _activeLyricIndex = -1;
+
+        public event EventHandler<int>? LyricLineChanged;
+        public Action? ExitFullScreenIfActive { get; set; }
+
+        private bool _isFullScreen;
+        public bool IsFullScreen
+        {
+            get => _isFullScreen;
+            set
+            {
+                _isFullScreen = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(FullScreenGlyph));
+                OnPropertyChanged(nameof(FullScreenTooltip));
+            }
+        }
+        public string FullScreenGlyph => IsFullScreen ? "\uE73F" : "\uE740";
+        public string FullScreenTooltip => IsFullScreen ? "Salir de pantalla completa" : "Pantalla completa";
+
+        private bool _isWindowMaximized;
+        public bool IsWindowMaximized
+        {
+            get => _isWindowMaximized;
+            set
+            {
+                if (_isWindowMaximized != value)
+                {
+                    _isWindowMaximized = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public void UpdateActiveLyric()
+        {
+            if (CurrentLyricsLines.Count == 0) return;
+            var pos = TimeSpan.FromSeconds(CurrentPositionSeconds);
+            var list = CurrentLyricsLines.ToList();
+            int newIndex = Services.Audio.LrcService.FindActiveIndex(list, pos);
+            if (newIndex != _activeLyricIndex)
+            {
+                if (_activeLyricIndex >= 0 && _activeLyricIndex < CurrentLyricsLines.Count)
+                {
+                    CurrentLyricsLines[_activeLyricIndex].IsActive = false;
+                }
+                _activeLyricIndex = newIndex;
+                if (_activeLyricIndex >= 0 && _activeLyricIndex < CurrentLyricsLines.Count)
+                {
+                    CurrentLyricsLines[_activeLyricIndex].IsActive = true;
+                    LyricLineChanged?.Invoke(this, _activeLyricIndex);
+                }
+            }
+        }
+
+        public async Task LoadLyricsForCurrentTrackAsync()
+        {
+            var track = CurrentTrack;
+            if (track == null)
+            {
+                _dispatcherQueue.TryEnqueue(() =>
+                {
+                    CurrentLyricsLines.Clear();
+                    _activeLyricIndex = -1;
+                    OnPropertyChanged(nameof(HasLyrics));
+                    OnPropertyChanged(nameof(HasLyricsVisibility));
+                    OnPropertyChanged(nameof(NoLyricsVisibility));
+                });
+                return;
+            }
+
+            var lrcRaw = await Services.Audio.LrcService.LoadRawLrcForTrackAsync(track);
+            var parsed = Services.Audio.LrcService.Parse(lrcRaw);
+
+            _dispatcherQueue.TryEnqueue(() =>
+            {
+                CurrentLyricsLines.Clear();
+                _activeLyricIndex = -1;
+                foreach (var line in parsed)
+                {
+                    CurrentLyricsLines.Add(line);
+                }
+                OnPropertyChanged(nameof(HasLyrics));
+                OnPropertyChanged(nameof(HasLyricsVisibility));
+                OnPropertyChanged(nameof(NoLyricsVisibility));
+            });
+        }
 
         private bool _isCurrentTrackLiked;
         public bool IsCurrentTrackLiked
@@ -301,10 +486,12 @@ namespace KakiEQ_WinUI.ViewModels
                 _isNowPlayingExpanded = value;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(NowPlayingExpandedVisibility));
+                OnPropertyChanged(nameof(BottomPlayerBarVisibility));
             }
         }
 
         public Visibility NowPlayingExpandedVisibility => IsNowPlayingExpanded ? Visibility.Visible : Visibility.Collapsed;
+        public Visibility BottomPlayerBarVisibility => IsNowPlayingExpanded ? Visibility.Collapsed : Visibility.Visible;
 
         // --- Playlists & Queue ---
         private ObservableCollection<Playlist> _globalPlaylists = new();
@@ -353,6 +540,8 @@ namespace KakiEQ_WinUI.ViewModels
         public ICommand LikeTrackCommand { get; }
         public ICommand OpenNowPlayingCommand { get; }
         public ICommand CloseNowPlayingCommand { get; }
+        public ICommand ToggleNowPlayingQueueCommand { get; }
+        public ICommand ToggleLyricsCommand { get; }
         public ICommand AddTrackToPlaylistCommand { get; }
 
         public MainViewModel()
@@ -372,6 +561,7 @@ namespace KakiEQ_WinUI.ViewModels
             _audioEngine.CrossfadeEnabled = savedSettings.CrossfadeEnabled;
             _audioEngine.CrossfadeDurationSeconds = savedSettings.CrossfadeDurationSeconds;
             _isLightTheme = !savedSettings.IsDarkMode;
+            RefreshNavBrushes();
 
             // Wire SMTC Events
             _smtcService.PlayRequested += () =>
@@ -391,15 +581,20 @@ namespace KakiEQ_WinUI.ViewModels
                 PreviousCommand?.Execute(null);
             };
 
-            // Timer for tracking playback progression and crossfade trigger
+            // Timer for tracking playback progression, lyrics synchronization, and crossfade trigger
             _timer = _dispatcherQueue.CreateTimer();
-            _timer.Interval = TimeSpan.FromMilliseconds(400);
+            _timer.Interval = TimeSpan.FromMilliseconds(150);
             _timer.Tick += (s, e) =>
             {
                 if (_audioEngine.IsPlaying)
                 {
                     CurrentPositionSeconds = _audioEngine.CurrentPosition.TotalSeconds;
                     _audioEngine.CheckCrossfadeProgress();
+
+                    if (IsLyricsVisible && CurrentLyricsLines.Count > 0)
+                    {
+                        UpdateActiveLyric();
+                    }
                 }
             };
 
@@ -532,8 +727,24 @@ namespace KakiEQ_WinUI.ViewModels
                 }
             });
 
-            OpenNowPlayingCommand = new RelayCommand(() => IsNowPlayingExpanded = true);
-            CloseNowPlayingCommand = new RelayCommand(() => IsNowPlayingExpanded = false);
+            OpenNowPlayingCommand = new RelayCommand(() =>
+            {
+                IsNowPlayingQueueVisible = false; // Initially collapsed per specifications
+                IsNowPlayingExpanded = true;
+            });
+            CloseNowPlayingCommand = new RelayCommand(() =>
+            {
+                IsNowPlayingExpanded = false;
+                ExitFullScreenIfActive?.Invoke();
+            });
+            ToggleNowPlayingQueueCommand = new RelayCommand(() =>
+            {
+                IsNowPlayingQueueVisible = !IsNowPlayingQueueVisible;
+            });
+            ToggleLyricsCommand = new RelayCommand(() =>
+            {
+                IsLyricsVisible = !IsLyricsVisible;
+            });
 
             AddTrackToPlaylistCommand = new RelayCommand(async param =>
             {
@@ -545,7 +756,9 @@ namespace KakiEQ_WinUI.ViewModels
             });
 
             // Set initial view to Home
+            CurrentSectionTitle = "Inicio";
             CurrentView = new HomeViewModel(_dbService);
+            RefreshNavBrushes();
             _ = LoadGlobalPlaylistsAsync();
         }
 
@@ -555,10 +768,10 @@ namespace KakiEQ_WinUI.ViewModels
             CurrentView = new ArtistDetailViewModel(_dbService, artistName);
         }
 
-        public void NavigateToAlbum(string albumTitle)
+        public void NavigateToAlbum(string albumTitle, string? artistName = null)
         {
             CurrentSectionTitle = albumTitle;
-            CurrentView = new AlbumDetailViewModel(_dbService, albumTitle);
+            CurrentView = new AlbumDetailViewModel(_dbService, albumTitle, artistName);
         }
 
         public void NavigateToPlaylist(Playlist playlist)
@@ -629,6 +842,7 @@ namespace KakiEQ_WinUI.ViewModels
             _timer.Start();
 
             _smtcService?.UpdateMetadata(track, true);
+            _ = _dbService.RecordTrackPlayAsync(track);
         }
 
         public async Task PlayNextAsync(bool isCrossfade = false)
@@ -762,6 +976,10 @@ namespace KakiEQ_WinUI.ViewModels
         {
             CurrentPositionSeconds = seconds;
             _audioEngine.SetPosition(TimeSpan.FromSeconds(seconds));
+            if (IsLyricsVisible && CurrentLyricsLines.Count > 0)
+            {
+                UpdateActiveLyric();
+            }
         }
 
         private async Task UpdateLikeStateAsync()

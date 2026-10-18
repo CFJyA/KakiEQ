@@ -52,7 +52,45 @@ namespace KakiEQ_WinUI
 
                 // Intercept close event to offer background execution
                 appWindow.Closing += AppWindow_Closing;
+
+                // Sync FullScreen state and Maximized state
+                appWindow.Changed += (s, args) =>
+                {
+                    if (args.DidPresenterChange)
+                    {
+                        ViewModel.IsFullScreen = (appWindow.Presenter.Kind == AppWindowPresenterKind.FullScreen);
+                    }
+                    if (appWindow.Presenter is OverlappedPresenter op)
+                    {
+                        ViewModel.IsWindowMaximized = (op.State == OverlappedPresenterState.Maximized);
+                    }
+                };
+
+                ViewModel.ExitFullScreenIfActive = () =>
+                {
+                    if (appWindow.Presenter.Kind == AppWindowPresenterKind.FullScreen)
+                    {
+                        appWindow.SetPresenter(AppWindowPresenterKind.Default);
+                        ViewModel.IsFullScreen = false;
+                    }
+                };
             }
+
+            // Auto-scroll synchronized lyrics to active line
+            ViewModel.LyricLineChanged += (s, activeIndex) =>
+            {
+                DispatcherQueue.TryEnqueue(() =>
+                {
+                    try
+                    {
+                        if (LyricsListView != null && activeIndex >= 0 && activeIndex < ViewModel.CurrentLyricsLines.Count)
+                        {
+                            LyricsListView.ScrollIntoView(ViewModel.CurrentLyricsLines[activeIndex]);
+                        }
+                    }
+                    catch { }
+                });
+            };
 
             // Initialize System Tray Icon
             IntPtr hwnd = WindowNative.GetWindowHandle(this);
@@ -84,11 +122,24 @@ namespace KakiEQ_WinUI
             _ = CheckInitialMusicFolderAsync();
         }
 
-        private AppWindow? GetAppWindow()
+        public AppWindow? GetAppWindow()
         {
             IntPtr hwnd = WindowNative.GetWindowHandle(this);
             WindowId windowId = Win32Interop.GetWindowIdFromWindow(hwnd);
             return AppWindow.GetFromWindowId(windowId);
+        }
+
+        public bool IsMaximized
+        {
+            get
+            {
+                var appWindow = GetAppWindow();
+                if (appWindow?.Presenter is OverlappedPresenter op)
+                {
+                    return op.State == OverlappedPresenterState.Maximized;
+                }
+                return false;
+            }
         }
 
         private async Task CheckInitialMusicFolderAsync()
@@ -315,6 +366,70 @@ namespace KakiEQ_WinUI
         private void ClearQueue_Click(object sender, RoutedEventArgs e)
         {
             ViewModel.ClearQueue();
+        }
+
+        private async void SaveQueueAsPlaylist_Click(object sender, RoutedEventArgs e)
+        {
+            if (ViewModel.CurrentQueue == null || ViewModel.CurrentQueue.Count == 0)
+            {
+                ShowToast("La cola de reproducción está vacía", "\uE783");
+                return;
+            }
+
+            var playlist = await Helpers.PlaylistDialogHelper.ShowCreatePlaylistDialogAsync(
+                this.Content.XamlRoot,
+                initialTracksToAdd: ViewModel.CurrentQueue);
+
+            if (playlist != null)
+            {
+                ShowToast($"Playlist '{playlist.Name}' guardada con éxito", "\uE73E");
+            }
+        }
+
+        private void ToggleFullScreen_Click(object sender, RoutedEventArgs e)
+        {
+            var appWindow = GetAppWindow();
+            if (appWindow != null)
+            {
+                if (appWindow.Presenter.Kind == AppWindowPresenterKind.FullScreen)
+                {
+                    appWindow.SetPresenter(AppWindowPresenterKind.Default);
+                    ViewModel.IsFullScreen = false;
+                }
+                else
+                {
+                    appWindow.SetPresenter(AppWindowPresenterKind.FullScreen);
+                    ViewModel.IsFullScreen = true;
+                }
+            }
+        }
+
+        private void LyricLine_ItemClick(object sender, ItemClickEventArgs e)
+        {
+            if (e.ClickedItem is LrcLine line)
+            {
+                ViewModel.SeekTo(line.Timestamp.TotalSeconds);
+            }
+        }
+
+        private void OpenLyricsMetadata_Click(object sender, RoutedEventArgs e)
+        {
+            var track = ViewModel.CurrentTrack;
+            if (track == null) return;
+
+            if (_metadataWindow != null)
+            {
+                _metadataWindow.Activate();
+                return;
+            }
+
+            _metadataWindow = new Views.MetadataWindow(track);
+            _metadataWindow.Closed += (s, args) =>
+            {
+                _metadataWindow = null;
+                _ = ViewModel.LoadLyricsForCurrentTrackAsync();
+            };
+            _metadataWindow.Activate();
         }
 
         private void ToggleTheme_Click(object sender, RoutedEventArgs e)

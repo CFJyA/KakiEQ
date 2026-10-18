@@ -41,13 +41,40 @@ namespace KakiEQ_WinUI.ViewModels
         private async Task LoadArtistsAsync()
         {
             var tracks = await _dbService.GetAllTracksAsync();
-            var uniqueArtists = tracks.GroupBy(t => t.Artist).Select(g => new ArtistItem
+            var artistTracksMap = new Dictionary<string, List<Track>>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var track in tracks)
             {
-                Name = g.Key,
-                CoverImagePath = g.FirstOrDefault(t => !string.IsNullOrEmpty(t.CoverImagePath))?.CoverImagePath,
-                TrackCount = g.Count(),
-                AlbumCount = g.Select(t => t.Album).Distinct().Count()
-            }).OrderBy(a => a.Name).ToList();
+                var artists = Helpers.ArtistHelper.SplitArtists(track.Artist);
+                foreach (var artist in artists)
+                {
+                    if (!artistTracksMap.TryGetValue(artist, out var list))
+                    {
+                        list = new List<Track>();
+                        artistTracksMap[artist] = list;
+                    }
+                    list.Add(track);
+                }
+            }
+
+            var uniqueArtists = new List<ArtistItem>();
+            foreach (var kvp in artistTracksMap)
+            {
+                string artistName = kvp.Key;
+                var aTracks = kvp.Value;
+                string? customPhoto = _dbService.GetArtistPhotoPath(artistName);
+                string? cover = customPhoto ?? aTracks.FirstOrDefault(t => !string.IsNullOrEmpty(t.CoverImagePath))?.CoverImagePath;
+
+                uniqueArtists.Add(new ArtistItem
+                {
+                    Name = artistName,
+                    CoverImagePath = cover,
+                    TrackCount = aTracks.Count,
+                    AlbumCount = aTracks.Select(t => t.Album).Distinct(StringComparer.OrdinalIgnoreCase).Count()
+                });
+            }
+
+            uniqueArtists = uniqueArtists.OrderBy(a => a.Name, StringComparer.OrdinalIgnoreCase).ToList();
 
             RunOnUIThread(() =>
             {

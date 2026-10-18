@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.UI;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -12,7 +13,9 @@ using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.Graphics;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
+using ManagedBass;
 using KakiEQ_WinUI.Models;
+using KakiEQ_WinUI.Services.Audio;
 using KakiEQ_WinUI.ViewModels;
 
 namespace KakiEQ_WinUI.Views
@@ -22,6 +25,12 @@ namespace KakiEQ_WinUI.Views
         private List<Track> _allTracks = new();
         private Track? _selectedTrack;
         private string? _pendingNewCoverPath;
+        private string? _loadedLyrics;
+
+        // LRC Preview playback fields
+        private int _lrcStream = 0;
+        private DispatcherQueueTimer? _lrcTimer;
+        private List<LrcLine> _activeLrcLines = new();
 
         public MetadataWindow(Track? trackToSelect = null)
         {
@@ -31,6 +40,7 @@ namespace KakiEQ_WinUI.Views
             SetTitleBar(TitleBarBorder);
 
             ConfigureWindow();
+            this.Closed += (s, e) => StopLrcPlayback();
             _ = LoadTracksAsync(trackToSelect);
         }
 
@@ -159,7 +169,27 @@ namespace KakiEQ_WinUI.Views
                     DisplayGenreText.Text = string.IsNullOrWhiteSpace(tag.FirstGenre) ? "-" : tag.FirstGenre;
                     DisplayComposerText.Text = string.IsNullOrWhiteSpace(tag.FirstComposer) ? "-" : tag.FirstComposer;
                     DisplayAlbumArtistText.Text = string.IsNullOrWhiteSpace(tag.FirstAlbumArtist) ? "-" : tag.FirstAlbumArtist;
-                    DisplayCommentText.Text = string.IsNullOrWhiteSpace(tag.Comment) ? "-" : tag.Comment;
+                    DisplayLyricsStatusText.Text = "Cargando letra...";
+
+                    _ = Task.Run(async () =>
+                    {
+                        var lrc = await LrcService.LoadRawLrcForTrackAsync(track);
+                        this.DispatcherQueue.TryEnqueue(() =>
+                        {
+                            _loadedLyrics = lrc;
+                            if (!string.IsNullOrWhiteSpace(lrc))
+                            {
+                                if (lrc.Contains("[") && lrc.Contains("]"))
+                                    DisplayLyricsStatusText.Text = "Letra sincronizada (LRC)";
+                                else
+                                    DisplayLyricsStatusText.Text = "Letra disponible (Texto plano)";
+                            }
+                            else
+                            {
+                                DisplayLyricsStatusText.Text = "Sin letra sincronizada";
+                            }
+                        });
+                    });
 
                     string tagTypes = tfile.TagTypes.ToString();
                     TagTypeText.Text = tagTypes.Replace(", ", " • ");
@@ -207,7 +237,7 @@ namespace KakiEQ_WinUI.Views
             EditDiscBox.Text = string.Empty;
             EditAlbumArtistBox.Text = DisplayAlbumArtistText.Text != "-" ? DisplayAlbumArtistText.Text : string.Empty;
             EditComposerBox.Text = DisplayComposerText.Text != "-" ? DisplayComposerText.Text : string.Empty;
-            EditCommentBox.Text = DisplayCommentText.Text != "-" ? DisplayCommentText.Text : string.Empty;
+            EditLyricsBox.Text = _loadedLyrics ?? string.Empty;
 
             try
             {
@@ -285,7 +315,10 @@ namespace KakiEQ_WinUI.Views
                     if (!string.IsNullOrWhiteSpace(EditComposerBox.Text))
                         tfile.Tag.Composers = new[] { EditComposerBox.Text.Trim() };
 
-                    tfile.Tag.Comment = EditCommentBox.Text.Trim();
+                    if (!string.IsNullOrWhiteSpace(EditLyricsBox.Text))
+                    {
+                        tfile.Tag.Lyrics = EditLyricsBox.Text.Trim();
+                    }
 
                     // Embed new picture if picked
                     if (!string.IsNullOrEmpty(_pendingNewCoverPath) && File.Exists(_pendingNewCoverPath))
@@ -293,11 +326,13 @@ namespace KakiEQ_WinUI.Views
                         var pic = new TagLib.Picture(_pendingNewCoverPath);
                         tfile.Tag.Pictures = new TagLib.IPicture[] { pic };
 
-                        // Also save cached cover file for UI
+                        // Also save cached cover file for UI with unique hash
                         var cacheFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KakiEQ", "Covers");
                         Directory.CreateDirectory(cacheFolder);
-                        string safeAlbum = string.Join("_", (tfile.Tag.Album ?? "Album").Split(Path.GetInvalidFileNameChars()));
-                        string cachedPath = Path.Combine(cacheFolder, $"{safeAlbum}.jpg");
+                        string safeKey = $"{EditArtistBox.Text.Trim().ToLowerInvariant()}_{EditAlbumBox.Text.Trim().ToLowerInvariant()}";
+                        using var md5 = System.Security.Cryptography.MD5.Create();
+                        string hashFileName = Convert.ToHexString(md5.ComputeHash(System.Text.Encoding.UTF8.GetBytes(safeKey))).ToLowerInvariant();
+                        string cachedPath = Path.Combine(cacheFolder, $"{hashFileName}.jpg");
                         try
                         {
                             File.Copy(_pendingNewCoverPath, cachedPath, true);
@@ -307,6 +342,13 @@ namespace KakiEQ_WinUI.Views
                     }
 
                     tfile.Save();
+                }
+
+                // Save lyrics to local cache and .lrc if provided
+                if (!string.IsNullOrWhiteSpace(EditLyricsBox.Text))
+                {
+                    await LrcService.SaveLrcForTrackAsync(_selectedTrack, EditLyricsBox.Text.Trim());
+                    _loadedLyrics = EditLyricsBox.Text.Trim();
                 }
 
                 // Update in-memory track object
@@ -401,6 +443,289 @@ namespace KakiEQ_WinUI.Views
                 XamlRoot = this.Content.XamlRoot
             };
             await dialog.ShowAsync();
+        }
+
+        private async void OpenLrcEditor_Click(object sender, RoutedEventArgs e)
+        {
+            if (_selectedTrack == null) return;
+
+            LrcTrackInfoText.Text = $"{_selectedTrack.Title} • {_selectedTrack.Artist}";
+
+            string lyricsText = !string.IsNullOrWhiteSpace(EditLyricsBox.Text)
+                ? EditLyricsBox.Text
+                : (_loadedLyrics ?? await LrcService.LoadRawLrcForTrackAsync(_selectedTrack) ?? string.Empty);
+
+            LrcRawTextBox.Text = lyricsText;
+
+            InitializeLrcAudio();
+
+            if (lyricsText.Contains("[") && lyricsText.Contains("]"))
+            {
+                var parsed = LrcService.Parse(lyricsText);
+                if (parsed.Count > 0)
+                {
+                    _activeLrcLines = parsed;
+                    LrcLinesListView.ItemsSource = _activeLrcLines;
+                    LrcRawView.Visibility = Visibility.Collapsed;
+                    LrcSyncView.Visibility = Visibility.Visible;
+                }
+                else
+                {
+                    LrcRawView.Visibility = Visibility.Visible;
+                    LrcSyncView.Visibility = Visibility.Collapsed;
+                }
+            }
+            else
+            {
+                LrcRawView.Visibility = Visibility.Visible;
+                LrcSyncView.Visibility = Visibility.Collapsed;
+            }
+
+            LrcGeneratorOverlay.Visibility = Visibility.Visible;
+        }
+
+        private void CloseLrcEditor_Click(object sender, RoutedEventArgs e)
+        {
+            StopLrcPlayback();
+            LrcGeneratorOverlay.Visibility = Visibility.Collapsed;
+        }
+
+        private void InitializeLrcAudio()
+        {
+            StopLrcPlayback();
+
+            if (_selectedTrack == null || !File.Exists(_selectedTrack.FilePath)) return;
+
+            try
+            {
+                _lrcStream = Bass.CreateStream(_selectedTrack.FilePath, 0, 0, BassFlags.Prescan);
+                if (_lrcStream != 0)
+                {
+                    long totalBytes = Bass.ChannelGetLength(_lrcStream, PositionFlags.Bytes);
+                    double totalSecs = Bass.ChannelBytes2Seconds(_lrcStream, totalBytes);
+                    LrcProgressSlider.Maximum = totalSecs > 0 ? totalSecs : 100;
+                    LrcProgressSlider.Value = 0;
+
+                    var totalSpan = TimeSpan.FromSeconds(totalSecs);
+                    LrcTotalTimeText.Text = $"{((int)totalSpan.TotalMinutes):D2}:{totalSpan.Seconds:D2}.{(totalSpan.Milliseconds / 10):D2}";
+                    LrcCurrentTimeText.Text = "00:00.00";
+                    LrcPlayPauseIcon.Glyph = "\uE768";
+
+                    _lrcTimer = this.DispatcherQueue.CreateTimer();
+                    _lrcTimer.Interval = TimeSpan.FromMilliseconds(60);
+                    _lrcTimer.Tick += (s, e) =>
+                    {
+                        if (_lrcStream != 0 && Bass.ChannelIsActive(_lrcStream) == PlaybackState.Playing)
+                        {
+                            long posBytes = Bass.ChannelGetPosition(_lrcStream, PositionFlags.Bytes);
+                            double posSecs = Bass.ChannelBytes2Seconds(_lrcStream, posBytes);
+                            LrcProgressSlider.Value = posSecs;
+                            var posSpan = TimeSpan.FromSeconds(posSecs);
+                            LrcCurrentTimeText.Text = $"{((int)posSpan.TotalMinutes):D2}:{posSpan.Seconds:D2}.{(posSpan.Milliseconds / 10):D2}";
+
+                            if (_activeLrcLines.Count > 0)
+                            {
+                                int activeIdx = LrcService.FindActiveIndex(_activeLrcLines, posSpan);
+                                for (int i = 0; i < _activeLrcLines.Count; i++)
+                                {
+                                    _activeLrcLines[i].IsActive = (i == activeIdx);
+                                }
+                            }
+                        }
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error initializing preview audio: {ex.Message}");
+            }
+        }
+
+        private void StopLrcPlayback()
+        {
+            _lrcTimer?.Stop();
+            _lrcTimer = null;
+            if (_lrcStream != 0)
+            {
+                Bass.ChannelStop(_lrcStream);
+                Bass.StreamFree(_lrcStream);
+                _lrcStream = 0;
+            }
+            if (LrcPlayPauseIcon != null) LrcPlayPauseIcon.Glyph = "\uE768";
+        }
+
+        private void LrcPlayPause_Click(object sender, RoutedEventArgs e)
+        {
+            if (_lrcStream == 0) return;
+
+            if (Bass.ChannelIsActive(_lrcStream) == PlaybackState.Playing)
+            {
+                Bass.ChannelPause(_lrcStream);
+                LrcPlayPauseIcon.Glyph = "\uE768";
+                _lrcTimer?.Stop();
+            }
+            else
+            {
+                Bass.ChannelPlay(_lrcStream);
+                LrcPlayPauseIcon.Glyph = "\uE769";
+                _lrcTimer?.Start();
+            }
+        }
+
+        private void LrcProgressSlider_ValueChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
+        {
+            if (_lrcStream != 0 && Math.Abs(e.NewValue - Bass.ChannelBytes2Seconds(_lrcStream, Bass.ChannelGetPosition(_lrcStream, PositionFlags.Bytes))) > 1.0)
+            {
+                long targetBytes = Bass.ChannelSeconds2Bytes(_lrcStream, e.NewValue);
+                Bass.ChannelSetPosition(_lrcStream, targetBytes);
+            }
+        }
+
+        private void LrcStartSync_Click(object sender, RoutedEventArgs e)
+        {
+            string raw = LrcRawTextBox.Text ?? string.Empty;
+            var lines = raw.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None)
+                           .Select(l => l.Trim())
+                           .Where(l => !string.IsNullOrEmpty(l))
+                           .ToList();
+
+            if (lines.Count == 0)
+            {
+                ShowInfoDialog("Letra vacía", "Por favor pega la letra de la canción antes de comenzar a marcar tiempos.");
+                return;
+            }
+
+            _activeLrcLines = new List<LrcLine>();
+            foreach (var lineText in lines)
+            {
+                var parsedList = LrcService.Parse(lineText);
+                if (parsedList.Count > 0)
+                {
+                    _activeLrcLines.Add(parsedList[0]);
+                }
+                else
+                {
+                    _activeLrcLines.Add(new LrcLine
+                    {
+                        Timestamp = TimeSpan.Zero,
+                        Text = lineText
+                    });
+                }
+            }
+
+            LrcLinesListView.ItemsSource = null;
+            LrcLinesListView.ItemsSource = _activeLrcLines;
+            if (_activeLrcLines.Count > 0)
+            {
+                LrcLinesListView.SelectedIndex = 0;
+            }
+
+            LrcRawView.Visibility = Visibility.Collapsed;
+            LrcSyncView.Visibility = Visibility.Visible;
+
+            if (_lrcStream != 0 && Bass.ChannelIsActive(_lrcStream) != PlaybackState.Playing)
+            {
+                Bass.ChannelPlay(_lrcStream);
+                LrcPlayPauseIcon.Glyph = "\uE769";
+                _lrcTimer?.Start();
+            }
+        }
+
+        private void LrcBackToRaw_Click(object sender, RoutedEventArgs e)
+        {
+            LrcSyncView.Visibility = Visibility.Collapsed;
+            LrcRawView.Visibility = Visibility.Visible;
+        }
+
+        private void LrcStampCurrentLine_Click(object sender, RoutedEventArgs e)
+        {
+            if (_activeLrcLines == null || _activeLrcLines.Count == 0) return;
+
+            int idx = LrcLinesListView.SelectedIndex;
+            if (idx < 0) idx = 0;
+
+            if (idx >= 0 && idx < _activeLrcLines.Count)
+            {
+                TimeSpan curPos = TimeSpan.Zero;
+                if (_lrcStream != 0)
+                {
+                    long posBytes = Bass.ChannelGetPosition(_lrcStream, PositionFlags.Bytes);
+                    double posSecs = Bass.ChannelBytes2Seconds(_lrcStream, posBytes);
+                    curPos = TimeSpan.FromSeconds(posSecs);
+                }
+
+                _activeLrcLines[idx].Timestamp = curPos;
+
+                int nextIdx = idx + 1;
+                LrcLinesListView.ItemsSource = null;
+                LrcLinesListView.ItemsSource = _activeLrcLines;
+                if (nextIdx < _activeLrcLines.Count)
+                {
+                    LrcLinesListView.SelectedIndex = nextIdx;
+                    LrcLinesListView.ScrollIntoView(_activeLrcLines[nextIdx]);
+                }
+                else
+                {
+                    LrcLinesListView.SelectedIndex = _activeLrcLines.Count - 1;
+                }
+            }
+        }
+
+        private void LrcStampSingleLine_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.Tag is LrcLine line)
+            {
+                if (_lrcStream != 0)
+                {
+                    long posBytes = Bass.ChannelGetPosition(_lrcStream, PositionFlags.Bytes);
+                    double posSecs = Bass.ChannelBytes2Seconds(_lrcStream, posBytes);
+                    line.Timestamp = TimeSpan.FromSeconds(posSecs);
+
+                    int curSel = LrcLinesListView.SelectedIndex;
+                    LrcLinesListView.ItemsSource = null;
+                    LrcLinesListView.ItemsSource = _activeLrcLines;
+                    LrcLinesListView.SelectedIndex = curSel;
+                }
+            }
+        }
+
+        private void LrcLine_ItemClick(object sender, ItemClickEventArgs e)
+        {
+            if (e.ClickedItem is LrcLine line && line.Timestamp > TimeSpan.Zero)
+            {
+                if (_lrcStream != 0)
+                {
+                    long targetBytes = Bass.ChannelSeconds2Bytes(_lrcStream, line.Timestamp.TotalSeconds);
+                    Bass.ChannelSetPosition(_lrcStream, targetBytes);
+                }
+            }
+        }
+
+        private async void SaveLrc_Click(object sender, RoutedEventArgs e)
+        {
+            if (_selectedTrack == null) return;
+
+            string finalLrc = string.Empty;
+            if (LrcSyncView.Visibility == Visibility.Visible && _activeLrcLines.Count > 0)
+            {
+                finalLrc = LrcService.Format(_activeLrcLines, _selectedTrack.Title, _selectedTrack.Artist, _selectedTrack.Album);
+            }
+            else
+            {
+                finalLrc = LrcRawTextBox.Text ?? string.Empty;
+            }
+
+            if (!string.IsNullOrWhiteSpace(finalLrc))
+            {
+                await LrcService.SaveLrcForTrackAsync(_selectedTrack, finalLrc);
+                _loadedLyrics = finalLrc;
+                EditLyricsBox.Text = finalLrc;
+                DisplayLyricsStatusText.Text = "Letra sincronizada (LRC)";
+            }
+
+            StopLrcPlayback();
+            LrcGeneratorOverlay.Visibility = Visibility.Collapsed;
+            ShowInfoDialog("LRC Guardado", "La letra sincronizada con marcas de tiempo se ha generado y guardado correctamente.");
         }
     }
 }

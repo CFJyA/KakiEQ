@@ -7,9 +7,45 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:models="using:KakiEQ_WinUI.Models"
     xmlns:vm="using:KakiEQ_WinUI.ViewModels"
-    mc:Ignorable="d">
+    mc:Ignorable="d"
+    Loaded="UserControl_Loaded"
+    SizeChanged="UserControl_SizeChanged">
 
-    <Grid Padding="24">
+    <UserControl.Resources>
+        <!-- Template Unificado de Alta Fluidez (Adapta tamaño sin reconstruir la UI) -->
+        <DataTemplate x:Key="AlbumCardTemplate" x:DataType="models:AlbumItem">
+            <Border Margin="4" CornerRadius="16"
+                    Background="{ThemeResource AppCardBackground}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1"
+                    HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Cover Artwork -->
+                    <Border Grid.Row="0" CornerRadius="16,16,0,0" Background="{ThemeResource AppCoverPlaceholderBg}">
+                        <Grid>
+                            <FontIcon Glyph="&#xE93C;" FontSize="42" Foreground="{ThemeResource AppCoverPlaceholderFg}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            <Image Source="{x:Bind CoverImagePath}" Stretch="UniformToFill"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Bottom Tag -->
+                    <Border Grid.Row="1" Background="{ThemeResource AppSurfaceElevated}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="0,1,0,0" CornerRadius="0,0,16,16" Padding="10,6">
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="{x:Bind Title}" FontWeight="Bold" FontSize="12" Foreground="{ThemeResource AppTextPrimary}"
+                                       TextTrimming="CharacterEllipsis" MaxLines="1"/>
+                            <TextBlock Text="{x:Bind Artist}" FontSize="11" Foreground="{ThemeResource AppTextSecondary}"
+                                       TextTrimming="CharacterEllipsis" MaxLines="1" Margin="0,1,0,0"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Border>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <Grid Padding="20,24">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
@@ -46,52 +82,23 @@
                   SelectionMode="None"
                   IsItemClickEnabled="True"
                   ItemClick="Album_ItemClick"
-                  SizeChanged="AlbumsGridView_SizeChanged"
-                  Loaded="AlbumsGridView_Loaded">
+                  HorizontalAlignment="Stretch"
+                  ItemTemplate="{StaticResource AlbumCardTemplate}">
             <GridView.ItemContainerStyle>
                 <Style TargetType="GridViewItem">
                     <Setter Property="Margin" Value="0"/>
                     <Setter Property="Padding" Value="0"/>
+                    <Setter Property="MinWidth" Value="0"/>
+                    <Setter Property="MinHeight" Value="0"/>
                     <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
                     <Setter Property="VerticalContentAlignment" Value="Stretch"/>
                 </Style>
             </GridView.ItemContainerStyle>
             <GridView.ItemsPanel>
                 <ItemsPanelTemplate>
-                    <ItemsWrapGrid Orientation="Horizontal"/>
+                    <ItemsWrapGrid Orientation="Horizontal" HorizontalAlignment="Left" ItemWidth="171" ItemHeight="232"/>
                 </ItemsPanelTemplate>
             </GridView.ItemsPanel>
-            <GridView.ItemTemplate>
-                <DataTemplate x:DataType="models:AlbumItem">
-                    <Border HorizontalAlignment="Stretch" Height="230" Margin="6" CornerRadius="16"
-                            Background="{ThemeResource AppCardBackground}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1">
-                        <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="160"/>
-                                <RowDefinition Height="*"/>
-                            </Grid.RowDefinitions>
-
-                            <!-- Cover Artwork -->
-                            <Border Grid.Row="0" CornerRadius="16,16,0,0" Background="{ThemeResource AppCoverPlaceholderBg}">
-                                <Grid>
-                                    <FontIcon Glyph="&#xE93C;" FontSize="44" Foreground="{ThemeResource AppCoverPlaceholderFg}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                    <Image Source="{x:Bind CoverImagePath}" Stretch="UniformToFill"/>
-                                </Grid>
-                            </Border>
-
-                            <!-- Bottom Tag -->
-                            <Border Grid.Row="1" Background="{ThemeResource AppSurfaceElevated}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="0,1,0,0" CornerRadius="0,0,16,16" Padding="12,8">
-                                <StackPanel VerticalAlignment="Center">
-                                    <TextBlock Text="{x:Bind Title}" FontWeight="Bold" FontSize="13" Foreground="{ThemeResource AppTextPrimary}"
-                                               TextTrimming="CharacterEllipsis" MaxLines="1"/>
-                                    <TextBlock Text="{x:Bind Artist}" FontSize="11" Foreground="{ThemeResource AppTextSecondary}"
-                                               TextTrimming="CharacterEllipsis" MaxLines="1" Margin="0,2,0,0"/>
-                                </StackPanel>
-                            </Border>
-                        </Grid>
-                    </Border>
-                </DataTemplate>
-            </GridView.ItemTemplate>
         </GridView>
     </Grid>
 </UserControl>

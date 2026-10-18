@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -55,6 +56,32 @@ namespace KakiEQ_WinUI.Views
             if (sender is FrameworkElement row && ((row.Tag as Track) ?? (row.DataContext as Track)) is Track track)
             {
                 TrackContextMenuHelper.ShowAtTarget(track, row, e.GetPosition(row));
+            }
+        }
+
+        private async void ChangeArtistPhoto_Click(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is not ArtistDetailViewModel vm) return;
+
+            var picker = new Windows.Storage.Pickers.FileOpenPicker();
+            picker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.PicturesLibrary;
+            picker.FileTypeFilter.Add(".jpg");
+            picker.FileTypeFilter.Add(".jpeg");
+            picker.FileTypeFilter.Add(".png");
+            picker.FileTypeFilter.Add(".webp");
+
+            var mainWindow = MainWindow.Instance;
+            if (mainWindow != null)
+            {
+                IntPtr hwnd = WinRT.Interop.WindowNative.GetWindowHandle(mainWindow);
+                WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+            }
+
+            var file = await picker.PickSingleFileAsync();
+            if (file != null)
+            {
+                vm.UpdateArtistPhoto(file.Path);
+                mainWindow?.ShowToast($"Foto de {vm.ArtistName} actualizada");
             }
         }
     }

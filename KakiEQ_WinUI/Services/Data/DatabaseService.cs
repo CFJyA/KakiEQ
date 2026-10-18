@@ -271,6 +271,48 @@ namespace KakiEQ_WinUI.Services.Data
                 await SavePlaylistsAsync(playlists);
             }
         }
+
+        public async Task RecordTrackPlayAsync(Track track)
+        {
+            if (track == null) return;
+            try
+            {
+                var tracks = await GetAllTracksAsync();
+                var existing = tracks.FirstOrDefault(t => t.Id == track.Id || (!string.IsNullOrEmpty(t.FilePath) && t.FilePath.Equals(track.FilePath, StringComparison.OrdinalIgnoreCase)));
+                if (existing != null)
+                {
+                    existing.PlayCount++;
+                    existing.LastPlayed = DateTime.Now;
+                    track.PlayCount = existing.PlayCount;
+                    track.LastPlayed = existing.LastPlayed;
+                    await InsertTracksAsync(tracks);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Database] Error recording play: {ex.Message}");
+            }
+        }
+
+        public string? GetArtistPhotoPath(string artistName)
+        {
+            if (string.IsNullOrWhiteSpace(artistName)) return null;
+            var artistsFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KakiEQ", "Artists");
+            Directory.CreateDirectory(artistsFolder);
+            string safeName = string.Join("_", artistName.Split(Path.GetInvalidFileNameChars()));
+            string targetPath = Path.Combine(artistsFolder, $"{safeName}.jpg");
+            return File.Exists(targetPath) ? targetPath : null;
+        }
+
+        public string SaveArtistPhoto(string artistName, string sourceImagePath)
+        {
+            var artistsFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KakiEQ", "Artists");
+            Directory.CreateDirectory(artistsFolder);
+            string safeName = string.Join("_", artistName.Split(Path.GetInvalidFileNameChars()));
+            string targetPath = Path.Combine(artistsFolder, $"{safeName}.jpg");
+            File.Copy(sourceImagePath, targetPath, true);
+            return targetPath;
+        }
     }
 }
 

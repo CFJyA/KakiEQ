@@ -18,6 +18,8 @@ namespace KakiEQ_WinUI.Models
         public int Year { get; set; }
         public DateTime DateAdded { get; set; }
         public string? CoverImagePath { get; set; }
+        public int PlayCount { get; set; } = 0;
+        public DateTime? LastPlayed { get; set; }
 
         private int _displayIndex;
         [JsonIgnore]

@@ -7,9 +7,37 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:models="using:KakiEQ_WinUI.Models"
     xmlns:vm="using:KakiEQ_WinUI.ViewModels"
-    mc:Ignorable="d">
+    mc:Ignorable="d"
+    Loaded="UserControl_Loaded"
+    SizeChanged="UserControl_SizeChanged">
 
-    <Grid Padding="24">
+    <UserControl.Resources>
+        <!-- Template Unificado de Alta Fluidez (Adapta tamaño sin reconstruir la UI) -->
+        <DataTemplate x:Key="ArtistCardTemplate" x:DataType="models:ArtistItem">
+            <Border Margin="4" CornerRadius="16"
+                    Background="{ThemeResource AppCardBackground}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1"
+                    Padding="12" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
+                    <!-- Circular Avatar -->
+                    <Border Width="96" Height="96" CornerRadius="48" Background="{ThemeResource AppCoverPlaceholderBg}" HorizontalAlignment="Center">
+                        <Grid>
+                            <FontIcon Glyph="&#xE77B;" FontSize="38" Foreground="{ThemeResource AppCoverPlaceholderFg}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            <Image Source="{x:Bind CoverImagePath}" Stretch="UniformToFill"/>
+                        </Grid>
+                    </Border>
+
+                    <StackPanel HorizontalAlignment="Center" Spacing="2">
+                        <TextBlock Text="{x:Bind Name}" FontWeight="Bold" FontSize="13" Foreground="{ThemeResource AppTextPrimary}"
+                                   HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" MaxLines="1"/>
+                        <TextBlock Text="{x:Bind TrackCountFormatted}" FontSize="11" Foreground="{ThemeResource AppTextSubtle}"
+                                   HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <Grid Padding="20,24">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
@@ -46,45 +74,23 @@
                   SelectionMode="None"
                   IsItemClickEnabled="True"
                   ItemClick="Artist_ItemClick"
-                  SizeChanged="ArtistsGridView_SizeChanged"
-                  Loaded="ArtistsGridView_Loaded">
+                  HorizontalAlignment="Stretch"
+                  ItemTemplate="{StaticResource ArtistCardTemplate}">
             <GridView.ItemContainerStyle>
                 <Style TargetType="GridViewItem">
                     <Setter Property="Margin" Value="0"/>
                     <Setter Property="Padding" Value="0"/>
+                    <Setter Property="MinWidth" Value="0"/>
+                    <Setter Property="MinHeight" Value="0"/>
                     <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
                     <Setter Property="VerticalContentAlignment" Value="Stretch"/>
                 </Style>
             </GridView.ItemContainerStyle>
             <GridView.ItemsPanel>
                 <ItemsPanelTemplate>
-                    <ItemsWrapGrid Orientation="Horizontal"/>
+                    <ItemsWrapGrid Orientation="Horizontal" HorizontalAlignment="Left" ItemWidth="171" ItemHeight="216"/>
                 </ItemsPanelTemplate>
             </GridView.ItemsPanel>
-            <GridView.ItemTemplate>
-                <DataTemplate x:DataType="models:ArtistItem">
-                    <Border HorizontalAlignment="Stretch" Height="210" Margin="6" CornerRadius="16"
-                            Background="{ThemeResource AppCardBackground}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1"
-                            Padding="16">
-                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
-                            <!-- Circular Avatar -->
-                            <Border Width="100" Height="100" CornerRadius="50" Background="{ThemeResource AppCoverPlaceholderBg}" HorizontalAlignment="Center">
-                                <Grid>
-                                    <FontIcon Glyph="&#xE77B;" FontSize="40" Foreground="{ThemeResource AppCoverPlaceholderFg}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                    <Image Source="{x:Bind CoverImagePath}" Stretch="UniformToFill"/>
-                                </Grid>
-                            </Border>
-
-                            <StackPanel HorizontalAlignment="Center" Spacing="2">
-                                <TextBlock Text="{x:Bind Name}" FontWeight="Bold" FontSize="14" Foreground="{ThemeResource AppTextPrimary}"
-                                           HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" MaxLines="1"/>
-                                <TextBlock Text="{x:Bind TrackCountFormatted}" FontSize="11" Foreground="{ThemeResource AppTextSubtle}"
-                                           HorizontalAlignment="Center"/>
-                            </StackPanel>
-                        </StackPanel>
-                    </Border>
-                </DataTemplate>
-            </GridView.ItemTemplate>
         </GridView>
     </Grid>
 </UserControl>

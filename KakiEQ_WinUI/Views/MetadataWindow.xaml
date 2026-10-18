@@ -127,8 +127,18 @@
                                         <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Text="Comentario:" FontSize="12" Foreground="{ThemeResource AppTextSubtle}" Width="90"/>
-                                    <TextBlock Grid.Column="1" x:Name="DisplayCommentText" Text="-" FontSize="12" Foreground="{ThemeResource AppTextPrimary}" TextWrapping="Wrap"/>
+                                    <TextBlock Text="Letra:" FontSize="12" Foreground="{ThemeResource AppTextSubtle}" Width="90"/>
+                                    <StackPanel Grid.Column="1" Spacing="4">
+                                        <TextBlock x:Name="DisplayLyricsStatusText" Text="Sin letra sincronizada" FontSize="12" Foreground="{ThemeResource AppTextPrimary}"/>
+                                        <Button Click="OpenLrcEditor_Click"
+                                                Background="{ThemeResource AppSurfaceElevated}" BorderBrush="{ThemeResource AppAccent}" BorderThickness="1"
+                                                CornerRadius="10" Padding="8,4" Margin="0,4,0,0">
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <FontIcon Glyph="&#xEC4B;" FontSize="12" Foreground="{ThemeResource AppAccent}"/>
+                                                <TextBlock Text="Generar / Sincronizar LRC con Marcas de Tiempo" FontSize="11" FontWeight="SemiBold" Foreground="{ThemeResource AppTextPrimary}"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </StackPanel>
                                 </Grid>
                             </StackPanel>
                         </Border>
@@ -194,7 +204,16 @@
 
                         <TextBox x:Name="EditAlbumArtistBox" Header="Intérprete del álbum" CornerRadius="8"/>
                         <TextBox x:Name="EditComposerBox" Header="Compositor" CornerRadius="8"/>
-                        <TextBox x:Name="EditCommentBox" Header="Comentario" CornerRadius="8"/>
+                        
+                        <StackPanel Spacing="6">
+                            <TextBox x:Name="EditLyricsBox" Header="Letra de la Canción (LRC / Texto)" AcceptsReturn="True" TextWrapping="Wrap" Height="100" CornerRadius="8"/>
+                            <Button Click="OpenLrcEditor_Click" HorizontalAlignment="Right" Background="{ThemeResource AppSurfaceElevated}" BorderBrush="{ThemeResource AppAccent}" BorderThickness="1" CornerRadius="8" Padding="8,3">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <FontIcon Glyph="&#xEC4B;" FontSize="11" Foreground="{ThemeResource AppAccent}"/>
+                                    <TextBlock Text="Asistente de Marcas de Tiempo (LRC)" FontSize="11" Foreground="{ThemeResource AppAccent}"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
 
                         <!-- Action Buttons: Save & Cancel -->
                         <Grid ColumnSpacing="10" Margin="0,8,0,0">
@@ -324,6 +343,184 @@
                     </ListView>
                 </Grid>
             </Grid>
+        </Grid>
+
+        <!-- LRC TIMESTAMP GENERATOR MODAL OVERLAY -->
+        <Grid x:Name="LrcGeneratorOverlay"
+              Grid.RowSpan="2"
+              Visibility="Collapsed"
+              Background="{ThemeResource AppOverlayBg}"
+              Canvas.ZIndex="300"
+              Padding="32">
+            <Border Background="{ThemeResource AppCardBackground}"
+                    BorderBrush="{ThemeResource AppBorder}"
+                    BorderThickness="1"
+                    CornerRadius="22"
+                    MaxWidth="820"
+                    MaxHeight="640"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+                <Grid Padding="24">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/> <!-- Title & close -->
+                        <RowDefinition Height="Auto"/> <!-- Audio playback strip -->
+                        <RowDefinition Height="*"/>    <!-- Text input / Synchronizer lines -->
+                        <RowDefinition Height="Auto"/> <!-- Action bar -->
+                    </Grid.RowDefinitions>
+
+                    <!-- Header -->
+                    <Grid Grid.Row="0" Margin="0,0,0,16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon Glyph="&#xEC4B;" FontSize="18" Foreground="{ThemeResource AppAccent}" VerticalAlignment="Center"/>
+                                <TextBlock Text="Sincronizador de Letras LRC (Marcas de Tiempo)" FontSize="18" FontWeight="Bold" Foreground="{ThemeResource AppTextPrimary}"/>
+                            </StackPanel>
+                            <TextBlock x:Name="LrcTrackInfoText" Text="Canción - Artista" FontSize="12" Foreground="{ThemeResource AppTextSubtle}" Margin="0,2,0,0"/>
+                        </StackPanel>
+
+                        <Button Grid.Column="1" Click="CloseLrcEditor_Click"
+                                Width="36" Height="36" CornerRadius="18" Background="Transparent" BorderThickness="0" Padding="0">
+                            <FontIcon Glyph="&#xE711;" FontSize="14" Foreground="{ThemeResource AppTextPrimary}"/>
+                        </Button>
+                    </Grid>
+
+                    <!-- Mini Playback Strip -->
+                    <Border Grid.Row="1" Background="{ThemeResource AppSurfaceElevated}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1" CornerRadius="14" Padding="14,10" Margin="0,0,0,14">
+                        <Grid ColumnSpacing="12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <Button Grid.Column="0" x:Name="LrcPlayPauseBtn" Click="LrcPlayPause_Click"
+                                    Width="38" Height="38" CornerRadius="19" Background="{ThemeResource AppAccent}" Foreground="#121212" Padding="0">
+                                <FontIcon x:Name="LrcPlayPauseIcon" Glyph="&#xE768;" FontSize="14"/>
+                            </Button>
+
+                            <TextBlock Grid.Column="1" x:Name="LrcCurrentTimeText" Text="00:00.00" FontSize="13" FontWeight="Bold" Foreground="{ThemeResource AppAccent}" VerticalAlignment="Center" FontFamily="Consolas"/>
+
+                            <Slider Grid.Column="2" x:Name="LrcProgressSlider" ValueChanged="LrcProgressSlider_ValueChanged" VerticalAlignment="Center"/>
+
+                            <TextBlock Grid.Column="3" x:Name="LrcTotalTimeText" Text="00:00.00" FontSize="12" Foreground="{ThemeResource AppTextSubtle}" VerticalAlignment="Center" FontFamily="Consolas"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Main Editor Workspace (Toggle between Raw Text and Sync Grid) -->
+                    <Grid Grid.Row="2" Margin="0,0,0,14">
+                        <!-- Step 1: Plain text / raw editor -->
+                        <Grid x:Name="LrcRawView" Visibility="Visible">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0" Text="1. Pega o escribe aquí la letra de la canción (un verso por línea):" FontSize="12" Foreground="{ThemeResource AppTextSubtle}" Margin="0,0,0,6"/>
+
+                            <TextBox Grid.Row="1" x:Name="LrcRawTextBox" AcceptsReturn="True" TextWrapping="Wrap"
+                                     PlaceholderText="Pega aquí la letra de la canción..."
+                                     FontFamily="Consolas" FontSize="13" CornerRadius="10"/>
+
+                            <Button Grid.Row="2" Click="LrcStartSync_Click" Margin="0,10,0,0"
+                                    HorizontalAlignment="Right" Background="{ThemeResource AppAccent}" Foreground="#121212" CornerRadius="16" Padding="16,8">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon Glyph="&#xE768;" FontSize="12"/>
+                                    <TextBlock Text="Comenzar a Marcar Tiempos" FontWeight="SemiBold" FontSize="12"/>
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+
+                        <!-- Step 2: Interactive Sync View with Line Highlighting -->
+                        <Grid x:Name="LrcSyncView" Visibility="Collapsed">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
+                                <TextBlock Text="Presiona 'Marcar Tiempo' (o Espacio) en el momento exacto en que comienza cada verso:" FontSize="12" Foreground="{ThemeResource AppTextSubtle}" VerticalAlignment="Center"/>
+                                <Button Click="LrcBackToRaw_Click" Background="Transparent" BorderThickness="0" Foreground="{ThemeResource AppAccent}" Padding="4,2">
+                                    <TextBlock Text="Editar texto" FontSize="11" TextDecorations="Underline"/>
+                                </Button>
+                            </StackPanel>
+
+                            <ListView Grid.Row="1" x:Name="LrcLinesListView"
+                                      SelectionMode="Single"
+                                      IsItemClickEnabled="True"
+                                      ItemClick="LrcLine_ItemClick"
+                                      Background="{ThemeResource AppSurfaceElevated}"
+                                      BorderBrush="{ThemeResource AppBorder}"
+                                      BorderThickness="1"
+                                      CornerRadius="12"
+                                      Padding="6">
+                                <ListView.ItemTemplate>
+                                    <DataTemplate x:DataType="models:LrcLine">
+                                        <Grid Padding="8,4" ColumnSpacing="12">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="90"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <Border Grid.Column="0" Background="{ThemeResource AppAccentContainer}" CornerRadius="8" Padding="6,2" HorizontalAlignment="Left">
+                                                <TextBlock Text="{x:Bind TimestampFormatted}" FontSize="11" FontWeight="Bold" Foreground="{ThemeResource AppAccentText}" FontFamily="Consolas"/>
+                                            </Border>
+
+                                            <TextBlock Grid.Column="1" Text="{x:Bind Text}" FontSize="13" Foreground="{ThemeResource AppTextPrimary}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+
+                                            <Button Grid.Column="2" Click="LrcStampSingleLine_Click" Tag="{x:Bind}" Background="Transparent" BorderThickness="0" Padding="4" ToolTipService.ToolTip="Establecer tiempo actual aquí">
+                                                <FontIcon Glyph="&#xEC4B;" FontSize="11" Foreground="{ThemeResource AppAccent}"/>
+                                            </Button>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListView.ItemTemplate>
+                            </ListView>
+
+                            <!-- Big Stamp Button -->
+                            <Button Grid.Row="2" Click="LrcStampCurrentLine_Click"
+                                    HorizontalAlignment="Stretch" Height="48" Margin="0,10,0,0"
+                                    Background="{ThemeResource AppAccent}" Foreground="#121212" CornerRadius="24">
+                                <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center">
+                                    <FontIcon Glyph="&#xEC4B;" FontSize="16" Foreground="#121212"/>
+                                    <TextBlock Text="MARCAR TIEMPO ACTUAL EN ESTA LÍNEA (ESPACIO)" FontWeight="Bold" FontSize="13" Foreground="#121212"/>
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+                    </Grid>
+
+                    <!-- Footer Action Buttons -->
+                    <Grid Grid.Row="3">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Button Grid.Column="0" Click="CloseLrcEditor_Click"
+                                Background="Transparent" BorderThickness="1" BorderBrush="{ThemeResource AppBorder}"
+                                CornerRadius="18" Padding="16,8">
+                            <TextBlock Text="Cancelar" FontSize="12" Foreground="{ThemeResource AppTextPrimary}"/>
+                        </Button>
+
+                        <Button Grid.Column="2" Click="SaveLrc_Click"
+                                Background="{ThemeResource AppAccent}" Foreground="#121212"
+                                CornerRadius="18" Padding="20,8">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon Glyph="&#xE74E;" FontSize="13" Foreground="#121212"/>
+                                <TextBlock Text="Guardar Letra y Generar LRC" FontWeight="Bold" FontSize="12" Foreground="#121212"/>
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+                </Grid>
+            </Border>
         </Grid>
     </Grid>
 </Window>

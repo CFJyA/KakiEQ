@@ -13,7 +13,9 @@ namespace KakiEQ_WinUI.ViewModels
     {
         private readonly DatabaseService _dbService;
 
+        public ObservableCollection<Track> HistoryTracks { get; } = new();
         public ObservableCollection<Track> SuggestedTracks { get; } = new();
+        public ObservableCollection<Track> FavoriteTracks { get; } = new();
         public ObservableCollection<Track> RecentlyAddedTracks { get; } = new();
 
         public ICommand RefreshSuggestionsCommand { get; }
@@ -33,15 +35,58 @@ namespace KakiEQ_WinUI.ViewModels
             if (allTracks.Count > 0)
             {
                 var rng = new Random();
-                var suggestions = allTracks.OrderBy(_ => rng.Next()).Take(16).ToList();
-                var recents = allTracks.OrderByDescending(t => t.DateAdded).Take(6).ToList();
+
+                // 1. Historial Musical (recently played tracks - 10 items for 2 full rows of 5 or 1 full row of 10)
+                var history = allTracks.Where(t => t.LastPlayed.HasValue)
+                                       .OrderByDescending(t => t.LastPlayed)
+                                       .Take(10).ToList();
+                if (history.Count == 0)
+                {
+                    history = allTracks.Take(10).ToList();
+                }
+
+                // 2. Recomendados para ti (random mix - 20 items for 4 rows of 5 or 2 rows of 10)
+                var suggestions = allTracks.OrderBy(_ => rng.Next()).Take(20).ToList();
+
+                // 3. Tus Favoritos (songs most played by the user - 10 items for full rows)
+                var favorites = allTracks.Where(t => t.PlayCount > 0)
+                                         .OrderByDescending(t => t.PlayCount)
+                                         .Take(10).ToList();
+                if (favorites.Count == 0)
+                {
+                    // Fallback to liked songs in Yollotl playlist if available
+                    var likedTracks = await _dbService.GetTracksForPlaylistAsync("Yollotl");
+                    if (likedTracks.Count > 0)
+                    {
+                        favorites = likedTracks.Take(10).ToList();
+                    }
+                    else
+                    {
+                        favorites = allTracks.OrderBy(_ => rng.Next()).Take(10).ToList();
+                    }
+                }
+
+                // 4. Añadidos recientemente (ordered by DateAdded descending)
+                var recents = allTracks.OrderByDescending(t => t.DateAdded).Take(10).ToList();
 
                 RunOnUIThread(() =>
                 {
+                    HistoryTracks.Clear();
+                    foreach (var h in history)
+                    {
+                        HistoryTracks.Add(h);
+                    }
+
                     SuggestedTracks.Clear();
                     foreach (var s in suggestions)
                     {
                         SuggestedTracks.Add(s);
+                    }
+
+                    FavoriteTracks.Clear();
+                    foreach (var f in favorites)
+                    {
+                        FavoriteTracks.Add(f);
                     }
 
                     RecentlyAddedTracks.Clear();
@@ -50,7 +95,9 @@ namespace KakiEQ_WinUI.ViewModels
                         RecentlyAddedTracks.Add(r);
                     }
 
+                    OnPropertyChanged(nameof(HistoryTracks));
                     OnPropertyChanged(nameof(SuggestedTracks));
+                    OnPropertyChanged(nameof(FavoriteTracks));
                     OnPropertyChanged(nameof(RecentlyAddedTracks));
                 });
             }

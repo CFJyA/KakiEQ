@@ -16,7 +16,7 @@ namespace KakiEQ_WinUI.Helpers
         public DataTemplate? PlaylistDetailTemplate { get; set; }
         public DataTemplate? EqualizerTemplate { get; set; }
 
-        protected override DataTemplate? SelectTemplateCore(object item, DependencyObject container)
+        protected override DataTemplate? SelectTemplateCore(object item)
         {
             return item switch
             {
@@ -29,8 +29,13 @@ namespace KakiEQ_WinUI.Helpers
                 PlaylistsViewModel => PlaylistsTemplate,
                 PlaylistDetailViewModel => PlaylistDetailTemplate,
                 EqualizerViewModel => EqualizerTemplate,
-                _ => base.SelectTemplateCore(item, container)
+                _ => base.SelectTemplateCore(item)
             };
+        }
+
+        protected override DataTemplate? SelectTemplateCore(object item, DependencyObject container)
+        {
+            return SelectTemplateCore(item) ?? base.SelectTemplateCore(item, container);
         }
     }
 }

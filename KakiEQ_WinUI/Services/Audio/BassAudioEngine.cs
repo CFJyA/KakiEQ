@@ -74,6 +74,21 @@ namespace KakiEQ_WinUI.Services.Audio
             lock (_lock)
             {
                 if (_crossfadeTriggeredForCurrentTrack) return;
+
+                // Safety Guard: Verify remaining duration before triggering crossfade!
+                // Prevents premature / random crossfade on VBR or irregular files
+                var total = TotalDuration;
+                var current = CurrentPosition;
+                if (total.TotalSeconds > CrossfadeDurationSeconds + 1)
+                {
+                    double remainingSeconds = total.TotalSeconds - current.TotalSeconds;
+                    if (remainingSeconds > CrossfadeDurationSeconds + 2.0)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[Crossfade Guard] False trigger rejected. Remaining: {remainingSeconds:F1}s vs Crossfade: {CrossfadeDurationSeconds}s");
+                        return;
+                    }
+                }
+
                 _crossfadeTriggeredForCurrentTrack = true;
 
                 // Remove the End sync so this outgoing track will NOT fire TrackEnded when it finishes fading
@@ -125,7 +140,7 @@ namespace KakiEQ_WinUI.Services.Audio
                             _crossfadeSyncHandle = 0;
                         }
 
-                        int newStream = Bass.CreateStream(filePath, 0, 0, BassFlags.Default);
+                        int newStream = Bass.CreateStream(filePath, 0, 0, BassFlags.Prescan);
                         if (newStream != 0)
                         {
                             // Start newStream at 0 volume and play immediately
@@ -162,7 +177,7 @@ namespace KakiEQ_WinUI.Services.Audio
                         _stream = 0;
                     }
 
-                    _stream = Bass.CreateStream(filePath, 0, 0, BassFlags.Default);
+                    _stream = Bass.CreateStream(filePath, 0, 0, BassFlags.Prescan);
                     if (_stream != 0)
                     {
                         Bass.ChannelSetAttribute(_stream, ChannelAttribute.Volume, _volume);
@@ -213,7 +228,8 @@ namespace KakiEQ_WinUI.Services.Audio
             if (total.TotalSeconds <= CrossfadeDurationSeconds + 1) return;
 
             var current = CurrentPosition;
-            if (current >= total - TimeSpan.FromSeconds(CrossfadeDurationSeconds))
+            double remaining = total.TotalSeconds - current.TotalSeconds;
+            if (remaining <= CrossfadeDurationSeconds && remaining >= -0.5)
             {
                 OnCrossfadeTriggerSync(0, _stream, 0, IntPtr.Zero);
             }

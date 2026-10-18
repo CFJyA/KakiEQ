@@ -26,12 +26,26 @@ namespace KakiEQ_WinUI
         /// </summary>
         public App()
         {
-            InitializeComponent();
             UnhandledException += (s, e) =>
             {
-                System.Diagnostics.Debug.WriteLine($"[KakiEQ UnhandledException]: {e.Message}\n{e.Exception}");
+                try
+                {
+                    string logPath = @"C:\Users\W11\source\repos\KakiEQ_WinUI\debug_crash.txt";
+                    File.AppendAllText(logPath, $"[CRASH]: {e.Message}\nException: {e.Exception}\nStackTrace: {e.Exception?.StackTrace}\nInner: {e.Exception?.InnerException}\n");
+                }
+                catch { }
                 e.Handled = true;
             };
+            AppDomain.CurrentDomain.UnhandledException += (s, e) =>
+            {
+                try
+                {
+                    string logPath = @"C:\Users\W11\source\repos\KakiEQ_WinUI\debug_crash.txt";
+                    File.AppendAllText(logPath, $"[APPDOMAIN CRASH]: {e.ExceptionObject}\n");
+                }
+                catch { }
+            };
+            InitializeComponent();
         }
 
         /// <summary>

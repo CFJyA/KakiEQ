@@ -93,7 +93,7 @@ namespace KakiEQ_WinUI.ViewModels
         private async Task LoadArtistDetailsAsync()
         {
             var tracks = await _dbService.GetAllTracksAsync();
-            var artistTracks = tracks.Where(t => t.Artist == ArtistName).ToList();
+            var artistTracks = tracks.Where(t => Helpers.ArtistHelper.TrackHasArtist(t, ArtistName)).ToList();
 
             var uniqueAlbums = artistTracks.GroupBy(t => t.Album).Select(g => new AlbumItem
             {
@@ -103,7 +103,8 @@ namespace KakiEQ_WinUI.ViewModels
             }).OrderBy(a => a.Title).ToList();
 
             string genreStr = artistTracks.FirstOrDefault()?.Genre ?? "Unknown Genre";
-            string? banner = artistTracks.FirstOrDefault(t => !string.IsNullOrEmpty(t.CoverImagePath))?.CoverImagePath;
+            string? customPhoto = _dbService.GetArtistPhotoPath(ArtistName);
+            string? banner = customPhoto ?? artistTracks.FirstOrDefault(t => !string.IsNullOrEmpty(t.CoverImagePath))?.CoverImagePath;
 
             TimeSpan totalSpan = TimeSpan.FromSeconds(artistTracks.Sum(t => t.Duration.TotalSeconds));
             string lengthStr = $"{(int)totalSpan.TotalMinutes}m {totalSpan.Seconds}s";
@@ -147,6 +148,24 @@ namespace KakiEQ_WinUI.ViewModels
                 }
                 OnPropertyChanged(nameof(SelectedAlbumTracks));
             });
+        }
+
+        public void UpdateArtistPhoto(string sourceFilePath)
+        {
+            if (string.IsNullOrEmpty(sourceFilePath) || !System.IO.File.Exists(sourceFilePath)) return;
+            try
+            {
+                string savedPath = _dbService.SaveArtistPhoto(ArtistName, sourceFilePath);
+                RunOnUIThread(() =>
+                {
+                    BannerImagePath = savedPath;
+                    OnPropertyChanged(nameof(BannerImagePath));
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ArtistDetail] Error updating photo: {ex.Message}");
+            }
         }
     }
 }

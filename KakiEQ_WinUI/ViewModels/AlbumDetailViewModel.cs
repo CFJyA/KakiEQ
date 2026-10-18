@@ -45,10 +45,14 @@ namespace KakiEQ_WinUI.ViewModels
         public ICommand GoBackCommand { get; }
         public ICommand PlayAllCommand { get; }
 
-        public AlbumDetailViewModel(DatabaseService dbService, string albumTitle)
+        public AlbumDetailViewModel(DatabaseService dbService, string albumTitle, string? artistName = null)
         {
             _dbService = dbService;
             AlbumTitle = albumTitle;
+            if (!string.IsNullOrEmpty(artistName))
+            {
+                _artistName = artistName;
+            }
 
             GoBackCommand = new RelayCommand(() =>
             {
@@ -70,7 +74,14 @@ namespace KakiEQ_WinUI.ViewModels
         {
             var allTracks = await _dbService.GetAllTracksAsync();
 
-            var albumTracks = allTracks.Where(t => t.Album == AlbumTitle).OrderBy(t => t.TrackNumber).ToList();
+            var albumTracks = allTracks.Where(t => t.Album.Equals(AlbumTitle, StringComparison.OrdinalIgnoreCase) &&
+                                                   (string.IsNullOrEmpty(_artistName) || ArtistHelper.TrackHasArtist(t, _artistName)))
+                                       .OrderBy(t => t.TrackNumber).ToList();
+            if (albumTracks.Count == 0)
+            {
+                albumTracks = allTracks.Where(t => t.Album.Equals(AlbumTitle, StringComparison.OrdinalIgnoreCase))
+                                       .OrderBy(t => t.TrackNumber).ToList();
+            }
             var firstTrack = albumTracks.FirstOrDefault();
 
             string artist = firstTrack?.Artist ?? string.Empty;

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using KakiEQ_WinUI.Models;
 
@@ -52,8 +53,14 @@ namespace KakiEQ_WinUI.Services.Data
             int trackIdCounter = 1;
             int total = files.Count;
 
+            var existingTracks = await _dbService.GetAllTracksAsync();
+            var existingMap = existingTracks.Where(t => !string.IsNullOrEmpty(t.FilePath))
+                                           .ToDictionary(t => t.FilePath, t => t, StringComparer.OrdinalIgnoreCase);
+
             await Task.Run(() =>
             {
+                using var md5 = System.Security.Cryptography.MD5.Create();
+
                 for (int i = 0; i < files.Count; i++)
                 {
                     var file = files[i];
@@ -63,8 +70,15 @@ namespace KakiEQ_WinUI.Services.Data
                     {
                         using var tfile = TagLib.File.Create(file);
                         string albumName = string.IsNullOrWhiteSpace(tfile.Tag.Album) ? "Unknown Album" : tfile.Tag.Album;
-                        string safeAlbumName = string.Join("_", albumName.Split(Path.GetInvalidFileNameChars()));
-                        string? coverPath = Path.Combine(cacheFolder, $"{safeAlbumName}.jpg");
+                        string artistName = string.IsNullOrWhiteSpace(tfile.Tag.FirstAlbumArtist)
+                            ? (string.IsNullOrWhiteSpace(tfile.Tag.FirstPerformer) ? "Unknown Artist" : tfile.Tag.FirstPerformer)
+                            : tfile.Tag.FirstAlbumArtist;
+
+                        // Create unique hash based on artist and album to completely avoid cover collision
+                        string safeKey = $"{artistName.Trim().ToLowerInvariant()}_{albumName.Trim().ToLowerInvariant()}";
+                        byte[] hashBytes = md5.ComputeHash(System.Text.Encoding.UTF8.GetBytes(safeKey));
+                        string hashFileName = Convert.ToHexString(hashBytes).ToLowerInvariant();
+                        string? coverPath = Path.Combine(cacheFolder, $"{hashFileName}.jpg");
 
                         if (!File.Exists(coverPath) && tfile.Tag.Pictures.Length > 0)
                         {
@@ -78,6 +92,14 @@ namespace KakiEQ_WinUI.Services.Data
 
                         if (!File.Exists(coverPath)) coverPath = null;
 
+                        int playCount = 0;
+                        DateTime? lastPlayed = null;
+                        if (existingMap.TryGetValue(file, out var oldTrack))
+                        {
+                            playCount = oldTrack.PlayCount;
+                            lastPlayed = oldTrack.LastPlayed;
+                        }
+
                         var track = new Track
                         {
                             Id = trackIdCounter++,
@@ -90,7 +112,9 @@ namespace KakiEQ_WinUI.Services.Data
                             TrackNumber = (int)tfile.Tag.Track,
                             Year = (int)tfile.Tag.Year,
                             DateAdded = DateTime.Now,
-                            CoverImagePath = coverPath
+                            CoverImagePath = coverPath,
+                            PlayCount = playCount,
+                            LastPlayed = lastPlayed
                         };
                         tracks.Add(track);
                     }
@@ -99,6 +123,14 @@ namespace KakiEQ_WinUI.Services.Data
                         // Fallback for files without metadata
                         try
                         {
+                            int playCount = 0;
+                            DateTime? lastPlayed = null;
+                            if (existingMap.TryGetValue(file, out var oldTrack))
+                            {
+                                playCount = oldTrack.PlayCount;
+                                lastPlayed = oldTrack.LastPlayed;
+                            }
+
                             tracks.Add(new Track
                             {
                                 Id = trackIdCounter++,
@@ -109,7 +141,9 @@ namespace KakiEQ_WinUI.Services.Data
                                 Genre = "Unknown Genre",
                                 Duration = TimeSpan.Zero,
                                 DateAdded = DateTime.Now,
-                                CoverImagePath = null
+                                CoverImagePath = null,
+                                PlayCount = playCount,
+                                LastPlayed = lastPlayed
                             });
                         }
                         catch { }
