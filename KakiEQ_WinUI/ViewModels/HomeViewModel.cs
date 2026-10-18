@@ -113,6 +113,62 @@ namespace KakiEQ_WinUI.ViewModels
                 await MainViewModel.Instance!.PlayTrackAsync(allTracks[idx], allTracks);
             }
         }
+
+        public void OnTrackPlayedRealtime(Track track)
+        {
+            if (track == null) return;
+            RunOnUIThread(() =>
+            {
+                var match = HistoryTracks.FirstOrDefault(t => t.Id == track.Id || (!string.IsNullOrEmpty(t.FilePath) && t.FilePath.Equals(track.FilePath, StringComparison.OrdinalIgnoreCase)));
+                if (match != null)
+                {
+                    HistoryTracks.Remove(match);
+                    match.LastPlayed = DateTime.Now;
+                    match.PlayCount++;
+                    HistoryTracks.Insert(0, match);
+                }
+                else
+                {
+                    track.LastPlayed = DateTime.Now;
+                    HistoryTracks.Insert(0, track);
+                    if (HistoryTracks.Count > 10)
+                    {
+                        HistoryTracks.RemoveAt(HistoryTracks.Count - 1);
+                    }
+                }
+                OnPropertyChanged(nameof(HistoryTracks));
+            });
+        }
+
+        public void NotifyTrackMetadataChanged(Track updatedTrack)
+        {
+            if (updatedTrack == null) return;
+            RunOnUIThread(() =>
+            {
+                void UpdateTrackInCollection(ObservableCollection<Track> col)
+                {
+                    var match = col.FirstOrDefault(t => t.Id == updatedTrack.Id || (!string.IsNullOrEmpty(t.FilePath) && t.FilePath.Equals(updatedTrack.FilePath, StringComparison.OrdinalIgnoreCase)));
+                    if (match != null)
+                    {
+                        match.Title = updatedTrack.Title;
+                        match.Artist = updatedTrack.Artist;
+                        match.Album = updatedTrack.Album;
+                        match.Genre = updatedTrack.Genre;
+                        match.Year = updatedTrack.Year;
+                        match.TrackNumber = updatedTrack.TrackNumber;
+                        if (!string.IsNullOrEmpty(updatedTrack.CoverImagePath))
+                        {
+                            match.CoverImagePath = updatedTrack.CoverImagePath;
+                        }
+                    }
+                }
+
+                UpdateTrackInCollection(HistoryTracks);
+                UpdateTrackInCollection(SuggestedTracks);
+                UpdateTrackInCollection(FavoriteTracks);
+                UpdateTrackInCollection(RecentlyAddedTracks);
+            });
+        }
     }
 }
 

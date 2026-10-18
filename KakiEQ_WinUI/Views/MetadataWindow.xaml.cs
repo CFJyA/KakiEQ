@@ -294,7 +294,8 @@ namespace KakiEQ_WinUI.Views
                 using (var tfile = TagLib.File.Create(filePath))
                 {
                     tfile.Tag.Title = EditTitleBox.Text.Trim();
-                    tfile.Tag.Performers = new[] { EditArtistBox.Text.Trim() };
+                    var splitPerformers = Helpers.ArtistHelper.SplitArtists(EditArtistBox.Text.Trim());
+                    tfile.Tag.Performers = splitPerformers.ToArray();
                     tfile.Tag.Album = EditAlbumBox.Text.Trim();
 
                     if (uint.TryParse(EditYearBox.Text.Trim(), out uint year))
@@ -310,7 +311,10 @@ namespace KakiEQ_WinUI.Views
                         tfile.Tag.Genres = new[] { EditGenreBox.Text.Trim() };
 
                     if (!string.IsNullOrWhiteSpace(EditAlbumArtistBox.Text))
-                        tfile.Tag.AlbumArtists = new[] { EditAlbumArtistBox.Text.Trim() };
+                    {
+                        var splitAlbumArtists = Helpers.ArtistHelper.SplitArtists(EditAlbumArtistBox.Text.Trim());
+                        tfile.Tag.AlbumArtists = splitAlbumArtists.ToArray();
+                    }
 
                     if (!string.IsNullOrWhiteSpace(EditComposerBox.Text))
                         tfile.Tag.Composers = new[] { EditComposerBox.Text.Trim() };
@@ -326,10 +330,10 @@ namespace KakiEQ_WinUI.Views
                         var pic = new TagLib.Picture(_pendingNewCoverPath);
                         tfile.Tag.Pictures = new TagLib.IPicture[] { pic };
 
-                        // Also save cached cover file for UI with unique hash
+                        // Also save cached cover file for UI with unique timestamped hash
                         var cacheFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KakiEQ", "Covers");
                         Directory.CreateDirectory(cacheFolder);
-                        string safeKey = $"{EditArtistBox.Text.Trim().ToLowerInvariant()}_{EditAlbumBox.Text.Trim().ToLowerInvariant()}";
+                        string safeKey = $"{EditArtistBox.Text.Trim().ToLowerInvariant()}_{EditAlbumBox.Text.Trim().ToLowerInvariant()}_{DateTime.Now.Ticks}";
                         using var md5 = System.Security.Cryptography.MD5.Create();
                         string hashFileName = Convert.ToHexString(md5.ComputeHash(System.Text.Encoding.UTF8.GetBytes(safeKey))).ToLowerInvariant();
                         string cachedPath = Path.Combine(cacheFolder, $"{hashFileName}.jpg");
@@ -352,18 +356,20 @@ namespace KakiEQ_WinUI.Views
                 }
 
                 // Update in-memory track object
+                var finalPerformers = Helpers.ArtistHelper.SplitArtists(EditArtistBox.Text.Trim());
                 _selectedTrack.Title = EditTitleBox.Text.Trim();
-                _selectedTrack.Artist = EditArtistBox.Text.Trim();
+                _selectedTrack.Artist = string.Join("; ", finalPerformers);
                 _selectedTrack.Album = EditAlbumBox.Text.Trim();
                 if (int.TryParse(EditTrackBox.Text.Trim(), out int trkNum)) _selectedTrack.TrackNumber = trkNum;
                 if (int.TryParse(EditYearBox.Text.Trim(), out int yrNum)) _selectedTrack.Year = yrNum;
                 _selectedTrack.Genre = EditGenreBox.Text.Trim();
 
-                // Save to database
+                // Save to database & broadcast real-time update to all app views
                 var vm = MainViewModel.Instance;
                 if (vm != null)
                 {
                     await vm.DbService.InsertTracksAsync(_allTracks);
+                    vm.NotifyTrackMetadataChanged(_selectedTrack, lyricsUpdated: !string.IsNullOrWhiteSpace(EditLyricsBox.Text));
                 }
 
                 CancelEdit();
@@ -721,6 +727,7 @@ namespace KakiEQ_WinUI.Views
                 _loadedLyrics = finalLrc;
                 EditLyricsBox.Text = finalLrc;
                 DisplayLyricsStatusText.Text = "Letra sincronizada (LRC)";
+                MainViewModel.Instance?.NotifyLyricsChanged(_selectedTrack);
             }
 
             StopLrcPlayback();

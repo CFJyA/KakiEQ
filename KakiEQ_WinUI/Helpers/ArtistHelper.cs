@@ -51,5 +51,64 @@ namespace KakiEQ_WinUI.Helpers
             var list = SplitArtists(artistString);
             return string.Join("; ", list);
         }
+
+        /// <summary>
+        /// Extracts all artists/performers from a TagLib tag preserving multiple artists separated by ';'.
+        /// Never discards collaborating artists after the first semicolon.
+        /// </summary>
+        public static string GetArtistsFromTag(TagLib.Tag? tag)
+        {
+            if (tag == null) return "Unknown Artist";
+
+            if (tag.Performers != null && tag.Performers.Length > 0)
+            {
+                var validPerformers = tag.Performers
+                    .SelectMany(p => SplitArtists(p))
+                    .Where(p => !string.IsNullOrWhiteSpace(p))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+
+                if (validPerformers.Count > 0)
+                {
+                    return string.Join("; ", validPerformers);
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(tag.JoinedPerformers))
+            {
+                return NormalizeArtistString(tag.JoinedPerformers);
+            }
+
+            if (tag.AlbumArtists != null && tag.AlbumArtists.Length > 0)
+            {
+                var validAlbumArtists = tag.AlbumArtists
+                    .SelectMany(a => SplitArtists(a))
+                    .Where(a => !string.IsNullOrWhiteSpace(a))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+
+                if (validAlbumArtists.Count > 0)
+                {
+                    return string.Join("; ", validAlbumArtists);
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(tag.JoinedAlbumArtists))
+            {
+                return NormalizeArtistString(tag.JoinedAlbumArtists);
+            }
+
+            if (!string.IsNullOrWhiteSpace(tag.FirstPerformer))
+            {
+                return tag.FirstPerformer.Trim();
+            }
+
+            if (!string.IsNullOrWhiteSpace(tag.FirstAlbumArtist))
+            {
+                return tag.FirstAlbumArtist.Trim();
+            }
+
+            return "Unknown Artist";
+        }
     }
 }

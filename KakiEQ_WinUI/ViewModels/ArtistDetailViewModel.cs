@@ -90,7 +90,7 @@ namespace KakiEQ_WinUI.ViewModels
             _ = LoadArtistDetailsAsync();
         }
 
-        private async Task LoadArtistDetailsAsync()
+        public async Task LoadArtistDetailsAsync()
         {
             var tracks = await _dbService.GetAllTracksAsync();
             var artistTracks = tracks.Where(t => Helpers.ArtistHelper.TrackHasArtist(t, ArtistName)).ToList();
@@ -161,6 +161,9 @@ namespace KakiEQ_WinUI.ViewModels
                     BannerImagePath = savedPath;
                     OnPropertyChanged(nameof(BannerImagePath));
                 });
+
+                // Notify global views (ArtistsView, etc.) in real time
+                MainViewModel.Instance?.NotifyArtistPhotoChanged(ArtistName, savedPath);
             }
             catch (Exception ex)
             {

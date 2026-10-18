@@ -298,10 +298,18 @@ namespace KakiEQ_WinUI.Services.Data
         {
             if (string.IsNullOrWhiteSpace(artistName)) return null;
             var artistsFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KakiEQ", "Artists");
-            Directory.CreateDirectory(artistsFolder);
+            if (!Directory.Exists(artistsFolder)) return null;
             string safeName = string.Join("_", artistName.Split(Path.GetInvalidFileNameChars()));
-            string targetPath = Path.Combine(artistsFolder, $"{safeName}.jpg");
-            return File.Exists(targetPath) ? targetPath : null;
+            try
+            {
+                var files = Directory.GetFiles(artistsFolder, $"{safeName}*.jpg");
+                if (files.Length > 0)
+                {
+                    return files.OrderByDescending(f => File.GetLastWriteTimeUtc(f)).First();
+                }
+            }
+            catch { }
+            return null;
         }
 
         public string SaveArtistPhoto(string artistName, string sourceImagePath)
@@ -309,7 +317,19 @@ namespace KakiEQ_WinUI.Services.Data
             var artistsFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KakiEQ", "Artists");
             Directory.CreateDirectory(artistsFolder);
             string safeName = string.Join("_", artistName.Split(Path.GetInvalidFileNameChars()));
-            string targetPath = Path.Combine(artistsFolder, $"{safeName}.jpg");
+            
+            // Remove previous photos for this artist to save space
+            try
+            {
+                var oldFiles = Directory.GetFiles(artistsFolder, $"{safeName}*.jpg");
+                foreach (var old in oldFiles)
+                {
+                    try { File.Delete(old); } catch { }
+                }
+            }
+            catch { }
+
+            string targetPath = Path.Combine(artistsFolder, $"{safeName}_{DateTime.Now.Ticks}.jpg");
             File.Copy(sourceImagePath, targetPath, true);
             return targetPath;
         }

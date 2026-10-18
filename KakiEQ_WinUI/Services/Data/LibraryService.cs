@@ -70,12 +70,13 @@ namespace KakiEQ_WinUI.Services.Data
                     {
                         using var tfile = TagLib.File.Create(file);
                         string albumName = string.IsNullOrWhiteSpace(tfile.Tag.Album) ? "Unknown Album" : tfile.Tag.Album;
-                        string artistName = string.IsNullOrWhiteSpace(tfile.Tag.FirstAlbumArtist)
-                            ? (string.IsNullOrWhiteSpace(tfile.Tag.FirstPerformer) ? "Unknown Artist" : tfile.Tag.FirstPerformer)
+                        string trackArtist = Helpers.ArtistHelper.GetArtistsFromTag(tfile.Tag);
+                        string artistNameForCover = string.IsNullOrWhiteSpace(tfile.Tag.FirstAlbumArtist)
+                            ? trackArtist
                             : tfile.Tag.FirstAlbumArtist;
 
                         // Create unique hash based on artist and album to completely avoid cover collision
-                        string safeKey = $"{artistName.Trim().ToLowerInvariant()}_{albumName.Trim().ToLowerInvariant()}";
+                        string safeKey = $"{artistNameForCover.Trim().ToLowerInvariant()}_{albumName.Trim().ToLowerInvariant()}";
                         byte[] hashBytes = md5.ComputeHash(System.Text.Encoding.UTF8.GetBytes(safeKey));
                         string hashFileName = Convert.ToHexString(hashBytes).ToLowerInvariant();
                         string? coverPath = Path.Combine(cacheFolder, $"{hashFileName}.jpg");
@@ -94,10 +95,12 @@ namespace KakiEQ_WinUI.Services.Data
 
                         int playCount = 0;
                         DateTime? lastPlayed = null;
+                        DateTime dateAdded = DateTime.Now;
                         if (existingMap.TryGetValue(file, out var oldTrack))
                         {
                             playCount = oldTrack.PlayCount;
                             lastPlayed = oldTrack.LastPlayed;
+                            dateAdded = oldTrack.DateAdded;
                         }
 
                         var track = new Track
@@ -105,13 +108,13 @@ namespace KakiEQ_WinUI.Services.Data
                             Id = trackIdCounter++,
                             FilePath = file,
                             Title = string.IsNullOrWhiteSpace(tfile.Tag.Title) ? Path.GetFileNameWithoutExtension(file) : tfile.Tag.Title,
-                            Artist = string.IsNullOrWhiteSpace(tfile.Tag.FirstPerformer) ? "Unknown Artist" : tfile.Tag.FirstPerformer,
+                            Artist = trackArtist,
                             Album = albumName,
                             Genre = string.IsNullOrWhiteSpace(tfile.Tag.FirstGenre) ? "Unknown Genre" : tfile.Tag.FirstGenre,
                             Duration = tfile.Properties.Duration,
                             TrackNumber = (int)tfile.Tag.Track,
                             Year = (int)tfile.Tag.Year,
-                            DateAdded = DateTime.Now,
+                            DateAdded = dateAdded,
                             CoverImagePath = coverPath,
                             PlayCount = playCount,
                             LastPlayed = lastPlayed

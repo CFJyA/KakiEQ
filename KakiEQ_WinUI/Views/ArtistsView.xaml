@@ -22,14 +22,14 @@
                     <Border Width="96" Height="96" CornerRadius="48" Background="{ThemeResource AppCoverPlaceholderBg}" HorizontalAlignment="Center">
                         <Grid>
                             <FontIcon Glyph="&#xE77B;" FontSize="38" Foreground="{ThemeResource AppCoverPlaceholderFg}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            <Image Source="{x:Bind CoverImagePath}" Stretch="UniformToFill"/>
+                            <Image Source="{x:Bind CoverImagePath, Mode=OneWay}" Stretch="UniformToFill"/>
                         </Grid>
                     </Border>
 
                     <StackPanel HorizontalAlignment="Center" Spacing="2">
-                        <TextBlock Text="{x:Bind Name}" FontWeight="Bold" FontSize="13" Foreground="{ThemeResource AppTextPrimary}"
+                        <TextBlock Text="{x:Bind Name, Mode=OneWay}" FontWeight="Bold" FontSize="13" Foreground="{ThemeResource AppTextPrimary}"
                                    HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" MaxLines="1"/>
-                        <TextBlock Text="{x:Bind TrackCountFormatted}" FontSize="11" Foreground="{ThemeResource AppTextSubtle}"
+                        <TextBlock Text="{x:Bind TrackCountFormatted, Mode=OneWay}" FontSize="11" Foreground="{ThemeResource AppTextSubtle}"
                                    HorizontalAlignment="Center"/>
                     </StackPanel>
                 </StackPanel>

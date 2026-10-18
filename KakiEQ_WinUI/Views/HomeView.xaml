@@ -27,15 +27,15 @@
                     <Border Grid.Row="0" CornerRadius="16,16,0,0" Background="{ThemeResource AppCoverPlaceholderBg}">
                         <Grid>
                             <FontIcon Glyph="&#xEC4F;" FontSize="38" Foreground="{ThemeResource AppCoverPlaceholderFg}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            <Image Source="{x:Bind CoverImagePath}" Stretch="UniformToFill"/>
+                            <Image Source="{x:Bind CoverImagePath, Mode=OneWay}" Stretch="UniformToFill"/>
                         </Grid>
                     </Border>
 
                     <!-- Bottom Info -->
                     <StackPanel Grid.Row="1" Padding="10,6" VerticalAlignment="Center">
-                        <TextBlock Text="{x:Bind Title}" FontWeight="SemiBold" FontSize="12" Foreground="{ThemeResource AppTextPrimary}"
+                        <TextBlock Text="{x:Bind Title, Mode=OneWay}" FontWeight="SemiBold" FontSize="12" Foreground="{ThemeResource AppTextPrimary}"
                                    TextTrimming="CharacterEllipsis" MaxLines="1"/>
-                        <TextBlock Text="{x:Bind Artist}" FontSize="11" Foreground="{ThemeResource AppTextSecondary}"
+                        <TextBlock Text="{x:Bind Artist, Mode=OneWay}" FontSize="11" Foreground="{ThemeResource AppTextSecondary}"
                                    TextTrimming="CharacterEllipsis" MaxLines="1" Margin="0,1,0,0"/>
                     </StackPanel>
                 </Grid>

@@ -100,25 +100,25 @@
                         <Border Grid.Column="0" Width="40" Height="40" CornerRadius="8" Background="{ThemeResource AppCoverPlaceholderBg}" HorizontalAlignment="Center">
                             <Grid>
                                 <FontIcon Glyph="&#xEC4F;" FontSize="16" Foreground="{ThemeResource AppCoverPlaceholderFg}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                <Image Source="{x:Bind CoverImagePath}" Stretch="UniformToFill"/>
+                                <Image Source="{x:Bind CoverImagePath, Mode=OneWay}" Stretch="UniformToFill"/>
                             </Grid>
                         </Border>
 
                         <!-- Title -->
                         <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,8,0">
-                            <TextBlock Text="{x:Bind Title}" FontWeight="SemiBold" FontSize="14" Foreground="{ThemeResource AppTextPrimary}" TextTrimming="CharacterEllipsis"/>
+                            <TextBlock Text="{x:Bind Title, Mode=OneWay}" FontWeight="SemiBold" FontSize="14" Foreground="{ThemeResource AppTextPrimary}" TextTrimming="CharacterEllipsis"/>
                         </StackPanel>
 
                         <!-- Artist -->
-                        <TextBlock Grid.Column="2" Text="{x:Bind Artist}" FontSize="13" Foreground="{ThemeResource AppTextSecondary}"
+                        <TextBlock Grid.Column="2" Text="{x:Bind Artist, Mode=OneWay}" FontSize="13" Foreground="{ThemeResource AppTextSecondary}"
                                    VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,8,0"/>
 
                         <!-- Album -->
-                        <TextBlock Grid.Column="3" Text="{x:Bind Album}" FontSize="13" Foreground="{ThemeResource AppTextSubtle}"
+                        <TextBlock Grid.Column="3" Text="{x:Bind Album, Mode=OneWay}" FontSize="13" Foreground="{ThemeResource AppTextSubtle}"
                                    VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,8,0"/>
 
                         <!-- Duration -->
-                        <TextBlock Grid.Column="4" Text="{x:Bind DurationFormatted}" FontSize="12" Foreground="{ThemeResource AppTextMuted}"
+                        <TextBlock Grid.Column="4" Text="{x:Bind DurationFormatted, Mode=OneWay}" FontSize="12" Foreground="{ThemeResource AppTextMuted}"
                                    VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,12,0"/>
 
                         <!-- Options Menu (3 dots) -->

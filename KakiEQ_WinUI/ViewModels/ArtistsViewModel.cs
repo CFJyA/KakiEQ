@@ -98,5 +98,25 @@ namespace KakiEQ_WinUI.ViewModels
             }
             OnPropertyChanged(nameof(TotalArtistsCountFormatted));
         }
+
+        public void NotifyArtistPhotoChanged(string artistName, string photoPath)
+        {
+            if (string.IsNullOrWhiteSpace(artistName)) return;
+
+            RunOnUIThread(() =>
+            {
+                var match = _allArtists.FirstOrDefault(a => a.Name.Equals(artistName, StringComparison.OrdinalIgnoreCase));
+                if (match != null)
+                {
+                    match.CoverImagePath = photoPath;
+                }
+
+                var visibleMatch = Artists.FirstOrDefault(a => a.Name.Equals(artistName, StringComparison.OrdinalIgnoreCase));
+                if (visibleMatch != null)
+                {
+                    visibleMatch.CoverImagePath = photoPath;
+                }
+            });
+        }
     }
 }

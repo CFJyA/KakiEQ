@@ -858,6 +858,7 @@ namespace KakiEQ_WinUI.ViewModels
 
             _smtcService?.UpdateMetadata(track, true);
             _ = _dbService.RecordTrackPlayAsync(track);
+            _homeVm?.OnTrackPlayedRealtime(track);
         }
 
         public async Task PlayNextAsync(bool isCrossfade = false)
@@ -1034,6 +1035,96 @@ namespace KakiEQ_WinUI.ViewModels
             if (_albumsVm != null) await _albumsVm.LoadAlbumsAsync();
             if (_artistsVm != null) await _artistsVm.LoadArtistsAsync();
             if (_playlistsVm != null) await _playlistsVm.LoadPlaylistsAsync();
+        }
+
+        public void NotifyArtistPhotoChanged(string artistName, string photoPath)
+        {
+            _dispatcherQueue.TryEnqueue(() =>
+            {
+                _artistsVm?.NotifyArtistPhotoChanged(artistName, photoPath);
+            });
+        }
+
+        public void NotifyLyricsChanged(Track track)
+        {
+            if (track == null) return;
+            _dispatcherQueue.TryEnqueue(async () =>
+            {
+                if (CurrentTrack != null && (CurrentTrack.Id == track.Id || (!string.IsNullOrEmpty(CurrentTrack.FilePath) && CurrentTrack.FilePath.Equals(track.FilePath, StringComparison.OrdinalIgnoreCase))))
+                {
+                    await LoadLyricsForCurrentTrackAsync();
+                }
+            });
+        }
+
+        public void NotifyTrackMetadataChanged(Track updatedTrack, bool lyricsUpdated = false)
+        {
+            if (updatedTrack == null) return;
+
+            _dispatcherQueue.TryEnqueue(async () =>
+            {
+                // 1. CurrentTrack (Now Playing Bar, Overlay, Background Blur)
+                if (CurrentTrack != null && (CurrentTrack.Id == updatedTrack.Id || (!string.IsNullOrEmpty(CurrentTrack.FilePath) && CurrentTrack.FilePath.Equals(updatedTrack.FilePath, StringComparison.OrdinalIgnoreCase))))
+                {
+                    CurrentTrack.Title = updatedTrack.Title;
+                    CurrentTrack.Artist = updatedTrack.Artist;
+                    CurrentTrack.Album = updatedTrack.Album;
+                    CurrentTrack.Genre = updatedTrack.Genre;
+                    CurrentTrack.Year = updatedTrack.Year;
+                    CurrentTrack.TrackNumber = updatedTrack.TrackNumber;
+
+                    if (!string.IsNullOrEmpty(updatedTrack.CoverImagePath))
+                    {
+                        CurrentTrack.CoverImagePath = updatedTrack.CoverImagePath;
+                        await UpdateBlurredCoverAsync(CurrentTrack);
+                    }
+
+                    OnPropertyChanged(nameof(CurrentTrack));
+                    _smtcService?.UpdateMetadata(CurrentTrack, IsPlaying);
+
+                    if (lyricsUpdated)
+                    {
+                        await LoadLyricsForCurrentTrackAsync();
+                    }
+                }
+
+                // 2. Update in CurrentQueue
+                foreach (var qTrack in CurrentQueue)
+                {
+                    if (qTrack.Id == updatedTrack.Id || (!string.IsNullOrEmpty(qTrack.FilePath) && qTrack.FilePath.Equals(updatedTrack.FilePath, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        qTrack.Title = updatedTrack.Title;
+                        qTrack.Artist = updatedTrack.Artist;
+                        qTrack.Album = updatedTrack.Album;
+                        qTrack.Genre = updatedTrack.Genre;
+                        qTrack.Year = updatedTrack.Year;
+                        qTrack.TrackNumber = updatedTrack.TrackNumber;
+                        if (!string.IsNullOrEmpty(updatedTrack.CoverImagePath))
+                        {
+                            qTrack.CoverImagePath = updatedTrack.CoverImagePath;
+                        }
+                    }
+                }
+
+                // 3. Update Home ViewModel real-time
+                _homeVm?.NotifyTrackMetadataChanged(updatedTrack);
+
+                // 4. Reload other active/cached views in the background
+                if (_libraryVm != null) await _libraryVm.LoadLibraryAsync();
+                if (_albumsVm != null) await _albumsVm.LoadAlbumsAsync();
+                if (_artistsVm != null) await _artistsVm.LoadArtistsAsync();
+                if (_playlistsVm != null) await _playlistsVm.LoadPlaylistsAsync();
+
+                // 5. If viewing detail views, refresh them too
+                if (CurrentView is AlbumDetailViewModel adVm)
+                {
+                    await adVm.LoadAlbumDetailsAsync();
+                }
+                else if (CurrentView is ArtistDetailViewModel artVm)
+                {
+                    await artVm.LoadArtistDetailsAsync();
+                }
+            });
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;

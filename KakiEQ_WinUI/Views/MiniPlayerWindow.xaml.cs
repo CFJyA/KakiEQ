@@ -203,7 +203,8 @@ namespace KakiEQ_WinUI.Views
             {
                 using var tfile = TagLib.File.Create(filePath);
                 title = string.IsNullOrWhiteSpace(tfile.Tag.Title) ? null : tfile.Tag.Title;
-                artist = string.IsNullOrWhiteSpace(tfile.Tag.FirstPerformer) ? null : tfile.Tag.FirstPerformer;
+                string extractedArtist = Helpers.ArtistHelper.GetArtistsFromTag(tfile.Tag);
+                artist = extractedArtist != "Unknown Artist" ? extractedArtist : null;
 
                 if (tfile.Tag.Pictures.Length > 0)
                 {
@@ -349,7 +350,8 @@ namespace KakiEQ_WinUI.Views
                         }
                         using var tf = TagLib.File.Create(item.FilePath);
                         string? tagTitle = tf.Tag.Title;
-                        string? tagArtist = tf.Tag.FirstPerformer;
+                        string extractedTagArtist = Helpers.ArtistHelper.GetArtistsFromTag(tf.Tag);
+                        string? tagArtist = extractedTagArtist != "Unknown Artist" ? extractedTagArtist : null;
                         if (!string.IsNullOrWhiteSpace(tagTitle))
                         {
                             DispatcherQueue.TryEnqueue(() =>
