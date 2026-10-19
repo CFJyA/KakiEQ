@@ -201,6 +201,31 @@
                                               Toggled="StartupToggle_Toggled" VerticalAlignment="Center"/>
                             </Grid>
 
+                            <Border Height="1" Background="{ThemeResource AppBorder}"/>
+
+                            <!-- Información Técnica en Reproduciendo Ahora -->
+                            <Grid ColumnSpacing="16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <Border Grid.Column="0" Width="40" Height="40" CornerRadius="10" Background="{ThemeResource AppAccentSurface}" VerticalAlignment="Center">
+                                    <FontIcon Glyph="&#xE9D9;" FontSize="17" Foreground="{ThemeResource AppAccent}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                    <TextBlock Text="Información Técnica en Pantalla Completa" FontSize="14" FontWeight="SemiBold" Foreground="{ThemeResource AppTextPrimary}"/>
+                                    <TextBlock Text="Muestra el formato de archivo, bits, tasa de bits (kbps) y decibeles base en la vista Reproduciendo Ahora."
+                                               FontSize="12" Foreground="{ThemeResource AppTextSubtle}" TextWrapping="Wrap"/>
+                                </StackPanel>
+
+                                <ToggleSwitch Grid.Column="2" x:Name="AudioTechInfoToggle"
+                                              OnContent="Activado" OffContent="Desactivado"
+                                              Toggled="AudioTechInfoToggle_Toggled" VerticalAlignment="Center"/>
+                            </Grid>
+
                         </StackPanel>
                     </Border>
                 </StackPanel>

@@ -154,6 +154,63 @@ namespace KakiEQ_WinUI.Models
             }
         }
 
+        // --- Audio Technical Specifications ---
+        private string _audioFormat = string.Empty;
+        public string AudioFormat
+        {
+            get => _audioFormat;
+            set
+            {
+                if (_audioFormat != value)
+                {
+                    _audioFormat = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        private int _bitsPerSample;
+        public int BitsPerSample
+        {
+            get => _bitsPerSample;
+            set
+            {
+                if (_bitsPerSample != value)
+                {
+                    _bitsPerSample = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        private int _bitrate;
+        public int Bitrate
+        {
+            get => _bitrate;
+            set
+            {
+                if (_bitrate != value)
+                {
+                    _bitrate = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        private double? _baseDecibels;
+        public double? BaseDecibels
+        {
+            get => _baseDecibels;
+            set
+            {
+                if (_baseDecibels != value)
+                {
+                    _baseDecibels = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
         private int _displayIndex;
         [JsonIgnore]
         public int DisplayIndex

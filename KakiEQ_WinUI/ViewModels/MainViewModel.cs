@@ -171,6 +171,7 @@ namespace KakiEQ_WinUI.ViewModels
                 _currentTrack = value;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(HasTrack));
+                UpdateCurrentTrackTechnicalInfo();
                 _ = UpdateLikeStateAsync();
                 _ = LoadLyricsForCurrentTrackAsync();
                 _ = UpdateBlurredCoverAsync(value);
@@ -493,6 +494,79 @@ namespace KakiEQ_WinUI.ViewModels
         public Visibility NowPlayingExpandedVisibility => IsNowPlayingExpanded ? Visibility.Visible : Visibility.Collapsed;
         public Visibility BottomPlayerBarVisibility => IsNowPlayingExpanded ? Visibility.Collapsed : Visibility.Visible;
 
+        // --- Audio Technical Specifications (NowPlaying only) ---
+        private bool _showAudioTechnicalInfo;
+        public bool ShowAudioTechnicalInfo
+        {
+            get => _showAudioTechnicalInfo;
+            set
+            {
+                if (_showAudioTechnicalInfo != value)
+                {
+                    _showAudioTechnicalInfo = value;
+                    OnPropertyChanged();
+                    if (value && string.IsNullOrEmpty(CurrentTrackAudioFormat) && CurrentTrack != null)
+                    {
+                        UpdateCurrentTrackTechnicalInfo();
+                    }
+                    OnPropertyChanged(nameof(AudioTechInfoVisibility));
+                }
+            }
+        }
+
+        private string _currentTrackAudioFormat = string.Empty;
+        public string CurrentTrackAudioFormat
+        {
+            get => _currentTrackAudioFormat;
+            set { _currentTrackAudioFormat = value; OnPropertyChanged(); }
+        }
+
+        private string _currentTrackBitDepth = string.Empty;
+        public string CurrentTrackBitDepth
+        {
+            get => _currentTrackBitDepth;
+            set { _currentTrackBitDepth = value; OnPropertyChanged(); }
+        }
+
+        private string _currentTrackBitrate = string.Empty;
+        public string CurrentTrackBitrate
+        {
+            get => _currentTrackBitrate;
+            set { _currentTrackBitrate = value; OnPropertyChanged(); }
+        }
+
+        private string _currentTrackBaseDecibels = string.Empty;
+        public string CurrentTrackBaseDecibels
+        {
+            get => _currentTrackBaseDecibels;
+            set { _currentTrackBaseDecibels = value; OnPropertyChanged(); }
+        }
+
+        public Visibility AudioTechInfoVisibility => (ShowAudioTechnicalInfo && CurrentTrack != null && !string.IsNullOrEmpty(CurrentTrackAudioFormat))
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+
+        public void UpdateCurrentTrackTechnicalInfo()
+        {
+            if (CurrentTrack == null)
+            {
+                CurrentTrackAudioFormat = string.Empty;
+                CurrentTrackBitDepth = string.Empty;
+                CurrentTrackBitrate = string.Empty;
+                CurrentTrackBaseDecibels = string.Empty;
+                OnPropertyChanged(nameof(AudioTechInfoVisibility));
+                return;
+            }
+
+            AudioTechnicalInfoHelper.EnsureTrackTechnicalInfo(CurrentTrack);
+
+            CurrentTrackAudioFormat = AudioTechnicalInfoHelper.FormatFormat(CurrentTrack.AudioFormat);
+            CurrentTrackBitDepth = AudioTechnicalInfoHelper.FormatBits(CurrentTrack.BitsPerSample);
+            CurrentTrackBitrate = AudioTechnicalInfoHelper.FormatBitrate(CurrentTrack.Bitrate);
+            CurrentTrackBaseDecibels = AudioTechnicalInfoHelper.FormatDecibels(CurrentTrack.BaseDecibels);
+            OnPropertyChanged(nameof(AudioTechInfoVisibility));
+        }
+
         // --- Playlists & Queue ---
         private ObservableCollection<Playlist> _globalPlaylists = new();
         public ObservableCollection<Playlist> GlobalPlaylists
@@ -576,6 +650,7 @@ namespace KakiEQ_WinUI.ViewModels
             _audioEngine.CrossfadeEnabled = savedSettings.CrossfadeEnabled;
             _audioEngine.CrossfadeDurationSeconds = savedSettings.CrossfadeDurationSeconds;
             _isLightTheme = !savedSettings.IsDarkMode;
+            _showAudioTechnicalInfo = savedSettings.ShowAudioTechnicalInfo;
             RefreshNavBrushes();
 
             // Wire SMTC Events
@@ -1080,6 +1155,7 @@ namespace KakiEQ_WinUI.ViewModels
                     }
 
                     OnPropertyChanged(nameof(CurrentTrack));
+                    UpdateCurrentTrackTechnicalInfo();
                     _smtcService?.UpdateMetadata(CurrentTrack, IsPlaying);
 
                     if (lyricsUpdated)

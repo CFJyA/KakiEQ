@@ -19,6 +19,7 @@ namespace KakiEQ_WinUI.Services.Data
         public int CrossfadeDurationSeconds { get; set; } = 3;
         public bool StartWithWindows { get; set; } = false;
         public string RunInBackgroundPreference { get; set; } = "Ask"; // "Ask", "Background", "Exit"
+        public bool ShowAudioTechnicalInfo { get; set; } = false;
     }
 
     public class SettingsService

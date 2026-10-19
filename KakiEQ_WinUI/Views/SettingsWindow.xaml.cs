@@ -73,6 +73,7 @@ namespace KakiEQ_WinUI.Views
             CrossfadeSliderContainer.IsHitTestVisible = settings.CrossfadeEnabled;
 
             StartupToggle.IsOn = StartupHelper.IsStartupEnabled();
+            AudioTechInfoToggle.IsOn = settings.ShowAudioTechnicalInfo;
 
             // Set current theme to window
             if (Content is FrameworkElement fe)
@@ -194,6 +195,23 @@ namespace KakiEQ_WinUI.Views
             {
                 var settings = vm.SettingsService.LoadSettings();
                 settings.StartWithWindows = enable;
+                vm.SettingsService.SaveSettings(settings);
+            }
+        }
+
+        private void AudioTechInfoToggle_Toggled(object sender, RoutedEventArgs e)
+        {
+            if (_isInitializing) return;
+
+            bool isEnabled = AudioTechInfoToggle.IsOn;
+
+            var vm = MainViewModel.Instance;
+            if (vm != null)
+            {
+                vm.ShowAudioTechnicalInfo = isEnabled;
+
+                var settings = vm.SettingsService.LoadSettings();
+                settings.ShowAudioTechnicalInfo = isEnabled;
                 vm.SettingsService.SaveSettings(settings);
             }
         }
