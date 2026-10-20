@@ -105,6 +105,18 @@ namespace KakiEQ_WinUI.Helpers
             };
             flyout.Items.Add(editMetadataItem);
 
+            // 7. Preparar Karaoke con IA
+            var karaokeItem = new MenuFlyoutItem
+            {
+                Text = "Preparar Modo Karaoke (Separar con IA)",
+                Icon = new FontIcon { Glyph = "\uE720" }
+            };
+            karaokeItem.Click += (s, args) =>
+            {
+                _ = MainViewModel.Instance?.PrepareKaraokeWithAiAsync(track);
+            };
+            flyout.Items.Add(karaokeItem);
+
             return flyout;
         }
 

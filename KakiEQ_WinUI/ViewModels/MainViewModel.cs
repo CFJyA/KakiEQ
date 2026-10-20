@@ -5,6 +5,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using Microsoft.UI.Dispatching;
@@ -280,6 +281,7 @@ namespace KakiEQ_WinUI.ViewModels
                 OnPropertyChanged(nameof(LyricsVisibility));
                 OnPropertyChanged(nameof(AlbumCoverVisibility));
                 OnPropertyChanged(nameof(LyricsBrush));
+                OnPropertyChanged(nameof(KaraokeButtonVisibility));
                 if (value && CurrentLyricsLines.Count == 0)
                 {
                     _ = LoadLyricsForCurrentTrackAsync();
@@ -310,10 +312,230 @@ namespace KakiEQ_WinUI.ViewModels
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(FullScreenGlyph));
                 OnPropertyChanged(nameof(FullScreenTooltip));
+                OnPropertyChanged(nameof(KaraokeButtonVisibility));
             }
         }
         public string FullScreenGlyph => IsFullScreen ? "\uE73F" : "\uE740";
-        public string FullScreenTooltip => IsFullScreen ? "Salir de pantalla completa" : "Pantalla completa";
+                public string FullScreenTooltip => IsFullScreen ? "Salir de pantalla completa" : "Pantalla completa";
+
+        private bool _isKaraokeActive;
+        private bool _isKaraokeProcessing;
+        private int _karaokeProgressPercent;
+        private CancellationTokenSource? _karaokeCts;
+
+        public bool IsKaraokeActive
+        {
+            get => _isKaraokeActive;
+            private set
+            {
+                if (_isKaraokeActive != value)
+                {
+                    _isKaraokeActive = value;
+                    _audioEngine.IsKaraokeMode = value;
+                    OnPropertyChanged();
+                    UpdateKaraokeUiProperties();
+                }
+            }
+        }
+
+        public bool IsKaraokeProcessing
+        {
+            get => _isKaraokeProcessing;
+            private set
+            {
+                if (_isKaraokeProcessing != value)
+                {
+                    _isKaraokeProcessing = value;
+                    OnPropertyChanged();
+                    UpdateKaraokeUiProperties();
+                }
+            }
+        }
+
+        public int KaraokeProgressPercent
+        {
+            get => _karaokeProgressPercent;
+            private set
+            {
+                if (_karaokeProgressPercent != value)
+                {
+                    _karaokeProgressPercent = value;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(KaraokeButtonText));
+                }
+            }
+        }
+
+        public Visibility KaraokeButtonVisibility => (IsFullScreen && IsLyricsVisible) ? Visibility.Visible : Visibility.Collapsed;
+
+        public string KaraokeButtonText
+        {
+            get
+            {
+                if (IsKaraokeProcessing)
+                    return KaraokeProgressPercent > 0 ? $"Separando IA ({KaraokeProgressPercent}%)" : "Separando IA...";
+                return IsKaraokeActive ? "Modo Karaoke (Activo)" : "Modo Karaoke";
+            }
+        }
+
+        public string KaraokeIconGlyph => IsKaraokeProcessing ? "\uE895" : "\uE720";
+
+        public SolidColorBrush KaraokeButtonBackground => (IsKaraokeActive || IsKaraokeProcessing)
+            ? new SolidColorBrush(Windows.UI.Color.FromArgb(70, 187, 134, 252)) 
+            : new SolidColorBrush(Windows.UI.Color.FromArgb(50, 24, 24, 32));
+
+        public SolidColorBrush KaraokeButtonBorderBrush => (IsKaraokeActive || IsKaraokeProcessing)
+            ? AccentBrush 
+            : new SolidColorBrush(Windows.UI.Color.FromArgb(50, 255, 255, 255));
+
+        public SolidColorBrush KaraokePillForeground => (IsKaraokeActive || IsKaraokeProcessing) ? AccentBrush : new SolidColorBrush(Microsoft.UI.Colors.White);
+        public SolidColorBrush KaraokeIconBrush => (IsKaraokeActive || IsKaraokeProcessing) ? AccentBrush : new SolidColorBrush(Windows.UI.Color.FromArgb(255, 208, 208, 220));
+        public string KaraokeTooltip => IsKaraokeProcessing
+            ? "Separando voz con IA en segundo plano..."
+            : (IsKaraokeActive ? "Modo Karaoke activo con IA (Clic para volver a la canción original)" : "Modo Karaoke: Separa y reproduce el instrumental puro con IA");
+
+        public ICommand ToggleKaraokeCommand { get; }
+
+        private void UpdateKaraokeUiProperties()
+        {
+            OnPropertyChanged(nameof(KaraokeButtonText));
+            OnPropertyChanged(nameof(KaraokeIconGlyph));
+            OnPropertyChanged(nameof(KaraokeButtonBackground));
+            OnPropertyChanged(nameof(KaraokeButtonBorderBrush));
+            OnPropertyChanged(nameof(KaraokePillForeground));
+            OnPropertyChanged(nameof(KaraokeIconBrush));
+            OnPropertyChanged(nameof(KaraokeTooltip));
+        }
+
+        public async Task ToggleKaraokeAsync()
+        {
+            if (CurrentTrack == null) return;
+
+            if (IsKaraokeProcessing)
+            {
+                MainWindow.Instance?.ShowToast("La separación de voz con IA ya está en curso...");
+                return;
+            }
+
+            if (IsKaraokeActive)
+            {
+                if (!string.IsNullOrEmpty(CurrentTrack.FilePath) && File.Exists(CurrentTrack.FilePath))
+                {
+                    await _audioEngine.SwitchStreamPreservingPositionAsync(CurrentTrack.FilePath);
+                }
+                IsKaraokeActive = false;
+                MainWindow.Instance?.ShowToast("Modo Karaoke desactivado (Audio original)");
+                return;
+            }
+
+            // Check if instrumental exists in cache or folder
+            string? instrumentalPath = KaraokeService.GetInstrumentalPath(CurrentTrack);
+            if (!string.IsNullOrEmpty(instrumentalPath))
+            {
+                bool switched = await _audioEngine.SwitchStreamPreservingPositionAsync(instrumentalPath);
+                if (switched)
+                {
+                    IsKaraokeActive = true;
+                    MainWindow.Instance?.ShowToast("✨ Modo Karaoke activado (Instrumental IA)");
+                }
+                return;
+            }
+
+            // Not generated yet -> Run AI separation in background!
+            var trackToProcess = CurrentTrack;
+            IsKaraokeProcessing = true;
+            KaraokeProgressPercent = 0;
+            MainWindow.Instance?.ShowToast("⏳ Separando voz con IA en segundo plano... Puedes seguir escuchando.");
+
+            _karaokeCts = new CancellationTokenSource();
+            var progress = new Progress<int>(pct =>
+            {
+                _dispatcherQueue.TryEnqueue(() =>
+                {
+                    KaraokeProgressPercent = pct;
+                });
+            });
+
+            try
+            {
+                string? resultPath = await KaraokeService.SeparateTrackWithAiAsync(
+                    trackToProcess,
+                    progress,
+                    status =>
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[Karaoke] Status: {status}");
+                    },
+                    _karaokeCts.Token);
+
+                _dispatcherQueue.TryEnqueue(async () =>
+                {
+                    IsKaraokeProcessing = false;
+
+                    if (!string.IsNullOrEmpty(resultPath) && File.Exists(resultPath))
+                    {
+                        if (CurrentTrack?.Id == trackToProcess.Id)
+                        {
+                            await _audioEngine.SwitchStreamPreservingPositionAsync(resultPath);
+                            IsKaraokeActive = true;
+                            MainWindow.Instance?.ShowToast("✨ ¡Karaoke listo! Voz eliminada con éxito.");
+                        }
+                        else
+                        {
+                            MainWindow.Instance?.ShowToast($"✨ Pista de Karaoke lista para '{trackToProcess.Title}'");
+                        }
+                    }
+                    else
+                    {
+                        MainWindow.Instance?.ShowToast("No se pudo separar la pista vocal con IA.");
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _dispatcherQueue.TryEnqueue(() =>
+                {
+                    IsKaraokeProcessing = false;
+                    MainWindow.Instance?.ShowToast($"Error al procesar Karaoke: {ex.Message}");
+                });
+            }
+        }
+
+        public async Task PrepareKaraokeWithAiAsync(Track track)
+        {
+            if (track == null || string.IsNullOrEmpty(track.FilePath)) return;
+
+            string? existing = KaraokeService.GetInstrumentalPath(track);
+            if (!string.IsNullOrEmpty(existing))
+            {
+                MainWindow.Instance?.ShowToast($"'{track.Title}' ya tiene su pista de Karaoke lista.");
+                return;
+            }
+
+            MainWindow.Instance?.ShowToast($"⏳ Preparando Karaoke con IA para '{track.Title}'...");
+
+            try
+            {
+                string? result = await KaraokeService.SeparateTrackWithAiAsync(track);
+                _dispatcherQueue.TryEnqueue(() =>
+                {
+                    if (!string.IsNullOrEmpty(result))
+                    {
+                        MainWindow.Instance?.ShowToast($"✨ ¡Pista de Karaoke lista para '{track.Title}'!");
+                    }
+                    else
+                    {
+                        MainWindow.Instance?.ShowToast($"No se pudo generar el Karaoke para '{track.Title}'.");
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _dispatcherQueue.TryEnqueue(() =>
+                {
+                    MainWindow.Instance?.ShowToast($"Error al procesar: {ex.Message}");
+                });
+            }
+        }
 
         private bool _isWindowMaximized;
         public bool IsWindowMaximized
@@ -835,6 +1057,10 @@ namespace KakiEQ_WinUI.ViewModels
             {
                 IsLyricsVisible = !IsLyricsVisible;
             });
+            ToggleKaraokeCommand = new RelayCommand(async () =>
+            {
+                await ToggleKaraokeAsync();
+            });
 
             AddTrackToPlaylistCommand = new RelayCommand(async param =>
             {
@@ -922,7 +1148,21 @@ namespace KakiEQ_WinUI.ViewModels
             TotalDurationSeconds = track.Duration.TotalSeconds;
             CurrentPositionSeconds = 0;
 
-            await _audioEngine.LoadFileAsync(track.FilePath, isCrossfade);
+            string fileToPlay = track.FilePath;
+            if (IsKaraokeActive)
+            {
+                string? inst = KaraokeService.GetInstrumentalPath(track);
+                if (!string.IsNullOrEmpty(inst))
+                {
+                    fileToPlay = inst;
+                }
+                else
+                {
+                    IsKaraokeActive = false;
+                }
+            }
+
+            await _audioEngine.LoadFileAsync(fileToPlay, isCrossfade);
             if (!isCrossfade)
             {
                 await _audioEngine.PlayAsync();

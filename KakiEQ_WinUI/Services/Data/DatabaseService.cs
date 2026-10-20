@@ -321,7 +321,7 @@ namespace KakiEQ_WinUI.Services.Data
             // Remove previous photos for this artist to save space
             try
             {
-                var oldFiles = Directory.GetFiles(artistsFolder, $"{safeName}*.jpg");
+                var oldFiles = Directory.GetFiles(artistsFolder, $"{safeName}*.*");
                 foreach (var old in oldFiles)
                 {
                     try { File.Delete(old); } catch { }
@@ -329,7 +329,7 @@ namespace KakiEQ_WinUI.Services.Data
             }
             catch { }
 
-            string targetPath = Path.Combine(artistsFolder, $"{safeName}_{DateTime.Now.Ticks}.jpg");
+            string ext = Path.GetExtension(sourceImagePath); if (string.IsNullOrEmpty(ext)) ext = ".jpg"; string targetPath = Path.Combine(artistsFolder, $"{safeName}_{DateTime.Now.Ticks}{ext}");
             File.Copy(sourceImagePath, targetPath, true);
             return targetPath;
         }

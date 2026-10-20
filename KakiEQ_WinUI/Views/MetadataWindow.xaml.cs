@@ -198,14 +198,15 @@ namespace KakiEQ_WinUI.Views
                     if (tag.Pictures.Length > 0)
                     {
                         var pic = tag.Pictures[0];
-                        using var ms = new MemoryStream(pic.Data.Data);
+                        byte[] dispBytes = Helpers.ImageHelper.EnsureDisplayableBytes(pic.Data.Data);
+                        using var ms = new MemoryStream(dispBytes);
                         var bitmap = new BitmapImage();
                         _ = bitmap.SetSourceAsync(ms.AsRandomAccessStream());
                         CoverImageDisplay.Source = bitmap;
                     }
                     else if (!string.IsNullOrEmpty(track.CoverImagePath) && File.Exists(track.CoverImagePath))
                     {
-                        CoverImageDisplay.Source = new BitmapImage(new Uri(track.CoverImagePath));
+                        CoverImageDisplay.Source = Helpers.ImageHelper.LoadBitmapSync(track.CoverImagePath);
                     }
                     else
                     {
@@ -271,6 +272,9 @@ namespace KakiEQ_WinUI.Views
             picker.FileTypeFilter.Add(".jpg");
             picker.FileTypeFilter.Add(".jpeg");
             picker.FileTypeFilter.Add(".png");
+            picker.FileTypeFilter.Add(".webp");
+            picker.FileTypeFilter.Add(".bmp");
+            picker.FileTypeFilter.Add(".jxl");
 
             IntPtr hwnd = WindowNative.GetWindowHandle(this);
             InitializeWithWindow.Initialize(picker, hwnd);
@@ -279,7 +283,7 @@ namespace KakiEQ_WinUI.Views
             if (file != null)
             {
                 _pendingNewCoverPath = file.Path;
-                CoverImageDisplay.Source = new BitmapImage(new Uri(file.Path));
+                CoverImageDisplay.Source = Helpers.ImageHelper.LoadBitmapSync(file.Path);
             }
         }
 
@@ -336,7 +340,7 @@ namespace KakiEQ_WinUI.Views
                         string safeKey = $"{EditArtistBox.Text.Trim().ToLowerInvariant()}_{EditAlbumBox.Text.Trim().ToLowerInvariant()}_{DateTime.Now.Ticks}";
                         using var md5 = System.Security.Cryptography.MD5.Create();
                         string hashFileName = Convert.ToHexString(md5.ComputeHash(System.Text.Encoding.UTF8.GetBytes(safeKey))).ToLowerInvariant();
-                        string cachedPath = Path.Combine(cacheFolder, $"{hashFileName}.jpg");
+                        string ext = Path.GetExtension(_pendingNewCoverPath); if (string.IsNullOrEmpty(ext)) ext = ".jpg"; string cachedPath = Path.Combine(cacheFolder, $"{hashFileName}{ext}");
                         try
                         {
                             File.Copy(_pendingNewCoverPath, cachedPath, true);

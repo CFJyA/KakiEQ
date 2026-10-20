@@ -22,7 +22,7 @@ namespace KakiEQ_WinUI.Models
         private string? _coverImagePath;
         public string? CoverImagePath
         {
-            get => _coverImagePath;
+            get => Helpers.ImageHelper.EnsureDisplayableImage(_coverImagePath);
             set
             {
                 if (_coverImagePath != value)

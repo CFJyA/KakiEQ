@@ -135,6 +135,7 @@ namespace KakiEQ_WinUI.Helpers
                     picker.FileTypeFilter.Add(".png");
                     picker.FileTypeFilter.Add(".webp");
                     picker.FileTypeFilter.Add(".bmp");
+                    picker.FileTypeFilter.Add(".jxl");
 
                     if (MainWindow.Instance != null)
                     {
@@ -152,7 +153,7 @@ namespace KakiEQ_WinUI.Helpers
                         File.Copy(file.Path, destPath, true);
 
                         selectedCoverPath = destPath;
-                        previewImage.Source = new BitmapImage(new Uri(destPath));
+                        previewImage.Source = ImageHelper.LoadBitmapSync(destPath);
                         previewImage.Visibility = Visibility.Visible;
                         placeholderIcon.Visibility = Visibility.Collapsed;
                         removeBtn.Visibility = Visibility.Visible;
@@ -405,7 +406,7 @@ namespace KakiEQ_WinUI.Helpers
             {
                 try
                 {
-                    previewImage.Source = new BitmapImage(new Uri(selectedCoverPath));
+                    previewImage.Source = ImageHelper.LoadBitmapSync(selectedCoverPath);
                 }
                 catch { }
             }
@@ -469,6 +470,7 @@ namespace KakiEQ_WinUI.Helpers
                     picker.FileTypeFilter.Add(".png");
                     picker.FileTypeFilter.Add(".webp");
                     picker.FileTypeFilter.Add(".bmp");
+                    picker.FileTypeFilter.Add(".jxl");
 
                     if (MainWindow.Instance != null)
                     {
@@ -487,7 +489,7 @@ namespace KakiEQ_WinUI.Helpers
 
                         selectedCoverPath = destPath;
                         imageChanged = true;
-                        previewImage.Source = new BitmapImage(new Uri(destPath));
+                        previewImage.Source = ImageHelper.LoadBitmapSync(destPath);
                         previewImage.Visibility = Visibility.Visible;
                         placeholderIcon.Visibility = Visibility.Collapsed;
                         removeBtn.Visibility = Visibility.Visible;

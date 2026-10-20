@@ -499,6 +499,22 @@
                                     <TextBlock Text="{x:Bind ViewModel.CurrentTrack.Title, Mode=OneWay}" FontSize="22" FontWeight="Bold" Foreground="White" TextTrimming="CharacterEllipsis"/>
                                     <TextBlock Text="{x:Bind ViewModel.CurrentTrack.Artist, Mode=OneWay}" FontSize="15" Foreground="#CCCCCC" TextTrimming="CharacterEllipsis"/>
                                 </StackPanel>
+
+                                <!-- Modo Karaoke Button (Visible in Fullscreen + Lyrics) -->
+                                <Button Command="{x:Bind ViewModel.ToggleKaraokeCommand}"
+                                        Visibility="{x:Bind ViewModel.KaraokeButtonVisibility, Mode=OneWay}"
+                                        Background="{x:Bind ViewModel.KaraokeButtonBackground, Mode=OneWay}"
+                                        BorderBrush="{x:Bind ViewModel.KaraokeButtonBorderBrush, Mode=OneWay}"
+                                        BorderThickness="1"
+                                        CornerRadius="20"
+                                        Padding="16,8"
+                                        HorizontalAlignment="Left"
+                                        ToolTipService.ToolTip="{x:Bind ViewModel.KaraokeTooltip, Mode=OneWay}">
+                                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                        <FontIcon Glyph="{x:Bind ViewModel.KaraokeIconGlyph, Mode=OneWay}" FontSize="15" Foreground="{x:Bind ViewModel.KaraokeIconBrush, Mode=OneWay}"/>
+                                        <TextBlock Text="{x:Bind ViewModel.KaraokeButtonText, Mode=OneWay}" FontSize="13" FontWeight="SemiBold" Foreground="{x:Bind ViewModel.KaraokePillForeground, Mode=OneWay}"/>
+                                    </StackPanel>
+                                </Button>
                             </StackPanel>
 
                             <!-- Lyrics List and No Lyrics Fallback -->
@@ -776,6 +792,14 @@
                                         Background="Transparent" BorderThickness="0" Padding="0" Width="36" Height="36" CornerRadius="18"
                                         ToolTipService.ToolTip="Mostrar/Ocultar letra sincronizada (LRC)">
                                     <FontIcon Glyph="&#xEC4F;" FontSize="16" Foreground="{x:Bind ViewModel.LyricsBrush, Mode=OneWay}"/>
+                                </Button>
+
+                                <!-- Karaoke Mode Toggle Button (Visible in Fullscreen + Lyrics) -->
+                                <Button Command="{x:Bind ViewModel.ToggleKaraokeCommand}"
+                                        Visibility="{x:Bind ViewModel.KaraokeButtonVisibility, Mode=OneWay}"
+                                        Background="Transparent" BorderThickness="0" Padding="0" Width="36" Height="36" CornerRadius="18"
+                                        ToolTipService.ToolTip="{x:Bind ViewModel.KaraokeTooltip, Mode=OneWay}">
+                                    <FontIcon Glyph="{x:Bind ViewModel.KaraokeIconGlyph, Mode=OneWay}" FontSize="16" Foreground="{x:Bind ViewModel.KaraokeIconBrush, Mode=OneWay}"/>
                                 </Button>
 
                                 <!-- EQ Shortcut Button -->

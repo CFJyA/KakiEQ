@@ -71,10 +71,11 @@ namespace KakiEQ_WinUI.Helpers
 
             try
             {
+                string displayPath = Helpers.ImageHelper.EnsureDisplayableImage(path);
                 Uri uri;
-                if (System.IO.File.Exists(path))
-                    uri = new Uri(System.IO.Path.GetFullPath(path));
-                else if (!Uri.TryCreate(path, UriKind.Absolute, out uri!))
+                if (System.IO.File.Exists(displayPath))
+                    uri = new Uri(System.IO.Path.GetFullPath(displayPath));
+                else if (!Uri.TryCreate(displayPath, UriKind.Absolute, out uri!))
                     return null!;
 
                 return new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(uri);

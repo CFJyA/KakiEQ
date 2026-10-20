@@ -9,6 +9,7 @@ namespace KakiEQ_WinUI.Services.Audio
         Task PauseAsync();
         Task StopAsync();
         Task LoadFileAsync(string filePath);
+        Task<bool> SwitchStreamPreservingPositionAsync(string filePath);
         void SetPosition(TimeSpan position);
         void SetVolume(float volume); // 0.0 to 1.0
 
@@ -19,8 +20,12 @@ namespace KakiEQ_WinUI.Services.Audio
         bool CrossfadeEnabled { get; set; }
         int CrossfadeDurationSeconds { get; set; }
 
+        bool IsKaraokeMode { get; set; }
+        float KaraokeVocalAttenuation { get; set; }
+
         event EventHandler PlaybackPositionChanged;
         event EventHandler PlaybackStateChanged;
+        event EventHandler KaraokeModeChanged;
 
         EqualizerBase Equalizer { get; }
     }

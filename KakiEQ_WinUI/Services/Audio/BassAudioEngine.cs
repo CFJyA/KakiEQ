@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Threading.Tasks;
 using ManagedBass;
 
@@ -18,6 +19,22 @@ namespace KakiEQ_WinUI.Services.Audio
 
         private bool _crossfadeTriggeredForCurrentTrack = false;
         private readonly object _lock = new();
+
+        private bool _isKaraokeMode = false;
+        public bool IsKaraokeMode
+        {
+            get => _isKaraokeMode;
+            set
+            {
+                if (_isKaraokeMode != value)
+                {
+                    _isKaraokeMode = value;
+                    KaraokeModeChanged?.Invoke(this, EventArgs.Empty);
+                }
+            }
+        }
+
+        public float KaraokeVocalAttenuation { get; set; } = 1.0f;
 
         public EqualizerBase Equalizer => _equalizer;
         public bool IsPlaying => _stream != 0 && Bass.ChannelIsActive(_stream) == PlaybackState.Playing;
@@ -54,6 +71,7 @@ namespace KakiEQ_WinUI.Services.Audio
         public event EventHandler? PlaybackStateChanged;
         public event EventHandler? TrackEnded;
         public event EventHandler? TrackCrossfadeTriggered;
+        public event EventHandler? KaraokeModeChanged;
 
         public BassAudioEngine()
         {
@@ -140,7 +158,9 @@ namespace KakiEQ_WinUI.Services.Audio
                             _crossfadeSyncHandle = 0;
                         }
 
-                        int newStream = Bass.CreateStream(filePath, 0, 0, BassFlags.Prescan);
+                        int newStream = Bass.CreateStream(filePath, 0, 0, BassFlags.Float | BassFlags.Prescan);
+                        if (newStream == 0) newStream = Bass.CreateStream(filePath, 0, 0, BassFlags.Prescan);
+
                         if (newStream != 0)
                         {
                             // Start newStream at 0 volume and play immediately
@@ -177,7 +197,9 @@ namespace KakiEQ_WinUI.Services.Audio
                         _stream = 0;
                     }
 
-                    _stream = Bass.CreateStream(filePath, 0, 0, BassFlags.Prescan);
+                    _stream = Bass.CreateStream(filePath, 0, 0, BassFlags.Float | BassFlags.Prescan);
+                    if (_stream == 0) _stream = Bass.CreateStream(filePath, 0, 0, BassFlags.Prescan);
+
                     if (_stream != 0)
                     {
                         Bass.ChannelSetAttribute(_stream, ChannelAttribute.Volume, _volume);
@@ -186,6 +208,52 @@ namespace KakiEQ_WinUI.Services.Audio
                     }
 
                     PlaybackStateChanged?.Invoke(this, EventArgs.Empty);
+                }
+            });
+        }
+
+        public Task<bool> SwitchStreamPreservingPositionAsync(string filePath)
+        {
+            return Task.Run(() =>
+            {
+                lock (_lock)
+                {
+                    if (!File.Exists(filePath)) return false;
+
+                    TimeSpan currentPos = CurrentPosition;
+                    bool wasPlaying = IsPlaying;
+
+                    int newStream = Bass.CreateStream(filePath, 0, 0, BassFlags.Float | BassFlags.Prescan);
+                    if (newStream == 0) newStream = Bass.CreateStream(filePath, 0, 0, BassFlags.Prescan);
+                    if (newStream == 0) return false;
+
+                    int oldStream = _stream;
+                    if (_endSyncHandle != 0) { Bass.ChannelRemoveSync(oldStream, _endSyncHandle); _endSyncHandle = 0; }
+                    if (_crossfadeSyncHandle != 0) { Bass.ChannelRemoveSync(oldStream, _crossfadeSyncHandle); _crossfadeSyncHandle = 0; }
+
+                    long bytes = Bass.ChannelSeconds2Bytes(newStream, currentPos.TotalSeconds);
+                    Bass.ChannelSetPosition(newStream, bytes, PositionFlags.Bytes);
+
+                    Bass.ChannelSetAttribute(newStream, ChannelAttribute.Volume, _volume);
+                    _equalizer.AttachToStream(newStream);
+                    SetupStreamSyncs(newStream);
+
+                    _stream = newStream;
+
+                    if (wasPlaying)
+                    {
+                        Bass.ChannelPlay(newStream);
+                    }
+
+                    if (oldStream != 0)
+                    {
+                        Bass.ChannelStop(oldStream);
+                        Bass.StreamFree(oldStream);
+                    }
+
+                    PlaybackPositionChanged?.Invoke(this, EventArgs.Empty);
+                    PlaybackStateChanged?.Invoke(this, EventArgs.Empty);
+                    return true;
                 }
             });
         }
@@ -203,11 +271,14 @@ namespace KakiEQ_WinUI.Services.Audio
                 long totalBytes = Bass.ChannelGetLength(stream, PositionFlags.Bytes);
                 if (totalBytes > 0)
                 {
-                    double totalSeconds = Bass.ChannelBytes2Seconds(stream, totalBytes);
-                    if (totalSeconds > CrossfadeDurationSeconds + 1)
+                    double totalSec = Bass.ChannelBytes2Seconds(stream, totalBytes);
+                    int safeCrossSec = Math.Clamp(CrossfadeDurationSeconds, 1, 10);
+
+                    // Only set crossfade sync if track is long enough
+                    if (totalSec > safeCrossSec + 1.0)
                     {
-                        double triggerSeconds = totalSeconds - CrossfadeDurationSeconds;
-                        long triggerBytes = Bass.ChannelSeconds2Bytes(stream, triggerSeconds);
+                        double triggerSec = totalSec - safeCrossSec;
+                        long triggerBytes = Bass.ChannelSeconds2Bytes(stream, triggerSec);
 
                         if (triggerBytes > 0 && triggerBytes < totalBytes)
                         {
@@ -239,10 +310,13 @@ namespace KakiEQ_WinUI.Services.Audio
         {
             return Task.Run(() =>
             {
-                if (_stream != 0)
+                lock (_lock)
                 {
-                    Bass.ChannelPlay(_stream);
-                    PlaybackStateChanged?.Invoke(this, EventArgs.Empty);
+                    if (_stream != 0)
+                    {
+                        Bass.ChannelPlay(_stream);
+                        PlaybackStateChanged?.Invoke(this, EventArgs.Empty);
+                    }
                 }
             });
         }
@@ -251,10 +325,13 @@ namespace KakiEQ_WinUI.Services.Audio
         {
             return Task.Run(() =>
             {
-                if (_stream != 0)
+                lock (_lock)
                 {
-                    Bass.ChannelPause(_stream);
-                    PlaybackStateChanged?.Invoke(this, EventArgs.Empty);
+                    if (_stream != 0)
+                    {
+                        Bass.ChannelPause(_stream);
+                        PlaybackStateChanged?.Invoke(this, EventArgs.Empty);
+                    }
                 }
             });
         }
@@ -263,40 +340,54 @@ namespace KakiEQ_WinUI.Services.Audio
         {
             return Task.Run(() =>
             {
-                if (_stream != 0)
+                lock (_lock)
                 {
-                    Bass.ChannelStop(_stream);
-                    Bass.ChannelSetPosition(_stream, 0);
-                    PlaybackStateChanged?.Invoke(this, EventArgs.Empty);
+                    if (_stream != 0)
+                    {
+                        Bass.ChannelStop(_stream);
+                        PlaybackStateChanged?.Invoke(this, EventArgs.Empty);
+                    }
                 }
             });
         }
 
         public void SetPosition(TimeSpan position)
         {
-            if (_stream != 0)
+            lock (_lock)
             {
-                long bytes = Bass.ChannelSeconds2Bytes(_stream, position.TotalSeconds);
-                Bass.ChannelSetPosition(_stream, bytes);
-
-                // Reset crossfade triggers if seeking before trigger position
-                lock (_lock)
+                if (_stream != 0)
                 {
-                    _crossfadeTriggeredForCurrentTrack = false;
-                    if (_crossfadeSyncHandle != 0)
-                    {
-                        Bass.ChannelRemoveSync(_stream, _crossfadeSyncHandle);
-                        _crossfadeSyncHandle = 0;
-                    }
-                    if (_endSyncHandle != 0)
-                    {
-                        Bass.ChannelRemoveSync(_stream, _endSyncHandle);
-                        _endSyncHandle = 0;
-                    }
-                    SetupStreamSyncs(_stream);
-                }
+                    long bytes = Bass.ChannelSeconds2Bytes(_stream, position.TotalSeconds);
+                    Bass.ChannelSetPosition(_stream, bytes, PositionFlags.Bytes);
 
-                PlaybackPositionChanged?.Invoke(this, EventArgs.Empty);
+                    // Re-arm crossfade sync if we sought to before the crossfade point
+                    if (CrossfadeEnabled)
+                    {
+                        long totalBytes = Bass.ChannelGetLength(_stream, PositionFlags.Bytes);
+                        if (totalBytes > 0)
+                        {
+                            double totalSec = Bass.ChannelBytes2Seconds(_stream, totalBytes);
+                            int safeCrossSec = Math.Clamp(CrossfadeDurationSeconds, 1, 10);
+                            double triggerSec = totalSec - safeCrossSec;
+                            if (position.TotalSeconds < triggerSec && totalSec > safeCrossSec + 1.0)
+                            {
+                                _crossfadeTriggeredForCurrentTrack = false;
+                                if (_crossfadeSyncHandle != 0)
+                                {
+                                    Bass.ChannelRemoveSync(_stream, _crossfadeSyncHandle);
+                                    _crossfadeSyncHandle = 0;
+                                }
+                                long triggerBytes = Bass.ChannelSeconds2Bytes(_stream, triggerSec);
+                                if (triggerBytes > 0)
+                                {
+                                    _crossfadeSyncHandle = Bass.ChannelSetSync(_stream, SyncFlags.Position, triggerBytes, _crossfadeSyncProc!, IntPtr.Zero);
+                                }
+                            }
+                        }
+                    }
+
+                    PlaybackPositionChanged?.Invoke(this, EventArgs.Empty);
+                }
             }
         }
 

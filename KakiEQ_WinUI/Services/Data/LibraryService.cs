@@ -86,12 +86,16 @@ namespace KakiEQ_WinUI.Services.Data
                             try
                             {
                                 var pic = tfile.Tag.Pictures[0];
-                                File.WriteAllBytes(coverPath, pic.Data.Data);
+                                byte[] dispBytes = Helpers.ImageHelper.EnsureDisplayableBytes(pic.Data.Data);
+                                File.WriteAllBytes(coverPath, dispBytes);
                             }
                             catch { }
                         }
 
-                        if (!File.Exists(coverPath)) coverPath = null;
+                        if (!File.Exists(coverPath))
+                        {
+                            coverPath = Helpers.ImageHelper.FindCoverInDirectory(file);
+                        }
 
                         int playCount = 0;
                         DateTime? lastPlayed = null;

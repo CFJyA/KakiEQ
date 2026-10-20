@@ -69,6 +69,8 @@ namespace KakiEQ_WinUI.Views
             picker.FileTypeFilter.Add(".jpeg");
             picker.FileTypeFilter.Add(".png");
             picker.FileTypeFilter.Add(".webp");
+            picker.FileTypeFilter.Add(".bmp");
+            picker.FileTypeFilter.Add(".jxl");
 
             var mainWindow = MainWindow.Instance;
             if (mainWindow != null)
