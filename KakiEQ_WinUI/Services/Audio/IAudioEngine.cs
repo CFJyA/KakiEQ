@@ -10,6 +10,7 @@ namespace KakiEQ_WinUI.Services.Audio
         Task StopAsync();
         Task LoadFileAsync(string filePath);
         Task<bool> SwitchStreamPreservingPositionAsync(string filePath);
+        Task<bool> SwitchStreamFromMemoryAsync(byte[] audioData);
         void SetPosition(TimeSpan position);
         void SetVolume(float volume); // 0.0 to 1.0
 

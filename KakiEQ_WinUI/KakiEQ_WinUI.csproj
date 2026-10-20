@@ -62,6 +62,9 @@
     <Content Include="Assets\Kaki_Oficial_Negro.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <None Include="Assets\Scripts\separate_in_memory.py">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <Content Include="Assets\CY_L_Oficial_Transparente.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>

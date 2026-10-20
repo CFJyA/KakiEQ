@@ -20,6 +20,9 @@ namespace KakiEQ_WinUI.Services.Audio
         private bool _crossfadeTriggeredForCurrentTrack = false;
         private readonly object _lock = new();
 
+        // Reference to current in-memory AI track data to prevent GC while playing
+        private byte[]? _currentMemoryTrackData;
+
         private bool _isKaraokeMode = false;
         public bool IsKaraokeMode
         {
@@ -93,8 +96,6 @@ namespace KakiEQ_WinUI.Services.Audio
             {
                 if (_crossfadeTriggeredForCurrentTrack) return;
 
-                // Safety Guard: Verify remaining duration before triggering crossfade!
-                // Prevents premature / random crossfade on VBR or irregular files
                 var total = TotalDuration;
                 var current = CurrentPosition;
                 if (total.TotalSeconds > CrossfadeDurationSeconds + 1)
@@ -109,7 +110,6 @@ namespace KakiEQ_WinUI.Services.Audio
 
                 _crossfadeTriggeredForCurrentTrack = true;
 
-                // Remove the End sync so this outgoing track will NOT fire TrackEnded when it finishes fading
                 if (_stream != 0 && _endSyncHandle != 0)
                 {
                     Bass.ChannelRemoveSync(_stream, _endSyncHandle);
@@ -139,44 +139,31 @@ namespace KakiEQ_WinUI.Services.Audio
                 lock (_lock)
                 {
                     _crossfadeTriggeredForCurrentTrack = false;
+                    _currentMemoryTrackData = null; // Clear any old in-memory buffer
 
-                    // ORGANIC CROSSFADE:
-                    // If crossfade is enabled and current stream is actively playing, fade out old stream while fading in new stream
+                    // ORGANIC CROSSFADE
                     if (isCrossfade && CrossfadeEnabled && _stream != 0 && Bass.ChannelIsActive(_stream) == PlaybackState.Playing)
                     {
                         int oldStream = _stream;
 
-                        // Unhook all syncs from oldStream so it won't fire any callbacks
-                        if (_endSyncHandle != 0)
-                        {
-                            Bass.ChannelRemoveSync(oldStream, _endSyncHandle);
-                            _endSyncHandle = 0;
-                        }
-                        if (_crossfadeSyncHandle != 0)
-                        {
-                            Bass.ChannelRemoveSync(oldStream, _crossfadeSyncHandle);
-                            _crossfadeSyncHandle = 0;
-                        }
+                        if (_endSyncHandle != 0) { Bass.ChannelRemoveSync(oldStream, _endSyncHandle); _endSyncHandle = 0; }
+                        if (_crossfadeSyncHandle != 0) { Bass.ChannelRemoveSync(oldStream, _crossfadeSyncHandle); _crossfadeSyncHandle = 0; }
 
                         int newStream = Bass.CreateStream(filePath, 0, 0, BassFlags.Float | BassFlags.Prescan);
                         if (newStream == 0) newStream = Bass.CreateStream(filePath, 0, 0, BassFlags.Prescan);
 
                         if (newStream != 0)
                         {
-                            // Start newStream at 0 volume and play immediately
                             Bass.ChannelSetAttribute(newStream, ChannelAttribute.Volume, 0f);
                             Bass.ChannelPlay(newStream);
 
-                            // Smooth slide: new stream fades UP to volume, old stream fades DOWN to 0
                             Bass.ChannelSlideAttribute(newStream, ChannelAttribute.Volume, _volume, crossfadeMs);
                             Bass.ChannelSlideAttribute(oldStream, ChannelAttribute.Volume, 0f, crossfadeMs);
 
                             _stream = newStream;
                             _equalizer.AttachToStream(newStream);
-
                             SetupStreamSyncs(newStream);
 
-                            // Safely free oldStream once its slide down finishes completely
                             _ = Task.Delay(crossfadeMs + 600).ContinueWith(_ =>
                             {
                                 Bass.ChannelStop(oldStream);
@@ -188,7 +175,7 @@ namespace KakiEQ_WinUI.Services.Audio
                         }
                     }
 
-                    // NORMAL (NON-CROSSFADE) TRANSITION:
+                    // NORMAL TRANSITION
                     if (_stream != 0)
                     {
                         if (_endSyncHandle != 0) { Bass.ChannelRemoveSync(_stream, _endSyncHandle); _endSyncHandle = 0; }
@@ -208,6 +195,53 @@ namespace KakiEQ_WinUI.Services.Audio
                     }
 
                     PlaybackStateChanged?.Invoke(this, EventArgs.Empty);
+                }
+            });
+        }
+
+        public Task<bool> SwitchStreamFromMemoryAsync(byte[] audioData)
+        {
+            return Task.Run(() =>
+            {
+                lock (_lock)
+                {
+                    if (audioData == null || audioData.Length == 0) return false;
+
+                    TimeSpan currentPos = CurrentPosition;
+                    bool wasPlaying = IsPlaying;
+
+                    int newStream = Bass.CreateStream(audioData, 0, audioData.Length, BassFlags.Float | BassFlags.Prescan);
+                    if (newStream == 0) newStream = Bass.CreateStream(audioData, 0, audioData.Length, BassFlags.Prescan);
+                    if (newStream == 0) return false;
+
+                    int oldStream = _stream;
+                    if (_endSyncHandle != 0) { Bass.ChannelRemoveSync(oldStream, _endSyncHandle); _endSyncHandle = 0; }
+                    if (_crossfadeSyncHandle != 0) { Bass.ChannelRemoveSync(oldStream, _crossfadeSyncHandle); _crossfadeSyncHandle = 0; }
+
+                    long bytes = Bass.ChannelSeconds2Bytes(newStream, currentPos.TotalSeconds);
+                    Bass.ChannelSetPosition(newStream, bytes, PositionFlags.Bytes);
+
+                    Bass.ChannelSetAttribute(newStream, ChannelAttribute.Volume, _volume);
+                    _equalizer.AttachToStream(newStream);
+                    SetupStreamSyncs(newStream);
+
+                    _stream = newStream;
+                    _currentMemoryTrackData = audioData; // Pin in RAM while playing
+
+                    if (wasPlaying)
+                    {
+                        Bass.ChannelPlay(newStream);
+                    }
+
+                    if (oldStream != 0)
+                    {
+                        Bass.ChannelStop(oldStream);
+                        Bass.StreamFree(oldStream);
+                    }
+
+                    PlaybackPositionChanged?.Invoke(this, EventArgs.Empty);
+                    PlaybackStateChanged?.Invoke(this, EventArgs.Empty);
+                    return true;
                 }
             });
         }
@@ -239,6 +273,7 @@ namespace KakiEQ_WinUI.Services.Audio
                     SetupStreamSyncs(newStream);
 
                     _stream = newStream;
+                    _currentMemoryTrackData = null; // Revert memory buffer
 
                     if (wasPlaying)
                     {
@@ -262,10 +297,8 @@ namespace KakiEQ_WinUI.Services.Audio
         {
             if (stream == 0) return;
 
-            // 1. Regular End Sync
             _endSyncHandle = Bass.ChannelSetSync(stream, SyncFlags.End, 0, _endSyncProc!, IntPtr.Zero);
 
-            // 2. Position Sync for Crossfade
             if (CrossfadeEnabled)
             {
                 long totalBytes = Bass.ChannelGetLength(stream, PositionFlags.Bytes);
@@ -274,7 +307,6 @@ namespace KakiEQ_WinUI.Services.Audio
                     double totalSec = Bass.ChannelBytes2Seconds(stream, totalBytes);
                     int safeCrossSec = Math.Clamp(CrossfadeDurationSeconds, 1, 10);
 
-                    // Only set crossfade sync if track is long enough
                     if (totalSec > safeCrossSec + 1.0)
                     {
                         double triggerSec = totalSec - safeCrossSec;
@@ -291,7 +323,6 @@ namespace KakiEQ_WinUI.Services.Audio
 
         public void CheckCrossfadeProgress()
         {
-            // Fallback check in case position sync was missed (e.g. variable bitrate or stream format edge case)
             if (!CrossfadeEnabled || _crossfadeTriggeredForCurrentTrack || _stream == 0) return;
             if (!IsPlaying) return;
 
@@ -360,7 +391,6 @@ namespace KakiEQ_WinUI.Services.Audio
                     long bytes = Bass.ChannelSeconds2Bytes(_stream, position.TotalSeconds);
                     Bass.ChannelSetPosition(_stream, bytes, PositionFlags.Bytes);
 
-                    // Re-arm crossfade sync if we sought to before the crossfade point
                     if (CrossfadeEnabled)
                     {
                         long totalBytes = Bass.ChannelGetLength(_stream, PositionFlags.Bytes);
@@ -411,6 +441,7 @@ namespace KakiEQ_WinUI.Services.Audio
                     Bass.StreamFree(_stream);
                     _stream = 0;
                 }
+                _currentMemoryTrackData = null;
             }
             GC.SuppressFinalize(this);
         }
