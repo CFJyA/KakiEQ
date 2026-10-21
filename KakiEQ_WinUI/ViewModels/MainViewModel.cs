@@ -176,6 +176,7 @@ namespace KakiEQ_WinUI.ViewModels
                 _ = UpdateLikeStateAsync();
                 _ = LoadLyricsForCurrentTrackAsync();
                 _ = UpdateBlurredCoverAsync(value);
+                UpdateKaraokeUiProperties();
             }
         }
 
@@ -377,6 +378,8 @@ namespace KakiEQ_WinUI.ViewModels
                     return KaraokeProgressPercent > 0 ? $"Separando IA ({KaraokeProgressPercent}%)" : "Separando IA...";
                 if (IsKaraokeActive)
                     return "Modo Karaoke (Activo)";
+                if (KaraokeService.IsTrackReady(CurrentTrack))
+                    return "Modo Karaoke (Listo)";
                 return "Modo Karaoke";
             }
         }
@@ -389,10 +392,12 @@ namespace KakiEQ_WinUI.ViewModels
 
         public SolidColorBrush KaraokeButtonBorderBrush => (IsKaraokeActive || IsKaraokeProcessing)
             ? AccentBrush 
-            : new SolidColorBrush(Windows.UI.Color.FromArgb(50, 255, 255, 255));
+            : (KaraokeService.IsTrackReady(CurrentTrack)
+                ? new SolidColorBrush(Windows.UI.Color.FromArgb(140, 187, 134, 252))
+                : new SolidColorBrush(Windows.UI.Color.FromArgb(50, 255, 255, 255)));
 
-        public SolidColorBrush KaraokePillForeground => (IsKaraokeActive || IsKaraokeProcessing) ? AccentBrush : new SolidColorBrush(Microsoft.UI.Colors.White);
-        public SolidColorBrush KaraokeIconBrush => (IsKaraokeActive || IsKaraokeProcessing) ? AccentBrush : new SolidColorBrush(Windows.UI.Color.FromArgb(255, 208, 208, 220));
+        public SolidColorBrush KaraokePillForeground => (IsKaraokeActive || IsKaraokeProcessing || KaraokeService.IsTrackReady(CurrentTrack)) ? AccentBrush : new SolidColorBrush(Microsoft.UI.Colors.White);
+        public SolidColorBrush KaraokeIconBrush => (IsKaraokeActive || IsKaraokeProcessing || KaraokeService.IsTrackReady(CurrentTrack)) ? AccentBrush : new SolidColorBrush(Windows.UI.Color.FromArgb(255, 208, 208, 220));
         public string KaraokeTooltip
         {
             get

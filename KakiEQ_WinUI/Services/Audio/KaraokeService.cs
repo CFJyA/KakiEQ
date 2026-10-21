@@ -26,11 +26,21 @@ namespace KakiEQ_WinUI.Services.Audio
         private static readonly object PreloadLock = new();
         private static bool _isPreloaderRunning = false;
 
+        // --- PERSISTENT DAEMON PROCESS FIELDS ---
+        private static Process? _daemonProcess;
+        private static StreamWriter? _daemonWriter;
+        private static readonly object DaemonLock = new();
+        private static TaskCompletionSource<bool>? _daemonReadyTcs;
+        private static TaskCompletionSource<string?>? _currentJobTcs;
+        private static IProgress<int>? _currentJobProgress;
+        private static string? _currentJobTargetFile;
+
         public static event EventHandler<Track>? TrackKaraokeReady;
 
         static KaraokeService()
         {
             Initialize();
+            _ = Task.Run(EnsureDaemonRunningAsync);
         }
 
         public static void Initialize()
@@ -109,13 +119,182 @@ namespace KakiEQ_WinUI.Services.Audio
         private static string GetScriptPath()
         {
             string appBase = AppContext.BaseDirectory;
-            string localScript = Path.Combine(appBase, "Assets", "Scripts", "separate_in_memory.py");
+            string localScript = Path.Combine(appBase, "Assets", "Scripts", "karaoke_daemon.py");
             if (File.Exists(localScript)) return localScript;
 
-            string projectFallback = Path.GetFullPath(Path.Combine(appBase, "..", "..", "..", "..", "KakiEQ_WinUI", "Assets", "Scripts", "separate_in_memory.py"));
+            string projectFallback = Path.GetFullPath(Path.Combine(appBase, "..", "..", "..", "..", "KakiEQ_WinUI", "Assets", "Scripts", "karaoke_daemon.py"));
             if (File.Exists(projectFallback)) return projectFallback;
 
             return localScript;
+        }
+
+        // --- DAEMON LIFECYCLE ---
+        private static async Task<bool> EnsureDaemonRunningAsync()
+        {
+            lock (DaemonLock)
+            {
+                if (_daemonProcess != null && !_daemonProcess.HasExited)
+                {
+                    return true;
+                }
+            }
+
+            string scriptPath = GetScriptPath();
+            if (!File.Exists(scriptPath))
+            {
+                Debug.WriteLine($"[KaraokeService] Daemon script not found at {scriptPath}");
+                return false;
+            }
+
+            _daemonReadyTcs = new TaskCompletionSource<bool>();
+
+            try
+            {
+                var psi = new ProcessStartInfo
+                {
+                    FileName = "python",
+                    Arguments = $"-u \"{scriptPath}\"",
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    RedirectStandardInput = true,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    StandardOutputEncoding = Encoding.UTF8
+                };
+
+                var proc = new Process { StartInfo = psi };
+
+                var percentRegex = new Regex(@"PROGRESS:(\d+)", RegexOptions.Compiled);
+
+                proc.OutputDataReceived += (s, e) =>
+                {
+                    if (string.IsNullOrEmpty(e.Data)) return;
+
+                    if (e.Data.Contains("DAEMON_READY"))
+                    {
+                        Debug.WriteLine("[KaraokeService] Persistent AI Daemon is WARM and READY!");
+                        _daemonReadyTcs?.TrySetResult(true);
+                        return;
+                    }
+
+                    var match = percentRegex.Match(e.Data);
+                    if (match.Success && int.TryParse(match.Groups[1].Value, out int pct))
+                    {
+                        _currentJobProgress?.Report(Math.Clamp(pct, 1, 99));
+                        return;
+                    }
+
+                    if (e.Data.StartsWith("SUCCESS\t"))
+                    {
+                        string outPath = e.Data.Substring(8).Trim();
+                        _currentJobProgress?.Report(100);
+                        _currentJobTcs?.TrySetResult(outPath);
+                        return;
+                    }
+
+                    if (e.Data.StartsWith("ERROR\t"))
+                    {
+                        Debug.WriteLine($"[KaraokeDaemon Error] {e.Data}");
+                        _currentJobTcs?.TrySetResult(null);
+                        return;
+                    }
+                };
+
+                proc.ErrorDataReceived += (s, e) =>
+                {
+                    if (!string.IsNullOrEmpty(e.Data))
+                    {
+                        Debug.WriteLine($"[KaraokeDaemon Stderr] {e.Data}");
+                    }
+                };
+
+                proc.Start();
+                try { proc.PriorityClass = ProcessPriorityClass.BelowNormal; } catch { }
+                proc.BeginOutputReadLine();
+                proc.BeginErrorReadLine();
+
+                lock (DaemonLock)
+                {
+                    _daemonProcess = proc;
+                    _daemonWriter = proc.StandardInput;
+                }
+
+                // Wait up to 15 seconds for daemon to warm up
+                var completedTask = await Task.WhenAny(_daemonReadyTcs.Task, Task.Delay(15000));
+                return completedTask == _daemonReadyTcs.Task && _daemonReadyTcs.Task.Result;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[KaraokeService] Daemon start failed: {ex.Message}");
+                return false;
+            }
+        }
+
+        // Single execution fallback if daemon is unavailable
+        private static async Task<string?> SeparateTrackFallbackAsync(
+            Track track,
+            string targetKinstPath,
+            IProgress<int>? progress,
+            CancellationToken ct)
+        {
+            string scriptPath = GetScriptPath();
+            return await Task.Run(() =>
+            {
+                Process? proc = null;
+                try
+                {
+                    var psi = new ProcessStartInfo
+                    {
+                        FileName = "python",
+                        Arguments = $"\"{scriptPath}\" \"{track.FilePath}\" \"{targetKinstPath}\"",
+                        UseShellExecute = false,
+                        CreateNoWindow = true,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true
+                    };
+
+                    proc = new Process { StartInfo = psi };
+                    var percentRegex = new Regex(@"PROGRESS:(\d+)", RegexOptions.Compiled);
+
+                    proc.OutputDataReceived += (s, e) =>
+                    {
+                        if (string.IsNullOrEmpty(e.Data)) return;
+                        var m = percentRegex.Match(e.Data);
+                        if (m.Success && int.TryParse(m.Groups[1].Value, out int pct))
+                        {
+                            progress?.Report(Math.Clamp(pct, 1, 99));
+                        }
+                    };
+
+                    proc.Start();
+                    try { proc.PriorityClass = ProcessPriorityClass.BelowNormal; } catch { }
+                    proc.BeginOutputReadLine();
+                    proc.BeginErrorReadLine();
+
+                    while (!proc.WaitForExit(500))
+                    {
+                        if (ct.IsCancellationRequested)
+                        {
+                            try { proc.Kill(true); } catch { }
+                            return null;
+                        }
+                    }
+
+                    if (proc.ExitCode == 0 && File.Exists(targetKinstPath))
+                    {
+                        return targetKinstPath;
+                    }
+                    return null;
+                }
+                catch
+                {
+                    return null;
+                }
+                finally
+                {
+                    proc?.Dispose();
+                }
+            }, ct);
         }
 
         public static async Task<string?> SeparateTrackAsync(
@@ -137,82 +316,54 @@ namespace KakiEQ_WinUI.Services.Audio
             }
 
             string key = GetTrackKey(track);
-            string scriptPath = GetScriptPath();
-            if (!File.Exists(scriptPath))
+            string targetKinstPath = Path.Combine(CacheDirectory, $"{key}.kinst");
+            statusCallback?.Invoke("Aislando instrumental con IA ultrarrápida (DirectML GPU)...");
+
+            bool daemonReady = await EnsureDaemonRunningAsync();
+
+            string? resultPath = null;
+            if (daemonReady && _daemonWriter != null)
             {
-                Debug.WriteLine($"[KaraokeService] Script not found at {scriptPath}");
-                return null;
+                var jobTcs = new TaskCompletionSource<string?>();
+                lock (DaemonLock)
+                {
+                    _currentJobProgress = progress;
+                    _currentJobTcs = jobTcs;
+                    _currentJobTargetFile = targetKinstPath;
+                    _daemonWriter.WriteLine($"PROCESS\t{track.FilePath}\t{targetKinstPath}");
+                }
+
+                using (cancellationToken.Register(() => jobTcs.TrySetCanceled()))
+                {
+                    try
+                    {
+                        resultPath = await jobTcs.Task;
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        return null;
+                    }
+                }
             }
 
-            string targetKinstPath = Path.Combine(CacheDirectory, $"{key}.kinst");
-            statusCallback?.Invoke("Aislando instrumental con aceleración GPU...");
-
-            return await Task.Run(() =>
+            // Fallback if daemon timed out or failed
+            if (string.IsNullOrEmpty(resultPath) || !File.Exists(resultPath))
             {
-                Process? process = null;
-                try
-                {
-                    var psi = new ProcessStartInfo
-                    {
-                        FileName = "python",
-                        Arguments = $"\"{scriptPath}\" \"{track.FilePath}\" \"{targetKinstPath}\"",
-                        UseShellExecute = false,
-                        CreateNoWindow = true,
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true
-                    };
+                resultPath = await SeparateTrackFallbackAsync(track, targetKinstPath, progress, cancellationToken);
+            }
 
-                    process = new Process { StartInfo = psi };
+            if (!string.IsNullOrEmpty(resultPath) && File.Exists(resultPath))
+            {
+                CachedKeys[key] = true;
+                progress?.Report(100);
+                TrackKaraokeReady?.Invoke(null, track);
+                return resultPath;
+            }
 
-                    var percentRegex = new Regex(@"PROGRESS:(\d+)", RegexOptions.Compiled);
-
-                    process.ErrorDataReceived += (s, e) =>
-                    {
-                        if (string.IsNullOrEmpty(e.Data)) return;
-
-                        var match = percentRegex.Match(e.Data);
-                        if (match.Success && int.TryParse(match.Groups[1].Value, out int pct))
-                        {
-                            progress?.Report(Math.Clamp(pct, 1, 99));
-                        }
-                    };
-
-                    process.Start();
-                    try { process.PriorityClass = ProcessPriorityClass.BelowNormal; } catch { }
-                    process.BeginErrorReadLine();
-
-                    while (!process.WaitForExit(500))
-                    {
-                        if (cancellationToken.IsCancellationRequested)
-                        {
-                            try { process.Kill(true); } catch { }
-                            return null;
-                        }
-                    }
-
-                    if (process.ExitCode == 0 && File.Exists(targetKinstPath))
-                    {
-                        CachedKeys[key] = true;
-                        progress?.Report(100);
-                        TrackKaraokeReady?.Invoke(null, track);
-                        return targetKinstPath;
-                    }
-
-                    return null;
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"[KaraokeService] Separation error: {ex.Message}");
-                    return null;
-                }
-                finally
-                {
-                    process?.Dispose();
-                }
-            }, cancellationToken);
+            return null;
         }
 
-        // --- INTELLIGENT PRE-PROCESSING ENGINE ---
+        // --- PROACTIVE PRE-PROCESSING ENGINE ---
         public static void PrioritizeTrack(Track? track)
         {
             if (track == null || string.IsNullOrEmpty(track.FilePath) || IsTrackReady(track))
@@ -264,7 +415,6 @@ namespace KakiEQ_WinUI.Services.Audio
                 Track? nextTrack = null;
                 lock (PreloadLock)
                 {
-                    // Always process high-priority (active song & upcoming song) first!
                     if (HighPriorityQueue.TryDequeue(out nextTrack))
                     {
                     }
@@ -293,7 +443,8 @@ namespace KakiEQ_WinUI.Services.Audio
                     }
                 }
 
-                await Task.Delay(500);
+                // Short sleep between tracks to keep system responsive
+                await Task.Delay(300);
             }
         }
     }
