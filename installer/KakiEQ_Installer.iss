@@ -13,14 +13,13 @@ DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
 OutputDir=Output
 OutputBaseFilename=KakiEQ_Setup_v1.0
-SetupIconFile=..\KakiEQ_WinUI\Assets\Kaki_Oficial_Negro.ico
-UninstallDisplayIcon={app}\Assets\Kaki_Oficial_Negro.ico
+SetupIconFile=..\KakiEQ_WinUI\Assets\Kaki_Oficial_Blanco.ico
+UninstallDisplayIcon={app}\Assets\Kaki_Oficial_Blanco.ico
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
 ArchitecturesInstallIn64BitMode=x64compatible
 PrivilegesRequired=lowest
-PrivilegesRequiredOverridesAllowed=dialog
 ChangesAssociations=yes
 
 [Languages]
@@ -35,13 +34,13 @@ Name: "fileassoc"; Description: "Asociar archivos de audio (.mp3, .flac, .wav, .
 Source: "..\publish\win-x64\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\Assets\Kaki_Oficial_Negro.ico"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon; IconFilename: "{app}\Assets\Kaki_Oficial_Negro.ico"
+Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\Assets\Kaki_Oficial_Blanco.ico"
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon; IconFilename: "{app}\Assets\Kaki_Oficial_Blanco.ico"
 
 [Registry]
 ; File type association definition
 Root: HKA; Subkey: "Software\Classes\KakiEQ.AudioFile"; ValueType: string; ValueName: ""; ValueData: "Archivo de Audio Kaki EQ"; Flags: uninsdeletekey; Tasks: fileassoc
-Root: HKA; Subkey: "Software\Classes\KakiEQ.AudioFile\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\Assets\Kaki_Oficial_Negro.ico,0"; Tasks: fileassoc
+Root: HKA; Subkey: "Software\Classes\KakiEQ.AudioFile\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\Assets\Kaki_Oficial_Blanco.ico,0"; Tasks: fileassoc
 Root: HKA; Subkey: "Software\Classes\KakiEQ.AudioFile\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""%1"""; Tasks: fileassoc
 
 ; Associate audio formats
