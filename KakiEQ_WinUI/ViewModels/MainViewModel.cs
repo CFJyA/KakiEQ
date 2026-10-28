@@ -101,6 +101,8 @@ namespace KakiEQ_WinUI.ViewModels
             OnPropertyChanged(nameof(NavPlaylistsFg));
             OnPropertyChanged(nameof(NavEqBg));
             OnPropertyChanged(nameof(NavEqFg));
+            OnPropertyChanged(nameof(NavMultiOutputBg));
+            OnPropertyChanged(nameof(NavMultiOutputFg));
         }
 
         public SolidColorBrush NavHomeBg => CurrentSectionTitle == "Inicio" ? NavActiveBg : NavInactiveBg;
@@ -120,6 +122,9 @@ namespace KakiEQ_WinUI.ViewModels
 
         public SolidColorBrush NavEqBg => CurrentSectionTitle == "Ecualizador" ? NavActiveBg : NavInactiveBg;
         public SolidColorBrush NavEqFg => CurrentSectionTitle == "Ecualizador" ? NavActiveFg : NavInactiveFg;
+
+        public SolidColorBrush NavMultiOutputBg => CurrentSectionTitle == "Salidas de Audio" ? NavActiveBg : NavInactiveBg;
+        public SolidColorBrush NavMultiOutputFg => CurrentSectionTitle == "Salidas de Audio" ? NavActiveFg : NavInactiveFg;
 
         // --- Sidebar State ---
         private bool _isSidebarExpanded = true;
@@ -866,6 +871,7 @@ namespace KakiEQ_WinUI.ViewModels
         private AlbumsViewModel? _albumsVm;
         private PlaylistsViewModel? _playlistsVm;
         private EqualizerViewModel? _equalizerVm;
+        private MultiOutputViewModel? _multiOutputVm;
 
         public HomeViewModel HomeVm => _homeVm ??= new HomeViewModel(_dbService);
         public LibraryViewModel LibraryVm => _libraryVm ??= new LibraryViewModel(_dbService);
@@ -873,6 +879,7 @@ namespace KakiEQ_WinUI.ViewModels
         public AlbumsViewModel AlbumsVm => _albumsVm ??= new AlbumsViewModel(_dbService);
         public PlaylistsViewModel PlaylistsVm => _playlistsVm ??= new PlaylistsViewModel(_dbService);
         public EqualizerViewModel EqualizerVm => _equalizerVm ??= new EqualizerViewModel(_audioEngine, _settingsService);
+        public MultiOutputViewModel MultiOutputVm => _multiOutputVm ??= new MultiOutputViewModel(_audioEngine.MultiOutput);
 
         // --- Navigation Commands ---
         public ICommand ToggleSidebarCommand { get; }
@@ -882,6 +889,7 @@ namespace KakiEQ_WinUI.ViewModels
         public ICommand NavigateAlbumsCommand { get; }
         public ICommand NavigatePlaylistsCommand { get; }
         public ICommand NavigateEqualizerCommand { get; }
+        public ICommand NavigateMultiOutputCommand { get; }
 
         // --- Player Controls Commands ---
         public ICommand PlayPauseCommand { get; }
@@ -1023,6 +1031,12 @@ namespace KakiEQ_WinUI.ViewModels
             {
                 CurrentSectionTitle = "Ecualizador";
                 CurrentView = EqualizerVm;
+            });
+
+            NavigateMultiOutputCommand = new RelayCommand(() =>
+            {
+                CurrentSectionTitle = "Salidas de Audio";
+                CurrentView = MultiOutputVm;
             });
 
             // Player Commands

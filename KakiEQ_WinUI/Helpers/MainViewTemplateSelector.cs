@@ -15,6 +15,7 @@ namespace KakiEQ_WinUI.Helpers
         public DataTemplate? PlaylistsTemplate { get; set; }
         public DataTemplate? PlaylistDetailTemplate { get; set; }
         public DataTemplate? EqualizerTemplate { get; set; }
+        public DataTemplate? MultiOutputTemplate { get; set; }
 
         protected override DataTemplate? SelectTemplateCore(object item)
         {
@@ -29,6 +30,7 @@ namespace KakiEQ_WinUI.Helpers
                 PlaylistsViewModel => PlaylistsTemplate,
                 PlaylistDetailViewModel => PlaylistDetailTemplate,
                 EqualizerViewModel => EqualizerTemplate,
+                MultiOutputViewModel => MultiOutputTemplate,
                 _ => base.SelectTemplateCore(item)
             };
         }

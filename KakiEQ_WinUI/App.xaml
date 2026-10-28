@@ -135,6 +135,9 @@
             <DataTemplate x:Key="EqualizerViewTemplate">
                 <views:EqualizerView />
             </DataTemplate>
+            <DataTemplate x:Key="MultiOutputViewTemplate">
+                <views:MultiOutputView />
+            </DataTemplate>
 
             <!-- Main Navigation View Selector -->
             <helpers:MainViewTemplateSelector x:Key="MainViewSelector"
@@ -146,7 +149,8 @@
                 AlbumDetailTemplate="{StaticResource AlbumDetailViewTemplate}"
                 PlaylistsTemplate="{StaticResource PlaylistsViewTemplate}"
                 PlaylistDetailTemplate="{StaticResource PlaylistDetailViewTemplate}"
-                EqualizerTemplate="{StaticResource EqualizerViewTemplate}" />
+                EqualizerTemplate="{StaticResource EqualizerViewTemplate}"
+                MultiOutputTemplate="{StaticResource MultiOutputViewTemplate}" />
 
         </ResourceDictionary>
     </Application.Resources>

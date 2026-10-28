@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Window
     x:Class="KakiEQ_WinUI.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -171,6 +171,18 @@
                                            Foreground="{x:Bind ViewModel.NavEqFg, Mode=OneWay}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
+
+                        <!-- Salidas de Audio -->
+                        <Button Command="{x:Bind ViewModel.NavigateMultiOutputCommand}"
+                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                Background="{x:Bind ViewModel.NavMultiOutputBg, Mode=OneWay}"
+                                BorderThickness="0" CornerRadius="16" Padding="12,10">
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <FontIcon Glyph="&#xE95B;" FontSize="16" Foreground="{x:Bind ViewModel.NavMultiOutputFg, Mode=OneWay}"/>
+                                <TextBlock Text="Salidas de Audio" FontSize="13" FontWeight="SemiBold"
+                                           Foreground="{x:Bind ViewModel.NavMultiOutputFg, Mode=OneWay}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
                     </StackPanel>
                 </Border>
 
@@ -330,6 +342,13 @@
                             Background="Transparent" BorderThickness="0" Padding="0" Width="34" Height="34" CornerRadius="17"
                             Foreground="#B0B0B0" ToolTipService.ToolTip="Abrir Ecualizador">
                         <FontIcon Glyph="&#xE9E9;" FontSize="15"/>
+                    </Button>
+
+                    <!-- Multi-Output Shortcut -->
+                    <Button Command="{x:Bind ViewModel.NavigateMultiOutputCommand}"
+                            Background="Transparent" BorderThickness="0" Padding="0" Width="34" Height="34" CornerRadius="17"
+                            Foreground="#B0B0B0" ToolTipService.ToolTip="Salidas de audio simultáneas">
+                        <FontIcon Glyph="&#xE95B;" FontSize="15"/>
                     </Button>
 
                     <!-- Volume icon -->
