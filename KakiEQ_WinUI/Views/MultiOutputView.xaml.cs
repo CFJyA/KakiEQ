@@ -20,10 +20,7 @@ namespace KakiEQ_WinUI.Views
         {
             if (sender is ToggleSwitch toggle && toggle.DataContext is AudioOutputDevice device && ViewModel != null)
             {
-                if (device.IsEnabled != toggle.IsOn)
-                {
-                    ViewModel.SetDeviceEnabled(device, toggle.IsOn);
-                }
+                ViewModel.SetDeviceEnabled(device, toggle.IsOn);
             }
         }
 

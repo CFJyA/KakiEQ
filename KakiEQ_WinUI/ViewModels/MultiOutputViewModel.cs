@@ -23,6 +23,11 @@ namespace KakiEQ_WinUI.ViewModels
         public bool HasDevices => Devices.Count > 0;
         public bool HasMultipleActiveDevices => ActiveDevicesCount > 1;
 
+        public bool IsDriverInstalled => _routingService.IsDriverInstalled;
+        public string DriverBadgeText => IsDriverInstalled ? "Dispositivo 'Kaki EQ' Registrado" : "Controlador no instalado";
+        public string DriverBadgeColor => IsDriverInstalled ? "#4CAF50" : "#FFA726";
+        public string DriverStatusSummary => _routingService.DriverStatusSummary;
+
         public bool IsSystemRoutingActive
         {
             get => _routingService.IsRouting;
@@ -40,10 +45,10 @@ namespace KakiEQ_WinUI.ViewModels
             }
         }
 
-        public string RoutingStatusSummary => _routingService.RoutingStatusSummary;
+        public string RoutingStatusSummary => _routingService.DriverStatusSummary;
         public string RoutingBadgeText => IsSystemRoutingActive ? "Transmitiendo Audio de Windows" : "Modo Nativo (Sin Driver)";
         public string RoutingBadgeColor => IsSystemRoutingActive ? "#4CAF50" : "#BB86FC";
-        public bool HasLegacyVirtualDriverDevice => _routingService.HasLegacyVirtualDriverDevice;
+        public bool HasLegacyVirtualDriverDevice => false;
 
         private bool _isBusy;
         public bool IsBusy
@@ -79,6 +84,7 @@ namespace KakiEQ_WinUI.ViewModels
         public ICommand RefreshDevicesCommand { get; }
         public ICommand MuteDeviceCommand { get; }
         public ICommand TestDeviceCommand { get; }
+        public ICommand InstallDriverCommand { get; }
         public ICommand ToggleSystemRoutingCommand { get; }
         public ICommand RemoveLegacyDriverCommand { get; }
         public ICommand OpenWindowsSoundSettingsCommand { get; }
@@ -138,12 +144,19 @@ namespace KakiEQ_WinUI.ViewModels
                 PlayTestToneOnDevice(device.DeviceIndex);
             });
 
-            RemoveLegacyDriverCommand = new RelayCommand(async () =>
+            InstallDriverCommand = new RelayCommand(async () =>
             {
                 IsBusy = true;
-                await _routingService.RemoveLegacyVirtualDriverDeviceAsync();
+                await _routingService.InstallDriverAsync();
+                _multiOutputService.RefreshDevices();
                 NotifyDriverChanged();
+                NotifyCountsChanged();
                 IsBusy = false;
+            });
+
+            RemoveLegacyDriverCommand = new RelayCommand(() =>
+            {
+                NotifyDriverChanged();
             });
 
             ToggleSystemRoutingCommand = new RelayCommand(() =>
@@ -170,6 +183,10 @@ namespace KakiEQ_WinUI.ViewModels
 
         private void NotifyDriverChanged()
         {
+            OnPropertyChanged(nameof(IsDriverInstalled));
+            OnPropertyChanged(nameof(DriverStatusSummary));
+            OnPropertyChanged(nameof(DriverBadgeText));
+            OnPropertyChanged(nameof(DriverBadgeColor));
             OnPropertyChanged(nameof(HasLegacyVirtualDriverDevice));
             OnPropertyChanged(nameof(IsSystemRoutingActive));
             OnPropertyChanged(nameof(RoutingStatusSummary));

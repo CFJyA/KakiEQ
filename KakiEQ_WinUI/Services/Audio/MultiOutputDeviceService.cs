@@ -60,14 +60,21 @@ namespace KakiEQ_WinUI.Services.Audio
                 // duplicate playback on the default endpoint. If deviceCount <= 2, we fallback to Device 1.
                 int startIndex = (deviceCount > 2) ? 2 : 1;
 
-                // Identify the Windows default physical device
+                // Identify the Windows default physical device (excluding virtual loopback devices)
                 int defaultPhysicalIndex = -1;
                 for (int i = startIndex; i < deviceCount; i++)
                 {
-                    if (Bass.GetDeviceInfo(i, out var dInfo) && dInfo.IsEnabled && dInfo.IsDefault)
+                    if (Bass.GetDeviceInfo(i, out var dInfo) && dInfo.IsEnabled && !IsVirtualCableDevice(dInfo))
                     {
-                        defaultPhysicalIndex = i;
-                        break;
+                        if (dInfo.IsDefault)
+                        {
+                            defaultPhysicalIndex = i;
+                            break;
+                        }
+                        else if (defaultPhysicalIndex == -1)
+                        {
+                            defaultPhysicalIndex = i;
+                        }
                     }
                 }
                 if (defaultPhysicalIndex == -1 && startIndex < deviceCount)
@@ -82,6 +89,9 @@ namespace KakiEQ_WinUI.Services.Audio
 
                     // Skip disabled devices
                     if (!info.IsEnabled) continue;
+
+                    // Skip virtual loopback device: it acts as input to Kaki EQ, not an output destination
+                    if (IsVirtualCableDevice(info)) continue;
 
                     bool isPrimary = (i == defaultPhysicalIndex);
 
@@ -121,6 +131,16 @@ namespace KakiEQ_WinUI.Services.Audio
             }
 
             DevicesUpdated?.Invoke(this, EventArgs.Empty);
+        }
+
+        private static bool IsVirtualCableDevice(DeviceInfo info)
+        {
+            string name = info.Name ?? string.Empty;
+            string driver = info.Driver ?? string.Empty;
+            return name.Contains("CABLE", StringComparison.OrdinalIgnoreCase) ||
+                   name.Contains("VB-Audio", StringComparison.OrdinalIgnoreCase) ||
+                   name.Contains("Kaki EQ", StringComparison.OrdinalIgnoreCase) ||
+                   driver.Contains("vbaudio", StringComparison.OrdinalIgnoreCase);
         }
 
         private static void CategorizeDevice(AudioOutputDevice dev)
@@ -217,8 +237,18 @@ namespace KakiEQ_WinUI.Services.Audio
 
                 if (_isSystemRoutingActive)
                 {
-                    if (enabled) StartPushStreamForDevice(device);
-                    else StopPushStreamForDevice(device);
+                    if (enabled)
+                    {
+                        StartPushStreamForDevice(device);
+                        if (device.PushStreamHandle != 0)
+                        {
+                            Bass.ChannelPlay(device.PushStreamHandle, false);
+                        }
+                    }
+                    else
+                    {
+                        StopPushStreamForDevice(device);
+                    }
                     UpdateRoutingPushStreamsArray();
                 }
                 else
@@ -232,6 +262,10 @@ namespace KakiEQ_WinUI.Services.Audio
                         if (enabled)
                         {
                             StartPushStreamForDevice(device);
+                            if (_isPlaying && device.PushStreamHandle != 0)
+                            {
+                                Bass.ChannelPlay(device.PushStreamHandle, false);
+                            }
                         }
                         else
                         {
@@ -331,6 +365,7 @@ namespace KakiEQ_WinUI.Services.Audio
                 }
 
                 Bass.CurrentDevice = device.DeviceIndex;
+                Bass.Start();
 
                 var flags = _streamIsFloat ? BassFlags.Float : BassFlags.Default;
                 int pushStream = Bass.CreateStream(_streamSampleRate, _streamChannels, flags, StreamProcedureType.Push);
@@ -345,7 +380,7 @@ namespace KakiEQ_WinUI.Services.Audio
                     float vol = device.IsMuted ? 0f : (device.Volume * _masterVolume);
                     Bass.ChannelSetAttribute(pushStream, ChannelAttribute.Volume, vol);
 
-                    if (_isPlaying)
+                    if (_isPlaying || _isSystemRoutingActive)
                     {
                         Bass.ChannelPlay(pushStream, false);
                     }
@@ -475,10 +510,9 @@ namespace KakiEQ_WinUI.Services.Audio
         {
             lock (_lock)
             {
-                var primary = _devices.FirstOrDefault(d => d.IsPrimary);
-                if (primary != null)
+                foreach (var d in _devices)
                 {
-                    StopPushStreamForDevice(primary);
+                    StopPushStreamForDevice(d);
                 }
                 UpdateActiveSecondaryStreamsArray();
             }
