@@ -409,6 +409,16 @@ namespace KakiEQ_WinUI.Services.Audio
         private int[] _allRoutingPushStreams = Array.Empty<int>();
         private bool _isSystemRoutingActive = false;
 
+        public void ConfigureStreamFormat(int sampleRate, int channels, bool isFloat)
+        {
+            lock (_lock)
+            {
+                _streamSampleRate = sampleRate > 0 ? sampleRate : 48000;
+                _streamChannels = channels > 0 ? channels : 2;
+                _streamIsFloat = isFloat;
+            }
+        }
+
         public bool IsSystemRoutingActive
         {
             get => _isSystemRoutingActive;

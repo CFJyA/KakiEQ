@@ -90,7 +90,7 @@
                 </Grid>
             </Border>
 
-            <!-- 2.5 Virtual Audio Device (Windows 11 Integration Card) -->
+            <!-- 2.5 Transmisión Simultánea de Audio de Windows (Nativo WASAPI) -->
             <Border Background="{ThemeResource AppCardBackground}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1" CornerRadius="18" Padding="20,18">
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -107,32 +107,20 @@
                     <!-- Info -->
                     <StackPanel Grid.Column="1" Spacing="6" VerticalAlignment="Center" Margin="0,0,16,0">
                         <StackPanel Orientation="Horizontal" Spacing="10">
-                            <TextBlock Text="Dispositivo Virtual de Audio (Windows 11)" FontSize="16" FontWeight="Bold" Foreground="{ThemeResource AppTextPrimary}"/>
+                            <TextBlock Text="Transmisión Simultánea de Audio de Windows" FontSize="16" FontWeight="Bold" Foreground="{ThemeResource AppTextPrimary}"/>
                             <Border Background="{ThemeResource AppSurfaceElevated}" CornerRadius="10" Padding="8,3" VerticalAlignment="Center">
-                                <TextBlock Text="{Binding DriverBadgeText}" FontSize="11" FontWeight="Bold" Foreground="{ThemeResource AppAccent}"/>
+                                <TextBlock Text="{Binding RoutingBadgeText}" FontSize="11" FontWeight="Bold" Foreground="{ThemeResource AppAccent}"/>
                             </Border>
                         </StackPanel>
-                        <TextBlock Text="Permite que Windows 11 reconozca a Kaki EQ en el menú de salida de sonido de la barra de tareas para transmitir todo el audio de la PC a tus dispositivos simultáneamente."
+                        <TextBlock Text="Clona en tiempo real todo el sonido que reproduce tu PC (YouTube, Spotify, videojuegos, navegadores) a todos tus audífonos y altavoces conectados sin requerir drivers."
                                    FontSize="12" Foreground="{ThemeResource AppTextSubtle}" TextWrapping="Wrap"/>
-                        <TextBlock Text="{Binding DriverStatusSummary}" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource AppSecondary}"/>
+                        <TextBlock Text="{Binding RoutingStatusSummary}" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource AppSecondary}"/>
                     </StackPanel>
 
                     <!-- Action Controls -->
-                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                        <!-- If NOT installed: Install Button -->
-                        <Button Visibility="{Binding IsDriverInstalled, Converter={StaticResource BoolToVisConverter}, ConverterParameter=invert}"
-                                Command="{Binding InstallDriverCommand}"
-                                Background="{ThemeResource AppAccent}" Foreground="#121212"
-                                CornerRadius="16" Padding="16,8" FontWeight="SemiBold">
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <FontIcon Glyph="&#xE896;" FontSize="13"/>
-                                <TextBlock Text="Instalar Driver (1 Clic)" FontSize="12" FontWeight="Bold" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </Button>
-
-                        <!-- If INSTALLED: Toggle System Routing -->
-                        <ToggleSwitch Visibility="{Binding IsDriverInstalled, Converter={StaticResource BoolToVisConverter}}"
-                                      IsOn="{Binding IsSystemRoutingActive, Mode=TwoWay}"
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
+                        <!-- Main System Routing Toggle Switch -->
+                        <ToggleSwitch IsOn="{Binding IsSystemRoutingActive, Mode=TwoWay}"
                                       Toggled="SystemRoutingToggle_Toggled"
                                       OnContent="Transmitiendo" OffContent="En Pausa"
                                       VerticalAlignment="Center"/>
@@ -146,15 +134,6 @@
                                 <FontIcon Glyph="&#xE713;" FontSize="13"/>
                                 <TextBlock Text="Ajustes de Windows" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
                             </StackPanel>
-                        </Button>
-
-                        <!-- Uninstall Driver -->
-                        <Button Visibility="{Binding IsDriverInstalled, Converter={StaticResource BoolToVisConverter}}"
-                                Command="{Binding UninstallDriverCommand}"
-                                Background="Transparent" BorderThickness="0"
-                                Foreground="{ThemeResource AppDanger}" CornerRadius="14" Padding="8,8"
-                                ToolTipService.ToolTip="Desinstalar el controlador virtual">
-                            <FontIcon Glyph="&#xE74D;" FontSize="14"/>
                         </Button>
                     </StackPanel>
                 </Grid>

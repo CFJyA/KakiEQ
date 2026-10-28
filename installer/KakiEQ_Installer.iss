@@ -55,6 +55,3 @@ Root: HKA; Subkey: "Software\Classes\.wma\OpenWithProgids"; ValueType: string; V
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
-
-[UninstallRun]
-Filename: "{app}\Assets\Driver\nefconc.exe"; Parameters: "remove ""ROOT\VirtualAudioDriver"""; Flags: runhidden; RunOnceId: "RemoveKakiVirtualAudioDriver"

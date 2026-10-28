@@ -23,7 +23,6 @@ namespace KakiEQ_WinUI.ViewModels
         public bool HasDevices => Devices.Count > 0;
         public bool HasMultipleActiveDevices => ActiveDevicesCount > 1;
 
-        public bool IsDriverInstalled => _routingService.IsDriverInstalled;
         public bool IsSystemRoutingActive
         {
             get => _routingService.IsRouting;
@@ -34,13 +33,17 @@ namespace KakiEQ_WinUI.ViewModels
                     if (value) _routingService.StartRouting();
                     else _routingService.StopRouting();
                     OnPropertyChanged();
-                    OnPropertyChanged(nameof(DriverStatusSummary));
+                    OnPropertyChanged(nameof(RoutingStatusSummary));
+                    OnPropertyChanged(nameof(RoutingBadgeText));
+                    OnPropertyChanged(nameof(RoutingBadgeColor));
                 }
             }
         }
-        public string DriverStatusSummary => _routingService.DriverStatusSummary;
-        public string DriverBadgeText => IsDriverInstalled ? "Dispositivo Virtual Listo" : "Controlador no instalado";
-        public string DriverBadgeColor => IsDriverInstalled ? "#4CAF50" : "#FFA726";
+
+        public string RoutingStatusSummary => _routingService.RoutingStatusSummary;
+        public string RoutingBadgeText => IsSystemRoutingActive ? "Transmitiendo Audio de Windows" : "Modo Nativo (Sin Driver)";
+        public string RoutingBadgeColor => IsSystemRoutingActive ? "#4CAF50" : "#BB86FC";
+        public bool HasLegacyVirtualDriverDevice => _routingService.HasLegacyVirtualDriverDevice;
 
         private bool _isBusy;
         public bool IsBusy
@@ -76,9 +79,8 @@ namespace KakiEQ_WinUI.ViewModels
         public ICommand RefreshDevicesCommand { get; }
         public ICommand MuteDeviceCommand { get; }
         public ICommand TestDeviceCommand { get; }
-        public ICommand InstallDriverCommand { get; }
-        public ICommand UninstallDriverCommand { get; }
         public ICommand ToggleSystemRoutingCommand { get; }
+        public ICommand RemoveLegacyDriverCommand { get; }
         public ICommand OpenWindowsSoundSettingsCommand { get; }
 
         public MultiOutputViewModel(MultiOutputDeviceService multiOutputService, SystemAudioRoutingService routingService)
@@ -96,20 +98,14 @@ namespace KakiEQ_WinUI.ViewModels
                 });
             };
 
-            _routingService.DriverStatusChanged += (s, e) =>
-            {
-                _dispatcherQueue.TryEnqueue(() =>
-                {
-                    NotifyDriverChanged();
-                });
-            };
-
             _routingService.RoutingStateChanged += (s, e) =>
             {
                 _dispatcherQueue.TryEnqueue(() =>
                 {
                     OnPropertyChanged(nameof(IsSystemRoutingActive));
-                    OnPropertyChanged(nameof(DriverStatusSummary));
+                    OnPropertyChanged(nameof(RoutingStatusSummary));
+                    OnPropertyChanged(nameof(RoutingBadgeText));
+                    OnPropertyChanged(nameof(RoutingBadgeColor));
                 });
             };
 
@@ -142,23 +138,11 @@ namespace KakiEQ_WinUI.ViewModels
                 PlayTestToneOnDevice(device.DeviceIndex);
             });
 
-            InstallDriverCommand = new RelayCommand(async () =>
+            RemoveLegacyDriverCommand = new RelayCommand(async () =>
             {
                 IsBusy = true;
-                await _routingService.InstallDriverAsync();
-                _multiOutputService.RefreshDevices();
+                await _routingService.RemoveLegacyVirtualDriverDeviceAsync();
                 NotifyDriverChanged();
-                NotifyCountsChanged();
-                IsBusy = false;
-            });
-
-            UninstallDriverCommand = new RelayCommand(async () =>
-            {
-                IsBusy = true;
-                await _routingService.UninstallDriverAsync();
-                _multiOutputService.RefreshDevices();
-                NotifyDriverChanged();
-                NotifyCountsChanged();
                 IsBusy = false;
             });
 
@@ -173,7 +157,9 @@ namespace KakiEQ_WinUI.ViewModels
                     _routingService.StartRouting();
                 }
                 OnPropertyChanged(nameof(IsSystemRoutingActive));
-                OnPropertyChanged(nameof(DriverStatusSummary));
+                OnPropertyChanged(nameof(RoutingStatusSummary));
+                OnPropertyChanged(nameof(RoutingBadgeText));
+                OnPropertyChanged(nameof(RoutingBadgeColor));
             });
 
             OpenWindowsSoundSettingsCommand = new RelayCommand(() =>
@@ -184,11 +170,11 @@ namespace KakiEQ_WinUI.ViewModels
 
         private void NotifyDriverChanged()
         {
-            OnPropertyChanged(nameof(IsDriverInstalled));
+            OnPropertyChanged(nameof(HasLegacyVirtualDriverDevice));
             OnPropertyChanged(nameof(IsSystemRoutingActive));
-            OnPropertyChanged(nameof(DriverStatusSummary));
-            OnPropertyChanged(nameof(DriverBadgeText));
-            OnPropertyChanged(nameof(DriverBadgeColor));
+            OnPropertyChanged(nameof(RoutingStatusSummary));
+            OnPropertyChanged(nameof(RoutingBadgeText));
+            OnPropertyChanged(nameof(RoutingBadgeColor));
         }
 
         public void UpdateDeviceVolume(AudioOutputDevice device, float volume)

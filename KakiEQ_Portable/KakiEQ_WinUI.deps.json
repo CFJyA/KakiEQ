@@ -12,6 +12,7 @@
           "Magick.NET-Q8-AnyCPU": "15.0.0",
           "ManagedBass": "3.1.1",
           "Microsoft.WindowsAppSDK": "2.5.1",
+          "NAudio.Wasapi": "2.2.1",
           "TagLibSharp": "2.3.0",
           "Microsoft.Web.WebView2.Core.Projection": "1.0.3719.77",
           "runtimepack.Microsoft.NETCore.App.Runtime.win-x64": "8.0.32",
@@ -1002,6 +1003,25 @@
           }
         }
       },
+      "NAudio.Core/2.2.1": {
+        "runtime": {
+          "lib/netstandard2.0/NAudio.Core.dll": {
+            "assemblyVersion": "2.2.1.0",
+            "fileVersion": "2.2.1.0"
+          }
+        }
+      },
+      "NAudio.Wasapi/2.2.1": {
+        "dependencies": {
+          "NAudio.Core": "2.2.1"
+        },
+        "runtime": {
+          "lib/netstandard2.0/NAudio.Wasapi.dll": {
+            "assemblyVersion": "2.2.1.0",
+            "fileVersion": "2.2.1.0"
+          }
+        }
+      },
       "System.Numerics.Tensors/9.0.0": {
         "runtime": {
           "lib/net8.0/System.Numerics.Tensors.dll": {
@@ -1134,6 +1154,20 @@
       "sha512": "sha512-GiuYUQqMYD5lycT+X2AGX1rlbHU/zf8xoPeZNXZbJj4mZcSr4STsxeRUMxnTUQLAmmjjQaPrTIRjn78vbPhAvg==",
       "path": "microsoft.windowsappsdk.winui/2.3.9",
       "hashPath": "microsoft.windowsappsdk.winui.2.3.9.nupkg.sha512"
+    },
+    "NAudio.Core/2.2.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-GgkdP6K/7FqXFo7uHvoqGZTJvW4z8g2IffhOO4JHaLzKCdDOUEzVKtveoZkCuUX8eV2HAINqi7VFqlFndrnz/g==",
+      "path": "naudio.core/2.2.1",
+      "hashPath": "naudio.core.2.2.1.nupkg.sha512"
+    },
+    "NAudio.Wasapi/2.2.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-lFfXoqacZZe0WqNChJgGYI+XV/n/61LzPHT3C1CJp4khoxeo2sziyX5wzNYWeCMNbsWxFvT3b3iXeY1UYjBhZw==",
+      "path": "naudio.wasapi/2.2.1",
+      "hashPath": "naudio.wasapi.2.2.1.nupkg.sha512"
     },
     "System.Numerics.Tensors/9.0.0": {
       "type": "package",
