@@ -15,11 +15,13 @@
     <ApplicationIcon>Assets\Kaki_Oficial_Blanco.ico</ApplicationIcon>
     <WinUISDKReferences>false</WinUISDKReferences>
     <EnableMsixTooling>true</EnableMsixTooling>
+    <WindowsPackageType Condition="'$(WindowsPackageType)' == ''">MSIX</WindowsPackageType>
     <AppxPackageSigningEnabled>True</AppxPackageSigningEnabled>
     <PackageCertificateKeyFile>KakiEQ_TemporaryKey.pfx</PackageCertificateKeyFile>
     <PackageCertificatePassword>KakiEQ2026!</PackageCertificatePassword>
     <PackageCertificateThumbprint>9E75526B500C0DE4E229BE0AC894101E6F08CB08</PackageCertificateThumbprint>
-    <AppxBundle>Always</AppxBundle>
+    <AppxBundle Condition="'$(Configuration)' != 'Debug'">Always</AppxBundle>
+    <AppxBundle Condition="'$(Configuration)' == 'Debug'">Never</AppxBundle>
     <AppxBundlePlatforms>x64</AppxBundlePlatforms>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>

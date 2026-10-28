@@ -82,13 +82,51 @@ namespace KakiEQ_WinUI.Services.Audio
 
         public BassAudioEngine()
         {
-            Bass.Init();
+            // Configure ultra-low latency BASS parameters to prevent multi-device audio drift (desfase)
+            Bass.Configure(Configuration.UpdatePeriod, 5);
+            Bass.Configure(Configuration.DeviceBufferLength, 15);
+            Bass.Configure(Configuration.PlaybackBufferLength, 80);
+
+            int primaryDevice = FindPrimaryPhysicalBassDevice();
+            if (!Bass.Init(primaryDevice, 48000, DeviceInitFlags.Default, IntPtr.Zero))
+            {
+                Bass.Init();
+            }
+
             _equalizer = new BassEqualizer();
             _multiOutput = new MultiOutputDeviceService();
             _systemAudioRouting = new SystemAudioRoutingService(_multiOutput);
 
             _endSyncProc = OnTrackEndSync;
             _crossfadeSyncProc = OnCrossfadeTriggerSync;
+        }
+
+        private static int FindPrimaryPhysicalBassDevice()
+        {
+            int count = Bass.DeviceCount;
+            int startIndex = (count > 2) ? 2 : 1;
+            int firstPhysical = -1;
+
+            for (int i = startIndex; i < count; i++)
+            {
+                if (Bass.GetDeviceInfo(i, out var info) && info.IsEnabled && !MultiOutputDeviceService.IsVirtualCableDevice(info))
+                {
+                    if (info.IsDefault) return i;
+                    if (firstPhysical == -1) firstPhysical = i;
+                }
+            }
+
+            return firstPhysical != -1 ? firstPhysical : -1;
+        }
+
+        private void EnsurePrimaryPhysicalDeviceActive()
+        {
+            int primaryDev = _multiOutput.GetPrimaryPhysicalDeviceIndex();
+            if (primaryDev > 0)
+            {
+                Bass.Init(primaryDev, 48000, DeviceInitFlags.Default, IntPtr.Zero);
+                Bass.CurrentDevice = primaryDev;
+            }
         }
 
         private void OnTrackEndSync(int handle, int channel, int data, IntPtr user)
@@ -144,6 +182,7 @@ namespace KakiEQ_WinUI.Services.Audio
 
                 lock (_lock)
                 {
+                    EnsurePrimaryPhysicalDeviceActive();
                     _crossfadeTriggeredForCurrentTrack = false;
                     _currentMemoryTrackData = null; // Clear any old in-memory buffer
 
@@ -402,6 +441,7 @@ namespace KakiEQ_WinUI.Services.Audio
             {
                 if (_stream != 0)
                 {
+                    _multiOutput.FlushSecondaryBuffers();
                     long bytes = Bass.ChannelSeconds2Bytes(_stream, position.TotalSeconds);
                     Bass.ChannelSetPosition(_stream, bytes, PositionFlags.Bytes);
                     _multiOutput.FlushSecondaryBuffers();

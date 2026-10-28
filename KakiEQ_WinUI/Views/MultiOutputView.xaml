@@ -229,6 +229,7 @@
                                                        Foreground="{ThemeResource AppTextSecondary}" Width="65" VerticalAlignment="Center"/>
                                             <Slider Width="65" Minimum="0" Maximum="300" StepFrequency="5"
                                                     Value="{x:Bind LatencyCompensationMs, Mode=TwoWay}"
+                                                    ValueChanged="LatencySlider_ValueChanged"
                                                     ToolTipService.ToolTip="Ajustar retardo en milisegundos para sincronizar Bluetooth"
                                                     VerticalAlignment="Center"/>
                                         </StackPanel>

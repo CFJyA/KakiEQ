@@ -199,6 +199,11 @@ namespace KakiEQ_WinUI.ViewModels
             _multiOutputService.SetDeviceVolume(device, volume);
         }
 
+        public void UpdateDeviceLatency(AudioOutputDevice device, int latencyMs)
+        {
+            _multiOutputService.SetDeviceLatency(device, latencyMs);
+        }
+
         public void SetDeviceEnabled(AudioOutputDevice device, bool enabled)
         {
             if (device == null) return;
@@ -243,8 +248,9 @@ namespace KakiEQ_WinUI.ViewModels
                     for (int i = 0; i < numSamples; i++)
                     {
                         double t = (double)i / sampleRate;
-                        // Envelope: quick attack, smooth exponential decay
-                        double envelope = Math.Exp(-3.5 * t);
+                        // Smooth 12ms attack + exponential decay to prevent any click
+                        double attack = Math.Min(1.0, t / 0.012);
+                        double envelope = attack * Math.Exp(-3.5 * t);
                         short sample = (short)(Math.Sin(2.0 * Math.PI * freq * t) * envelope * 16000.0);
                         pcm[i * 2] = sample;     // Left
                         pcm[i * 2 + 1] = sample; // Right

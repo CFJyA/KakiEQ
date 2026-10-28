@@ -32,6 +32,14 @@ namespace KakiEQ_WinUI.Views
             }
         }
 
+        private void LatencySlider_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
+        {
+            if (sender is Slider slider && slider.DataContext is AudioOutputDevice device && ViewModel != null)
+            {
+                ViewModel.UpdateDeviceLatency(device, (int)Math.Round(e.NewValue));
+            }
+        }
+
         private void MuteButton_Click(object sender, RoutedEventArgs e)
         {
             if (sender is Button button && button.DataContext is AudioOutputDevice device && ViewModel != null)
