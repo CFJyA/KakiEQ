@@ -11,6 +11,7 @@ namespace KakiEQ_WinUI.Services.Audio
         private float _volume = 1.0f;
         private readonly BassEqualizer _equalizer;
         private readonly MultiOutputDeviceService _multiOutput;
+        private readonly SystemAudioRoutingService _systemAudioRouting;
         
         private SyncProcedure? _endSyncProc;
         private int _endSyncHandle;
@@ -42,6 +43,7 @@ namespace KakiEQ_WinUI.Services.Audio
 
         public EqualizerBase Equalizer => _equalizer;
         public MultiOutputDeviceService MultiOutput => _multiOutput;
+        public SystemAudioRoutingService SystemAudioRouting => _systemAudioRouting;
         public bool IsPlaying => _stream != 0 && Bass.ChannelIsActive(_stream) == PlaybackState.Playing;
         public float Volume => _volume;
 
@@ -83,6 +85,7 @@ namespace KakiEQ_WinUI.Services.Audio
             Bass.Init();
             _equalizer = new BassEqualizer();
             _multiOutput = new MultiOutputDeviceService();
+            _systemAudioRouting = new SystemAudioRoutingService(_multiOutput);
 
             _endSyncProc = OnTrackEndSync;
             _crossfadeSyncProc = OnCrossfadeTriggerSync;
@@ -455,6 +458,7 @@ namespace KakiEQ_WinUI.Services.Audio
                     _stream = 0;
                 }
                 _currentMemoryTrackData = null;
+                _systemAudioRouting.Dispose();
                 _multiOutput.Dispose();
             }
             GC.SuppressFinalize(this);

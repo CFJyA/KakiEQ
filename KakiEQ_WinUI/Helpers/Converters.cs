@@ -25,7 +25,8 @@ namespace KakiEQ_WinUI.Helpers
         public object Convert(object value, Type targetType, object parameter, string language)
         {
             bool val = value is bool b && b;
-            if (Invert) val = !val;
+            bool invert = Invert || (parameter is string s && s.Equals("invert", StringComparison.OrdinalIgnoreCase));
+            if (invert) val = !val;
             return val ? Visibility.Visible : Visibility.Collapsed;
         }
 

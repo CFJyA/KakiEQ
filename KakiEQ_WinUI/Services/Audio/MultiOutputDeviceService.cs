@@ -215,21 +215,30 @@ namespace KakiEQ_WinUI.Services.Audio
             {
                 device.IsEnabled = enabled;
 
-                if (device.IsPrimary)
+                if (_isSystemRoutingActive)
                 {
-                    UpdatePrimaryDeviceVolume();
+                    if (enabled) StartPushStreamForDevice(device);
+                    else StopPushStreamForDevice(device);
+                    UpdateRoutingPushStreamsArray();
                 }
                 else
                 {
-                    if (enabled)
+                    if (device.IsPrimary)
                     {
-                        StartPushStreamForDevice(device);
+                        UpdatePrimaryDeviceVolume();
                     }
                     else
                     {
-                        StopPushStreamForDevice(device);
+                        if (enabled)
+                        {
+                            StartPushStreamForDevice(device);
+                        }
+                        else
+                        {
+                            StopPushStreamForDevice(device);
+                        }
+                        UpdateActiveSecondaryStreamsArray();
                     }
-                    UpdateActiveSecondaryStreamsArray();
                 }
             }
         }
@@ -240,14 +249,15 @@ namespace KakiEQ_WinUI.Services.Audio
             {
                 device.Volume = volume;
 
-                if (device.IsPrimary)
-                {
-                    UpdatePrimaryDeviceVolume();
-                }
-                else if (device.PushStreamHandle != 0)
+                if (device.PushStreamHandle != 0)
                 {
                     float vol = device.IsMuted ? 0f : (device.Volume * _masterVolume);
                     Bass.ChannelSetAttribute(device.PushStreamHandle, ChannelAttribute.Volume, vol);
+                }
+
+                if (device.IsPrimary && !_isSystemRoutingActive)
+                {
+                    UpdatePrimaryDeviceVolume();
                 }
             }
         }
@@ -258,14 +268,15 @@ namespace KakiEQ_WinUI.Services.Audio
             {
                 device.IsMuted = muted;
 
-                if (device.IsPrimary)
-                {
-                    UpdatePrimaryDeviceVolume();
-                }
-                else if (device.PushStreamHandle != 0)
+                if (device.PushStreamHandle != 0)
                 {
                     float vol = muted ? 0f : (device.Volume * _masterVolume);
                     Bass.ChannelSetAttribute(device.PushStreamHandle, ChannelAttribute.Volume, vol);
+                }
+
+                if (device.IsPrimary && !_isSystemRoutingActive)
+                {
+                    UpdatePrimaryDeviceVolume();
                 }
             }
         }
@@ -393,6 +404,96 @@ namespace KakiEQ_WinUI.Services.Audio
                 .Where(d => !d.IsPrimary && d.IsEnabled && d.PushStreamHandle != 0)
                 .Select(d => d.PushStreamHandle)
                 .ToArray();
+        }
+
+        private int[] _allRoutingPushStreams = Array.Empty<int>();
+        private bool _isSystemRoutingActive = false;
+
+        public bool IsSystemRoutingActive
+        {
+            get => _isSystemRoutingActive;
+            set
+            {
+                lock (_lock)
+                {
+                    if (_isSystemRoutingActive != value)
+                    {
+                        _isSystemRoutingActive = value;
+                        if (_isSystemRoutingActive)
+                        {
+                            StartSystemRoutingPushStreams();
+                        }
+                        else
+                        {
+                            StopSystemRoutingPushStreams();
+                        }
+                    }
+                }
+            }
+        }
+
+        public void StartSystemRoutingPushStreams()
+        {
+            lock (_lock)
+            {
+                // In system routing mode, ALL enabled devices (primary AND secondary) need push streams
+                foreach (var d in _devices)
+                {
+                    if (d.IsEnabled)
+                    {
+                        StartPushStreamForDevice(d);
+                    }
+                    else
+                    {
+                        StopPushStreamForDevice(d);
+                    }
+                }
+                UpdateRoutingPushStreamsArray();
+
+                // Start playback on all active push streams
+                foreach (var stream in _allRoutingPushStreams)
+                {
+                    if (stream != 0)
+                    {
+                        Bass.ChannelPlay(stream, false);
+                    }
+                }
+            }
+        }
+
+        public void StopSystemRoutingPushStreams()
+        {
+            lock (_lock)
+            {
+                var primary = _devices.FirstOrDefault(d => d.IsPrimary);
+                if (primary != null)
+                {
+                    StopPushStreamForDevice(primary);
+                }
+                UpdateActiveSecondaryStreamsArray();
+            }
+        }
+
+        private void UpdateRoutingPushStreamsArray()
+        {
+            _allRoutingPushStreams = _devices
+                .Where(d => d.IsEnabled && d.PushStreamHandle != 0)
+                .Select(d => d.PushStreamHandle)
+                .ToArray();
+        }
+
+        public void DistributeSystemAudioBlock(IntPtr buffer, int length)
+        {
+            // ZERO-ALLOCATION FAST LOOP FOR SYSTEM AUDIO
+            var streams = _allRoutingPushStreams;
+            for (int i = 0; i < streams.Length; i++)
+            {
+                int pushStream = streams[i];
+                if (pushStream != 0)
+                {
+                    Bass.StreamPutData(pushStream, buffer, length);
+                }
+            }
         }
 
         public void NotifyPlaybackState(bool isPlaying)

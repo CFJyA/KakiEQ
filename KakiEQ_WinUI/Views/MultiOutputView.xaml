@@ -90,6 +90,76 @@
                 </Grid>
             </Border>
 
+            <!-- 2.5 Virtual Audio Device (Windows 11 Integration Card) -->
+            <Border Background="{ThemeResource AppCardBackground}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1" CornerRadius="18" Padding="20,18">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Icon -->
+                    <Border Grid.Column="0" Width="52" Height="52" CornerRadius="26" Background="{ThemeResource AppAccentContainer}" Margin="0,0,16,0" VerticalAlignment="Center">
+                        <FontIcon Glyph="&#xE7F6;" FontSize="22" Foreground="{ThemeResource AppAccentText}"/>
+                    </Border>
+
+                    <!-- Info -->
+                    <StackPanel Grid.Column="1" Spacing="6" VerticalAlignment="Center" Margin="0,0,16,0">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <TextBlock Text="Dispositivo Virtual de Audio (Windows 11)" FontSize="16" FontWeight="Bold" Foreground="{ThemeResource AppTextPrimary}"/>
+                            <Border Background="{ThemeResource AppSurfaceElevated}" CornerRadius="10" Padding="8,3" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding DriverBadgeText}" FontSize="11" FontWeight="Bold" Foreground="{ThemeResource AppAccent}"/>
+                            </Border>
+                        </StackPanel>
+                        <TextBlock Text="Permite que Windows 11 reconozca a Kaki EQ en el menú de salida de sonido de la barra de tareas para transmitir todo el audio de la PC a tus dispositivos simultáneamente."
+                                   FontSize="12" Foreground="{ThemeResource AppTextSubtle}" TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding DriverStatusSummary}" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource AppSecondary}"/>
+                    </StackPanel>
+
+                    <!-- Action Controls -->
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                        <!-- If NOT installed: Install Button -->
+                        <Button Visibility="{Binding IsDriverInstalled, Converter={StaticResource BoolToVisConverter}, ConverterParameter=invert}"
+                                Command="{Binding InstallDriverCommand}"
+                                Background="{ThemeResource AppAccent}" Foreground="#121212"
+                                CornerRadius="16" Padding="16,8" FontWeight="SemiBold">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon Glyph="&#xE896;" FontSize="13"/>
+                                <TextBlock Text="Instalar Driver (1 Clic)" FontSize="12" FontWeight="Bold" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+
+                        <!-- If INSTALLED: Toggle System Routing -->
+                        <ToggleSwitch Visibility="{Binding IsDriverInstalled, Converter={StaticResource BoolToVisConverter}}"
+                                      IsOn="{Binding IsSystemRoutingActive, Mode=TwoWay}"
+                                      Toggled="SystemRoutingToggle_Toggled"
+                                      OnContent="Transmitiendo" OffContent="En Pausa"
+                                      VerticalAlignment="Center"/>
+
+                        <!-- Open Sound Settings in Windows 11 -->
+                        <Button Command="{Binding OpenWindowsSoundSettingsCommand}"
+                                Background="{ThemeResource AppSurfaceContainer}" BorderBrush="{ThemeResource AppBorder}"
+                                Foreground="{ThemeResource AppTextPrimary}" CornerRadius="16" Padding="12,8"
+                                ToolTipService.ToolTip="Abrir menú de configuración de sonido de Windows 11">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <FontIcon Glyph="&#xE713;" FontSize="13"/>
+                                <TextBlock Text="Ajustes de Windows" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Uninstall Driver -->
+                        <Button Visibility="{Binding IsDriverInstalled, Converter={StaticResource BoolToVisConverter}}"
+                                Command="{Binding UninstallDriverCommand}"
+                                Background="Transparent" BorderThickness="0"
+                                Foreground="{ThemeResource AppDanger}" CornerRadius="14" Padding="8,8"
+                                ToolTipService.ToolTip="Desinstalar el controlador virtual">
+                            <FontIcon Glyph="&#xE74D;" FontSize="14"/>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
             <!-- 3. Section Title -->
             <Grid Margin="0,4,0,-8">
                 <TextBlock Text="Dispositivos de Audio Detectados" FontSize="18" FontWeight="SemiBold" Foreground="{ThemeResource AppTextPrimary}" VerticalAlignment="Center"/>

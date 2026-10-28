@@ -43,6 +43,17 @@ namespace KakiEQ_WinUI.Views
             }
         }
 
+        private void SystemRoutingToggle_Toggled(object sender, RoutedEventArgs e)
+        {
+            if (sender is ToggleSwitch toggle && ViewModel != null)
+            {
+                if (ViewModel.IsSystemRoutingActive != toggle.IsOn)
+                {
+                    ViewModel.IsSystemRoutingActive = toggle.IsOn;
+                }
+            }
+        }
+
         private void TestButton_Click(object sender, RoutedEventArgs e)
         {
             if (sender is Button button && button.DataContext is AudioOutputDevice device && ViewModel != null)

@@ -879,7 +879,7 @@ namespace KakiEQ_WinUI.ViewModels
         public AlbumsViewModel AlbumsVm => _albumsVm ??= new AlbumsViewModel(_dbService);
         public PlaylistsViewModel PlaylistsVm => _playlistsVm ??= new PlaylistsViewModel(_dbService);
         public EqualizerViewModel EqualizerVm => _equalizerVm ??= new EqualizerViewModel(_audioEngine, _settingsService);
-        public MultiOutputViewModel MultiOutputVm => _multiOutputVm ??= new MultiOutputViewModel(_audioEngine.MultiOutput);
+        public MultiOutputViewModel MultiOutputVm => _multiOutputVm ??= new MultiOutputViewModel(_audioEngine.MultiOutput, _audioEngine.SystemAudioRouting);
 
         // --- Navigation Commands ---
         public ICommand ToggleSidebarCommand { get; }
