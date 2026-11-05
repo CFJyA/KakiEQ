@@ -35,13 +35,13 @@ namespace KakiEQ_WinUI.ViewModels
             }
         }
 
-        private float _preampGain = 0f;
-        public float PreampGain
+        private double _preampGain = 0.0;
+        public double PreampGain
         {
             get => _preampGain;
             set
             {
-                if (Math.Abs(_preampGain - value) > 0.05f)
+                if (Math.Abs(_preampGain - value) > 0.05)
                 {
                     _preampGain = value;
                     OnPropertyChanged();
@@ -68,6 +68,7 @@ namespace KakiEQ_WinUI.ViewModels
             }
         }
 
+        private bool _isBatchUpdating = false;
         public ICommand ResetCommand { get; }
         public event EventHandler? BandsChanged;
 
@@ -104,9 +105,12 @@ namespace KakiEQ_WinUI.ViewModels
                 {
                     if (e.PropertyName == nameof(EqualizerBand.Gain) && s is EqualizerBand b)
                     {
-                        _audioEngine.Equalizer.SetBandGain(b.Index, b.Gain);
-                        SaveSettings();
-                        BandsChanged?.Invoke(this, EventArgs.Empty);
+                        _audioEngine.Equalizer.SetBandGain(b.Index, (float)b.Gain);
+                        if (!_isBatchUpdating)
+                        {
+                            SaveSettings();
+                            BandsChanged?.Invoke(this, EventArgs.Empty);
+                        }
                     }
                 };
 
@@ -153,7 +157,7 @@ namespace KakiEQ_WinUI.ViewModels
             if (string.IsNullOrWhiteSpace(name)) return;
             string trimmedName = name.Trim();
 
-            var currentGains = Bands.Select(b => b.Gain).ToArray();
+            var currentGains = Bands.Select(b => (float)b.Gain).ToArray();
             var existing = Presets.FirstOrDefault(p => p.Name.Equals(trimmedName, StringComparison.OrdinalIgnoreCase));
 
             if (existing != null && existing.IsCustom)
@@ -194,9 +198,17 @@ namespace KakiEQ_WinUI.ViewModels
 
         public void ApplyPreset(EqualizerPreset preset)
         {
-            for (int i = 0; i < Bands.Count && i < preset.Gains.Length; i++)
+            _isBatchUpdating = true;
+            try
             {
-                Bands[i].Gain = preset.Gains[i];
+                for (int i = 0; i < Bands.Count && i < preset.Gains.Length; i++)
+                {
+                    Bands[i].Gain = preset.Gains[i];
+                }
+            }
+            finally
+            {
+                _isBatchUpdating = false;
             }
             SaveSettings();
             BandsChanged?.Invoke(this, EventArgs.Empty);
@@ -204,9 +216,17 @@ namespace KakiEQ_WinUI.ViewModels
 
         public void Reset()
         {
-            foreach (var b in Bands)
+            _isBatchUpdating = true;
+            try
             {
-                b.Gain = 0f;
+                foreach (var b in Bands)
+                {
+                    b.Gain = 0f;
+                }
+            }
+            finally
+            {
+                _isBatchUpdating = false;
             }
             PreampGain = 0f;
             _audioEngine.Equalizer.Reset();
@@ -217,24 +237,29 @@ namespace KakiEQ_WinUI.ViewModels
 
         private void SaveSettings()
         {
-            var settings = _settingsService.LoadSettings();
-            settings.EqualizerEnabled = IsEnabled;
-            settings.PreampGain = PreampGain;
-            if (settings.EqualizerGains == null || settings.EqualizerGains.Length != Bands.Count)
-            {
-                settings.EqualizerGains = new float[Bands.Count];
-            }
-            for (int i = 0; i < Bands.Count; i++)
-            {
-                settings.EqualizerGains[i] = Bands[i].Gain;
-            }
-            if (SelectedPreset != null)
-            {
-                settings.ActivePresetName = SelectedPreset.Name;
-            }
+            bool enabled = IsEnabled;
+            float preamp = (float)PreampGain;
+            float[] gains = Bands.Select(b => (float)b.Gain).ToArray();
+            string? activePreset = SelectedPreset?.Name;
+            var customPresets = Presets.Where(p => p.IsCustom).ToList();
 
-            settings.CustomPresets = Presets.Where(p => p.IsCustom).ToList();
-            _settingsService.SaveSettings(settings);
+            System.Threading.Tasks.Task.Run(() =>
+            {
+                try
+                {
+                    var settings = _settingsService.LoadSettings();
+                    settings.EqualizerEnabled = enabled;
+                    settings.PreampGain = preamp;
+                    settings.EqualizerGains = gains;
+                    if (activePreset != null)
+                    {
+                        settings.ActivePresetName = activePreset;
+                    }
+                    settings.CustomPresets = customPresets;
+                    _settingsService.SaveSettings(settings);
+                }
+                catch { }
+            });
         }
     }
 }

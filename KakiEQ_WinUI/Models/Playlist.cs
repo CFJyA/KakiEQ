@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Media;
 
 namespace KakiEQ_WinUI.Models
 {
@@ -34,8 +35,20 @@ namespace KakiEQ_WinUI.Models
         public string? CoverImagePath
         {
             get => Helpers.ImageHelper.EnsureDisplayableImage(_coverImagePath);
-            set { _coverImagePath = value; OnPropertyChanged(); }
+            set
+            {
+                _coverImagePath = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(CoverCardSource));
+                OnPropertyChanged(nameof(CoverHeroSource));
+            }
         }
+
+        [JsonIgnore]
+        public ImageSource? CoverCardSource => Helpers.ImageHelper.GetCachedCardCover(_coverImagePath);
+
+        [JsonIgnore]
+        public ImageSource? CoverHeroSource => Helpers.ImageHelper.GetCachedHeroCover(_coverImagePath);
 
         private string _description = string.Empty;
         public string Description
@@ -77,4 +90,3 @@ namespace KakiEQ_WinUI.Models
         }
     }
 }
-

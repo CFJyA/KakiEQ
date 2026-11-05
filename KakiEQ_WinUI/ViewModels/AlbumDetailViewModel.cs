@@ -26,8 +26,15 @@ namespace KakiEQ_WinUI.ViewModels
         public string? CoverImagePath
         {
             get => _coverImagePath;
-            set { _coverImagePath = value; OnPropertyChanged(); }
+            set
+            {
+                _coverImagePath = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(CoverHeroSource));
+            }
         }
+
+        public Microsoft.UI.Xaml.Media.ImageSource? CoverHeroSource => ImageHelper.GetCachedHeroCover(_coverImagePath);
 
         public int TotalSongs => Tracks.Count;
         public string TotalSongsText => $"PISTAS ({Tracks.Count})";
@@ -72,31 +79,36 @@ namespace KakiEQ_WinUI.ViewModels
 
         public async Task LoadAlbumDetailsAsync()
         {
-            var allTracks = await _dbService.GetAllTracksAsync();
-
-            var albumTracks = allTracks.Where(t => t.Album.Equals(AlbumTitle, StringComparison.OrdinalIgnoreCase) &&
-                                                   (string.IsNullOrEmpty(_artistName) || ArtistHelper.TrackHasArtist(t, _artistName)))
-                                       .OrderBy(t => t.TrackNumber).ToList();
-            if (albumTracks.Count == 0)
+            var (albumTracks, artist, cover, lengthStr, uniqueAlbums) = await Task.Run(async () =>
             {
-                albumTracks = allTracks.Where(t => t.Album.Equals(AlbumTitle, StringComparison.OrdinalIgnoreCase))
-                                       .OrderBy(t => t.TrackNumber).ToList();
-            }
-            var firstTrack = albumTracks.FirstOrDefault();
+                var allTracks = await _dbService.GetAllTracksAsync();
 
-            string artist = firstTrack?.Artist ?? string.Empty;
-            string? cover = firstTrack?.CoverImagePath;
+                var aTracks = allTracks.Where(t => t.Album.Equals(AlbumTitle, StringComparison.OrdinalIgnoreCase) &&
+                                                       (string.IsNullOrEmpty(_artistName) || ArtistHelper.TrackHasArtist(t, _artistName)))
+                                           .OrderBy(t => t.TrackNumber).ToList();
+                if (aTracks.Count == 0)
+                {
+                    aTracks = allTracks.Where(t => t.Album.Equals(AlbumTitle, StringComparison.OrdinalIgnoreCase))
+                                           .OrderBy(t => t.TrackNumber).ToList();
+                }
+                var firstTrack = aTracks.FirstOrDefault();
 
-            TimeSpan totalSpan = TimeSpan.FromSeconds(albumTracks.Sum(t => t.Duration.TotalSeconds));
-            string lengthStr = $"{(int)totalSpan.TotalMinutes}m {totalSpan.Seconds}s";
+                string art = firstTrack?.Artist ?? string.Empty;
+                string? cov = firstTrack?.CoverImagePath;
 
-            var artistTracks = allTracks.Where(t => t.Artist == artist && t.Album != AlbumTitle);
-            var uniqueAlbums = artistTracks.GroupBy(t => t.Album).Select(g => new AlbumItem
-            {
-                Title = g.Key,
-                Artist = artist,
-                CoverImagePath = g.FirstOrDefault(t => !string.IsNullOrEmpty(t.CoverImagePath))?.CoverImagePath
-            }).OrderBy(a => a.Title).ToList();
+                TimeSpan totalSpan = TimeSpan.FromSeconds(aTracks.Sum(t => t.Duration.TotalSeconds));
+                string lStr = $"{(int)totalSpan.TotalMinutes}m {totalSpan.Seconds}s";
+
+                var artistTracks = allTracks.Where(t => t.Artist == art && t.Album != AlbumTitle);
+                var uAlbums = artistTracks.GroupBy(t => t.Album).Select(g => new AlbumItem
+                {
+                    Title = g.Key,
+                    Artist = art,
+                    CoverImagePath = g.FirstOrDefault(t => !string.IsNullOrEmpty(t.CoverImagePath))?.CoverImagePath
+                }).OrderBy(a => a.Title).ToList();
+
+                return (aTracks, art, cov, lStr, uAlbums);
+            });
 
             RunOnUIThread(() =>
             {

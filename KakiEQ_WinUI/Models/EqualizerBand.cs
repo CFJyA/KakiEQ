@@ -10,13 +10,13 @@ namespace KakiEQ_WinUI.Models
         public float Frequency { get; set; }
         public string Label { get; set; } = string.Empty;
 
-        private float _gain;
-        public float Gain
+        private double _gain;
+        public double Gain
         {
             get => _gain;
             set
             {
-                if (Math.Abs(_gain - value) > 0.01f)
+                if (Math.Abs(_gain - value) > 0.01)
                 {
                     _gain = value;
                     OnPropertyChanged();

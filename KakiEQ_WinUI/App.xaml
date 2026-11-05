@@ -107,52 +107,6 @@
             <helpers:BoolToHeartBrushConverter x:Key="BoolToHeartConverter" />
             <helpers:ImagePathToImageSourceConverter x:Key="ImagePathToImageSourceConverter" />
 
-            <!-- DataTemplates for Views -->
-            <DataTemplate x:Key="HomeViewTemplate">
-                <views:HomeView />
-            </DataTemplate>
-            <DataTemplate x:Key="LibraryViewTemplate">
-                <views:LibraryView />
-            </DataTemplate>
-            <DataTemplate x:Key="ArtistsViewTemplate">
-                <views:ArtistsView />
-            </DataTemplate>
-            <DataTemplate x:Key="ArtistDetailViewTemplate">
-                <views:ArtistDetailView />
-            </DataTemplate>
-            <DataTemplate x:Key="AlbumsViewTemplate">
-                <views:AlbumsView />
-            </DataTemplate>
-            <DataTemplate x:Key="AlbumDetailViewTemplate">
-                <views:AlbumDetailView />
-            </DataTemplate>
-            <DataTemplate x:Key="PlaylistsViewTemplate">
-                <views:PlaylistsView />
-            </DataTemplate>
-            <DataTemplate x:Key="PlaylistDetailViewTemplate">
-                <views:PlaylistDetailView />
-            </DataTemplate>
-            <DataTemplate x:Key="EqualizerViewTemplate">
-                <views:EqualizerView />
-            </DataTemplate>
-            <DataTemplate x:Key="MultiOutputViewTemplate">
-                <views:MultiOutputView />
-            </DataTemplate>
-
-            <!-- Main Navigation View Selector -->
-            <helpers:MainViewTemplateSelector x:Key="MainViewSelector"
-                HomeTemplate="{StaticResource HomeViewTemplate}"
-                LibraryTemplate="{StaticResource LibraryViewTemplate}"
-                ArtistsTemplate="{StaticResource ArtistsViewTemplate}"
-                ArtistDetailTemplate="{StaticResource ArtistDetailViewTemplate}"
-                AlbumsTemplate="{StaticResource AlbumsViewTemplate}"
-                AlbumDetailTemplate="{StaticResource AlbumDetailViewTemplate}"
-                PlaylistsTemplate="{StaticResource PlaylistsViewTemplate}"
-                PlaylistDetailTemplate="{StaticResource PlaylistDetailViewTemplate}"
-                EqualizerTemplate="{StaticResource EqualizerViewTemplate}"
-                MultiOutputTemplate="{StaticResource MultiOutputViewTemplate}" />
-
         </ResourceDictionary>
     </Application.Resources>
 </Application>
-

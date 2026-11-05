@@ -2,18 +2,39 @@ using System;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Navigation;
+using KakiEQ_WinUI.Helpers;
 using KakiEQ_WinUI.Models;
 using KakiEQ_WinUI.ViewModels;
 
 namespace KakiEQ_WinUI.Views
 {
-    public sealed partial class MultiOutputView : UserControl
+    public sealed partial class MultiOutputView : Page
     {
-        public MultiOutputViewModel? ViewModel => DataContext as MultiOutputViewModel;
+        public MultiOutputViewModel? ViewModel => (DataContext as MultiOutputViewModel) ?? MainViewModel.Instance?.MultiOutputVm;
 
         public MultiOutputView()
         {
             InitializeComponent();
+            if (MainViewModel.Instance != null)
+            {
+                DataContext = MainViewModel.Instance.MultiOutputVm;
+            }
+            DataContextChanged += (s, e) =>
+            {
+                Bindings?.Update();
+            };
+        }
+
+        protected override void OnNavigatedTo(NavigationEventArgs e)
+        {
+            base.OnNavigatedTo(e);
+            if (e.Parameter is MultiOutputViewModel vm && DataContext != vm)
+            {
+                DataContext = vm;
+                Bindings?.Update();
+            }
+            FluidAnimationHelper.PlayPageEntranceAnimation(this);
         }
 
         private void DeviceToggle_Toggled(object sender, RoutedEventArgs e)

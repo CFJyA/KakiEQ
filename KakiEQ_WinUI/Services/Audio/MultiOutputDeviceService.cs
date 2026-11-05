@@ -36,11 +36,13 @@ namespace KakiEQ_WinUI.Services.Audio
         private bool _isSystemRoutingActive = false;
 
         private readonly object _lock = new();
+        private readonly Microsoft.UI.Dispatching.DispatcherQueue? _dispatcherQueue;
 
         public event EventHandler? DevicesUpdated;
 
         public MultiOutputDeviceService()
         {
+            _dispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
             Devices = new ReadOnlyObservableCollection<AudioOutputDevice>(_devices);
             _dspProc = OnDspAudioBlock;
             RefreshDevices();
@@ -65,13 +67,19 @@ namespace KakiEQ_WinUI.Services.Audio
             }
         }
 
+        public System.Threading.Tasks.Task RefreshDevicesAsync()
+        {
+            return System.Threading.Tasks.Task.Run(RefreshDevices);
+        }
+
         public void RefreshDevices()
         {
+            List<AudioOutputDevice> newDeviceList;
             lock (_lock)
             {
                 int deviceCount = Bass.DeviceCount;
                 var currentDevicesMap = _devices.ToDictionary(d => d.DeviceIndex);
-                var newDeviceList = new List<AudioOutputDevice>();
+                newDeviceList = new List<AudioOutputDevice>();
 
                 // In BASS:
                 // Device 0 = No Sound
@@ -140,22 +148,48 @@ namespace KakiEQ_WinUI.Services.Audio
                         newDeviceList.Add(dev);
                     }
                 }
-
-                _devices.Clear();
-                foreach (var d in newDeviceList)
-                {
-                    _devices.Add(d);
-                }
-
-                _primaryDevice = _devices.FirstOrDefault(d => d.IsPrimary);
-                UpdateActiveSecondaryStreamsArray();
-                if (_isSystemRoutingActive)
-                {
-                    UpdateRoutingPushStreamsArray();
-                }
             }
 
-            DevicesUpdated?.Invoke(this, EventArgs.Empty);
+            void ApplyListUpdate()
+            {
+                lock (_lock)
+                {
+                    var newIndices = newDeviceList.Select(d => d.DeviceIndex).ToHashSet();
+                    for (int i = _devices.Count - 1; i >= 0; i--)
+                    {
+                        if (!newIndices.Contains(_devices[i].DeviceIndex))
+                        {
+                            _devices.RemoveAt(i);
+                        }
+                    }
+
+                    foreach (var d in newDeviceList)
+                    {
+                        if (!_devices.Any(existing => existing.DeviceIndex == d.DeviceIndex))
+                        {
+                            _devices.Add(d);
+                        }
+                    }
+
+                    _primaryDevice = _devices.FirstOrDefault(d => d.IsPrimary);
+                    UpdateActiveSecondaryStreamsArray();
+                    if (_isSystemRoutingActive)
+                    {
+                        UpdateRoutingPushStreamsArray();
+                    }
+                }
+
+                DevicesUpdated?.Invoke(this, EventArgs.Empty);
+            }
+
+            if (_dispatcherQueue != null && !_dispatcherQueue.HasThreadAccess)
+            {
+                _dispatcherQueue.TryEnqueue(ApplyListUpdate);
+            }
+            else
+            {
+                ApplyListUpdate();
+            }
         }
 
         public static bool IsVirtualCableDevice(DeviceInfo info)

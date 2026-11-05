@@ -1,9 +1,11 @@
 using System;
+using System.Collections.Concurrent;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using ImageMagick;
+using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 
 namespace KakiEQ_WinUI.Helpers
@@ -16,6 +18,18 @@ namespace KakiEQ_WinUI.Helpers
             "Cache",
             "JxlCache");
 
+        private static readonly ConcurrentDictionary<string, string?> _resolvedPathCache =
+            new(StringComparer.OrdinalIgnoreCase);
+
+        private static readonly ConcurrentDictionary<string, BitmapImage> _thumbBitmapCache =
+            new(StringComparer.OrdinalIgnoreCase);
+
+        private static readonly ConcurrentDictionary<string, BitmapImage> _cardBitmapCache =
+            new(StringComparer.OrdinalIgnoreCase);
+
+        private static readonly ConcurrentDictionary<string, BitmapImage> _heroBitmapCache =
+            new(StringComparer.OrdinalIgnoreCase);
+
         static ImageHelper()
         {
             try
@@ -25,15 +39,89 @@ namespace KakiEQ_WinUI.Helpers
             catch { }
         }
 
+        public static void InvalidateCache(string? path = null)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                _resolvedPathCache.Clear();
+                _thumbBitmapCache.Clear();
+                _cardBitmapCache.Clear();
+                _heroBitmapCache.Clear();
+                return;
+            }
+
+            _resolvedPathCache.TryRemove(path, out _);
+            _thumbBitmapCache.TryRemove(path, out _);
+            _cardBitmapCache.TryRemove(path, out _);
+            _heroBitmapCache.TryRemove(path, out _);
+        }
+
+        public static ImageSource? GetCachedThumbCover(string? path)
+        {
+            return GetOrCreateCachedBitmap(path, 88, _thumbBitmapCache);
+        }
+
+        public static ImageSource? GetCachedCardCover(string? path)
+        {
+            return GetOrCreateCachedBitmap(path, 220, _cardBitmapCache);
+        }
+
+        public static ImageSource? GetCachedHeroCover(string? path)
+        {
+            return GetOrCreateCachedBitmap(path, 400, _heroBitmapCache);
+        }
+
+        private static ImageSource? GetOrCreateCachedBitmap(
+            string? path,
+            int decodePixelWidth,
+            ConcurrentDictionary<string, BitmapImage> cache)
+        {
+            string? displayPath = EnsureDisplayableImage(path);
+            if (string.IsNullOrEmpty(displayPath))
+                return null;
+
+            if (cache.TryGetValue(displayPath, out var existing))
+                return existing;
+
+            try
+            {
+                var bmp = new BitmapImage
+                {
+                    DecodePixelWidth = decodePixelWidth,
+                    DecodePixelType = DecodePixelType.Logical,
+                    CreateOptions = BitmapCreateOptions.None,
+                    UriSource = new Uri(Path.GetFullPath(displayPath))
+                };
+                cache[displayPath] = bmp;
+                return bmp;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         /// <summary>
         /// Checks whether the given file or path is a JPEG XL image (.jxl).
+        /// Fast-paths standard extensions (.jpg, .png, .webp, .bmp) to avoid synchronous disk I/O on the UI thread.
         /// </summary>
         public static bool IsJxl(string? path)
         {
             if (string.IsNullOrWhiteSpace(path)) return false;
             if (path.EndsWith(".jxl", StringComparison.OrdinalIgnoreCase)) return true;
 
-            // Also check magic bytes if file exists
+            if (path.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) ||
+                path.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase) ||
+                path.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ||
+                path.EndsWith(".webp", StringComparison.OrdinalIgnoreCase) ||
+                path.EndsWith(".bmp", StringComparison.OrdinalIgnoreCase) ||
+                path.EndsWith(".gif", StringComparison.OrdinalIgnoreCase) ||
+                path.EndsWith(".ico", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            // Only check magic bytes for extensionless or unknown files
             try
             {
                 if (File.Exists(path))
@@ -52,45 +140,52 @@ namespace KakiEQ_WinUI.Helpers
 
         /// <summary>
         /// Ensures that the returned image path is directly renderable by WinUI 3 (WIC).
-        /// If the image is JPEG XL (.jxl), it is converted to a lossless/high-quality cached PNG.
+        /// Returns null when the path is empty or missing so XamlBindingHelper never throws on an empty URI.
+        /// Uses an in-memory cache so UI thread scrolling performs zero disk I/O.
         /// </summary>
-        public static string EnsureDisplayableImage(string? path)
+        public static string? EnsureDisplayableImage(string? path)
         {
-            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
-                return path ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(path))
+                return null;
 
-            if (!IsJxl(path))
-                return path;
-
-            try
+            return _resolvedPathCache.GetOrAdd(path, static rawPath =>
             {
-                Directory.CreateDirectory(JxlCacheDir);
+                if (!File.Exists(rawPath))
+                    return null;
 
-                var fi = new FileInfo(path);
-                string key = $"{path}_{fi.Length}_{fi.LastWriteTimeUtc.Ticks}";
-                using var md5 = MD5.Create();
-                string hash = Convert.ToHexString(md5.ComputeHash(Encoding.UTF8.GetBytes(key))).ToLowerInvariant();
-                string cachedPng = Path.Combine(JxlCacheDir, $"{hash}.png");
+                if (!IsJxl(rawPath))
+                    return rawPath;
 
-                if (File.Exists(cachedPng) && new FileInfo(cachedPng).Length > 0)
+                try
                 {
+                    Directory.CreateDirectory(JxlCacheDir);
+
+                    var fi = new FileInfo(rawPath);
+                    string key = $"{rawPath}_{fi.Length}_{fi.LastWriteTimeUtc.Ticks}";
+                    using var md5 = MD5.Create();
+                    string hash = Convert.ToHexString(md5.ComputeHash(Encoding.UTF8.GetBytes(key))).ToLowerInvariant();
+                    string cachedPng = Path.Combine(JxlCacheDir, $"{hash}.png");
+
+                    if (File.Exists(cachedPng) && new FileInfo(cachedPng).Length > 0)
+                    {
+                        return cachedPng;
+                    }
+
+                    // Decode JXL using Magick.NET and write to cached PNG
+                    using (var image = new MagickImage(rawPath))
+                    {
+                        image.Format = MagickFormat.Png;
+                        image.Write(cachedPng);
+                    }
+
                     return cachedPng;
                 }
-
-                // Decode JXL using Magick.NET and write to cached PNG
-                using (var image = new MagickImage(path))
+                catch (Exception ex)
                 {
-                    image.Format = MagickFormat.Png;
-                    image.Write(cachedPng);
+                    System.Diagnostics.Debug.WriteLine($"[ImageHelper] Error decoding JXL '{rawPath}': {ex.Message}");
+                    return rawPath;
                 }
-
-                return cachedPng;
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[ImageHelper] Error decoding JXL '{path}': {ex.Message}");
-                return path;
-            }
+            });
         }
 
         /// <summary>
@@ -130,7 +225,8 @@ namespace KakiEQ_WinUI.Helpers
 
             try
             {
-                string displayPath = EnsureDisplayableImage(path);
+                string? displayPath = EnsureDisplayableImage(path);
+                if (string.IsNullOrEmpty(displayPath)) return null;
                 return new BitmapImage(new Uri(Path.GetFullPath(displayPath)));
             }
             catch (Exception ex)

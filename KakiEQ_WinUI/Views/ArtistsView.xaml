@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<UserControl
+<Page
     x:Class="KakiEQ_WinUI.Views.ArtistsView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -7,54 +7,66 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:models="using:KakiEQ_WinUI.Models"
     xmlns:vm="using:KakiEQ_WinUI.ViewModels"
-    mc:Ignorable="d"
-    Loaded="UserControl_Loaded"
-    SizeChanged="UserControl_SizeChanged">
+    xmlns:helpers="using:KakiEQ_WinUI.Helpers"
+    NavigationCacheMode="Required"
+    Background="Transparent"
+    mc:Ignorable="d">
 
-    <UserControl.Resources>
-        <!-- Template Unificado de Alta Fluidez (Adapta tamaño sin reconstruir la UI) -->
+    <Page.Resources>
+        <!-- Template Unificado con Borde Vectorial Uniforme y Animación Hover -->
         <DataTemplate x:Key="ArtistCardTemplate" x:DataType="models:ArtistItem">
-            <Border Margin="4" CornerRadius="16"
-                    Background="{ThemeResource AppCardBackground}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1"
-                    Padding="12" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
-                    <!-- Circular Avatar -->
-                    <Border Width="96" Height="96" CornerRadius="48" Background="{ThemeResource AppCoverPlaceholderBg}" HorizontalAlignment="Center">
-                        <Grid>
-                            <FontIcon Glyph="&#xE77B;" FontSize="38" Foreground="{ThemeResource AppCoverPlaceholderFg}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            <Image Source="{x:Bind CoverImagePath, Mode=OneWay}" Stretch="UniformToFill"/>
-                        </Grid>
-                    </Border>
+            <Border Margin="5" CornerRadius="16"
+                    Background="{ThemeResource AppCardBackground}" BorderThickness="0"
+                    HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                    helpers:FluidAnimationHelper.HoverMode="Card"
+                    helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
+                <Grid>
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8" Margin="12">
+                        <!-- Circular Avatar -->
+                        <Border Width="96" Height="96" CornerRadius="48" Background="{ThemeResource AppCoverPlaceholderBg}" HorizontalAlignment="Center">
+                            <Grid>
+                                <FontIcon Glyph="&#xE77B;" FontSize="38" Foreground="{ThemeResource AppCoverPlaceholderFg}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <Image Source="{x:Bind CoverCardSource, Mode=OneWay}" Stretch="UniformToFill"/>
+                            </Grid>
+                        </Border>
 
-                    <StackPanel HorizontalAlignment="Center" Spacing="2">
-                        <TextBlock Text="{x:Bind Name, Mode=OneWay}" FontWeight="Bold" FontSize="13" Foreground="{ThemeResource AppTextPrimary}"
-                                   HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" MaxLines="1"/>
-                        <TextBlock Text="{x:Bind TrackCountFormatted, Mode=OneWay}" FontSize="11" Foreground="{ThemeResource AppTextSubtle}"
-                                   HorizontalAlignment="Center"/>
+                        <StackPanel HorizontalAlignment="Center" Spacing="2">
+                            <TextBlock Text="{x:Bind Name, Mode=OneWay}" FontWeight="Bold" FontSize="13" Foreground="{ThemeResource AppTextPrimary}"
+                                       HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" MaxLines="1"/>
+                            <TextBlock Text="{x:Bind TrackCountFormatted, Mode=OneWay}" FontSize="11" Foreground="{ThemeResource AppTextSubtle}"
+                                       HorizontalAlignment="Center"/>
+                        </StackPanel>
                     </StackPanel>
-                </StackPanel>
+
+                    <!-- Uniform Vector Border -->
+                    <Rectangle RadiusX="15" RadiusY="15"
+                               Stroke="{ThemeResource AppBorder}" StrokeThickness="1.2"
+                               Margin="1" UseLayoutRounding="False" IsHitTestVisible="False"
+                               Tag="UniformBorderRect"/>
+                </Grid>
             </Border>
         </DataTemplate>
-    </UserControl.Resources>
+    </Page.Resources>
 
-    <Grid Padding="20,24">
+    <Grid Padding="14,18,16,0" helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <Grid Grid.Row="0" Margin="0,0,0,20">
+        <Grid Grid.Row="0" Margin="0,0,0,20" helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
 
-            <StackPanel Grid.Column="0">
+            <StackPanel Grid.Column="0" helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
                 <TextBlock Text="Artistas" FontSize="26" FontWeight="Bold" Foreground="{ThemeResource AppTextPrimary}"/>
                 <TextBlock Text="Todos los intérpretes y creadores en tu biblioteca" FontSize="13" Foreground="{ThemeResource AppTextSubtle}" Margin="0,4,0,0"/>
             </StackPanel>
 
-            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="12">
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="12"
+                        helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
                 <!-- Search Bar -->
                 <TextBox Width="260"
                          Text="{x:Bind ViewModel.SearchQuery, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
@@ -75,7 +87,14 @@
                   IsItemClickEnabled="True"
                   ItemClick="Artist_ItemClick"
                   HorizontalAlignment="Stretch"
-                  ItemTemplate="{StaticResource ArtistCardTemplate}">
+                  Padding="0,0,0,116"
+                  ItemTemplate="{StaticResource ArtistCardTemplate}"
+                  helpers:FluidAnimationHelper.EnableGridViewReflow="True">
+            <GridView.ItemContainerTransitions>
+                <TransitionCollection>
+                    <RepositionThemeTransition IsStaggeringEnabled="False"/>
+                </TransitionCollection>
+            </GridView.ItemContainerTransitions>
             <GridView.ItemContainerStyle>
                 <Style TargetType="GridViewItem">
                     <Setter Property="Margin" Value="0"/>
@@ -88,10 +107,9 @@
             </GridView.ItemContainerStyle>
             <GridView.ItemsPanel>
                 <ItemsPanelTemplate>
-                    <ItemsWrapGrid Orientation="Horizontal" HorizontalAlignment="Left" ItemWidth="171" ItemHeight="216"/>
+                    <ItemsWrapGrid Orientation="Horizontal" HorizontalAlignment="Left" ItemWidth="174" ItemHeight="218"/>
                 </ItemsPanelTemplate>
             </GridView.ItemsPanel>
         </GridView>
     </Grid>
-</UserControl>
-
+</Page>

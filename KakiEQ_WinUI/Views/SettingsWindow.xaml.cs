@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Threading.Tasks;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
@@ -16,6 +17,8 @@ namespace KakiEQ_WinUI.Views
     public sealed partial class SettingsWindow : Window
     {
         private bool _isInitializing = true;
+        private AppWindow? _appWindow;
+        public bool AllowClose { get; set; } = false;
 
         public SettingsWindow()
         {
@@ -25,28 +28,40 @@ namespace KakiEQ_WinUI.Views
             SetTitleBar(TitleBarBorder);
 
             ConfigureWindowSize();
-            LoadSettingsData();
+        }
 
-            _isInitializing = false;
+        public void ShowWindow()
+        {
+            LoadSettingsData();
+            _appWindow?.Show();
+            Activate();
         }
 
         private void ConfigureWindowSize()
         {
             IntPtr hwnd = WindowNative.GetWindowHandle(this);
             WindowId windowId = Win32Interop.GetWindowIdFromWindow(hwnd);
-            var appWindow = AppWindow.GetFromWindowId(windowId);
-            if (appWindow != null)
+            _appWindow = AppWindow.GetFromWindowId(windowId);
+            if (_appWindow != null)
             {
-                appWindow.Resize(new SizeInt32(780, 680));
-                
+                _appWindow.Resize(new SizeInt32(780, 680));
+                _appWindow.Closing += (s, args) =>
+                {
+                    if (!AllowClose)
+                    {
+                        args.Cancel = true;
+                        _appWindow.Hide();
+                    }
+                };
+
                 // Set window icon
                 string iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "Kaki_Oficial_Blanco.ico");
                 if (File.Exists(iconPath))
                 {
-                    appWindow.SetIcon(iconPath);
+                    _appWindow.SetIcon(iconPath);
                 }
 
-                var titleBar = appWindow.TitleBar;
+                var titleBar = _appWindow.TitleBar;
                 if (titleBar != null)
                 {
                     titleBar.ButtonBackgroundColor = Colors.Transparent;
@@ -57,6 +72,7 @@ namespace KakiEQ_WinUI.Views
 
         private void LoadSettingsData()
         {
+            _isInitializing = true;
             var vm = MainViewModel.Instance;
             var settings = vm?.SettingsService.LoadSettings() ?? new Services.Data.AppSettings();
 
@@ -72,7 +88,6 @@ namespace KakiEQ_WinUI.Views
             CrossfadeSliderContainer.Opacity = settings.CrossfadeEnabled ? 1.0 : 0.45;
             CrossfadeSliderContainer.IsHitTestVisible = settings.CrossfadeEnabled;
 
-            StartupToggle.IsOn = StartupHelper.IsStartupEnabled();
             AudioTechInfoToggle.IsOn = settings.ShowAudioTechnicalInfo;
 
             // Set current theme to window
@@ -80,6 +95,20 @@ namespace KakiEQ_WinUI.Views
             {
                 fe.RequestedTheme = settings.IsDarkMode ? ElementTheme.Dark : ElementTheme.Light;
             }
+
+            _isInitializing = false;
+
+            // Query registry off the UI thread so window activation never stalls
+            _ = Task.Run(() =>
+            {
+                bool startupEnabled = StartupHelper.IsStartupEnabled();
+                DispatcherQueue.TryEnqueue(() =>
+                {
+                    _isInitializing = true;
+                    StartupToggle.IsOn = startupEnabled;
+                    _isInitializing = false;
+                });
+            });
         }
 
         private async void PickFolder_Click(object sender, RoutedEventArgs e)

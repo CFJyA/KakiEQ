@@ -1,23 +1,39 @@
 using System.Collections.Generic;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Navigation;
 using KakiEQ_WinUI.Helpers;
 using KakiEQ_WinUI.Models;
 using KakiEQ_WinUI.ViewModels;
 
 namespace KakiEQ_WinUI.Views
 {
-    public sealed partial class LibraryView : UserControl
+    public sealed partial class LibraryView : Page
     {
-        public LibraryViewModel? ViewModel => DataContext as LibraryViewModel;
+        public LibraryViewModel? ViewModel => (DataContext as LibraryViewModel) ?? MainViewModel.Instance?.LibraryVm;
 
         public LibraryView()
         {
+            if (MainViewModel.Instance != null)
+            {
+                DataContext = MainViewModel.Instance.LibraryVm;
+            }
             InitializeComponent();
             DataContextChanged += (s, e) =>
             {
                 Bindings?.Update();
             };
+        }
+
+        protected override void OnNavigatedTo(NavigationEventArgs e)
+        {
+            base.OnNavigatedTo(e);
+            if (e.Parameter is LibraryViewModel vm && DataContext != vm)
+            {
+                DataContext = vm;
+                Bindings?.Update();
+            }
+            FluidAnimationHelper.PlayPageEntranceAnimation(this);
         }
 
         private void Song_ItemClick(object sender, ItemClickEventArgs e)
@@ -45,4 +61,3 @@ namespace KakiEQ_WinUI.Views
         }
     }
 }
-

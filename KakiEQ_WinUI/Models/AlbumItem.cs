@@ -44,9 +44,14 @@ namespace KakiEQ_WinUI.Models
                 {
                     _coverImagePath = value;
                     OnPropertyChanged();
+                    OnPropertyChanged(nameof(CoverCardSource));
+                    OnPropertyChanged(nameof(CoverThumbSource));
                 }
             }
         }
+
+        public ImageSource? CoverCardSource => Helpers.ImageHelper.GetCachedCardCover(_coverImagePath);
+        public ImageSource? CoverThumbSource => Helpers.ImageHelper.GetCachedThumbCover(_coverImagePath);
 
         private SolidColorBrush? _dominantColorBrush;
         public SolidColorBrush? DominantColorBrush

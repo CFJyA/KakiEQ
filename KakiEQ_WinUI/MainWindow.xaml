@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Window
     x:Class="KakiEQ_WinUI.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -15,11 +15,10 @@
         <MicaBackdrop />
     </Window.SystemBackdrop>
 
-    <Grid Background="{ThemeResource AppBackground}">
+    <Grid Background="{ThemeResource AppBackground}" x:Name="RootWindowGrid">
         <Grid.RowDefinitions>
             <RowDefinition Height="58"/>  <!-- 0: Custom Top Navigation / TitleBar -->
-            <RowDefinition Height="*"/>   <!-- 1: Main Workspace: Floating Sidebar + Dynamic View Content -->
-            <RowDefinition Height="Auto"/> <!-- 2: Floating Bottom Player Bar -->
+            <RowDefinition Height="*"/>   <!-- 1: Full-Bleed Workspace: Frame Pages + 100% Floating Sidebar + 100% Floating Player Bar -->
         </Grid.RowDefinitions>
 
         <!-- 0. TOP NAVIGATION BAR (Material 3 Top App Bar) -->
@@ -31,8 +30,11 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
+                <!-- Dedicated Win32 Non-Client Drag Region (Columns 0 & 1 only, so Column 2 buttons always receive PointerOver/Hover) -->
+                <Border x:Name="AppTitleBarDragRegion" Grid.Column="0" Grid.ColumnSpan="2" Background="Transparent"/>
+
                 <!-- Brand / Logo -->
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="12">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Spacing="12" IsHitTestVisible="False">
                     <Border Width="36" Height="36" CornerRadius="11">
                         <Grid>
                             <Image x:Name="AppLogoImage" Source="ms-appx:///Assets/Kaki_Oficial_Blanco.png" Width="32" Height="32" Stretch="Uniform"/>
@@ -46,10 +48,10 @@
 
                 <!-- Center Drag Handle Pill (Mockup visual touch) -->
                 <Border Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center"
-                        Width="44" Height="4" CornerRadius="2" Background="#26FFFFFF" Opacity="0.7"/>
+                        Width="44" Height="4" CornerRadius="2" Background="#26FFFFFF" Opacity="0.7" IsHitTestVisible="False"/>
 
                 <!-- Right Action: Scanning Indicator & Ajustes Submenu -->
-                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Spacing="12">
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Spacing="12" Canvas.ZIndex="10">
                     <!-- Scanning Spinner -->
                     <ProgressRing IsActive="{x:Bind ViewModel.IsScanning, Mode=OneWay}"
                                   Width="18" Height="18" Foreground="#BB86FC"/>
@@ -60,17 +62,19 @@
                     <!-- Botón Metadatos -->
                     <Button Background="{ThemeResource AppSettingsBg}" BorderBrush="{ThemeResource AppSettingsBorder}" BorderThickness="1" Foreground="{ThemeResource AppTextPrimary}"
                             CornerRadius="16" Padding="12,6" ToolTipService.ToolTip="Visualizador y editor de metadatos"
-                            Click="OpenMetadata_Click">
+                            Click="OpenMetadata_Click"
+                            helpers:FluidAnimationHelper.HoverMode="Button">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <FontIcon Glyph="&#xE8EC;" FontSize="13" Foreground="#BB86FC"/>
                             <TextBlock Text="Metadatos" FontSize="12" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
 
-                    <!-- Botón Ajustes (Abre la nueva Ventana de Ajustes) -->
+                    <!-- Botón Ajustes (Abre la Ventana de Ajustes) -->
                     <Button Background="{ThemeResource AppSettingsBg}" BorderBrush="{ThemeResource AppSettingsBorder}" BorderThickness="1" Foreground="{ThemeResource AppTextPrimary}"
                             CornerRadius="16" Padding="12,6" ToolTipService.ToolTip="Ajustes de la aplicación"
-                            Click="OpenSettings_Click">
+                            Click="OpenSettings_Click"
+                            helpers:FluidAnimationHelper.HoverMode="Button">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <FontIcon Glyph="&#xE713;" FontSize="13" Foreground="#BB86FC"/>
                             <TextBlock Text="Ajustes" FontSize="12" VerticalAlignment="Center"/>
@@ -80,31 +84,44 @@
             </Grid>
         </Border>
 
-        <!-- 1. MAIN WORKSPACE: FLOATING COLLAPSIBLE SIDEBAR + DYNAMIC VIEW -->
-        <Grid Grid.Row="1">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto"/> <!-- Floating Sidebar Capsule + Toggle -->
-                <ColumnDefinition Width="*"/>    <!-- Main View Content -->
-            </Grid.ColumnDefinitions>
+        <!-- 1. MAIN WORKSPACE: NATIVE WINDOW-PAGES FRAME + 100% FLOATING SIDEBAR + 100% FLOATING BOTTOM PLAYER BAR -->
+        <Grid Grid.Row="1" x:Name="WorkspaceGrid">
 
-            <!-- Floating Sidebar Area (Mockup Pill Design) -->
-            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                <!-- Vertical Rounded Pill Capsule -->
-                <Border x:Name="SidebarContainer"
-                        Visibility="{x:Bind ViewModel.SidebarVisibility, Mode=OneWay}"
-                        Background="{ThemeResource AppSidebarBg}"
-                        BorderBrush="{ThemeResource AppAccent}"
-                        BorderThickness="1"
-                        CornerRadius="26"
-                        Width="175"
-                        Margin="16,0,0,0"
-                        VerticalAlignment="Center">
+            <!-- A. Persistent Page Host Grid (Keeps Primary Pages Mounted in Visual Tree for 0ms Switching & Zero Re-Realization) -->
+            <Grid x:Name="PagesHostGrid"
+                  Margin="{x:Bind ViewModel.WorkspaceContentMargin, Mode=OneWay}"
+                  HorizontalAlignment="Stretch"
+                  VerticalAlignment="Stretch"
+                  Background="Transparent"
+                  helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
+                <Frame x:Name="ContentFrame"
+                       Visibility="Collapsed"
+                       HorizontalAlignment="Stretch"
+                       VerticalAlignment="Stretch"
+                       Background="Transparent"/>
+            </Grid>
+
+            <!-- B. 100% Floating Collapsible Sidebar Area (Mockup Pill Design with Uniform Vector Border) -->
+            <StackPanel x:Name="SidebarFloatingPanel"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Center"
+                        Canvas.ZIndex="20">
+                <!-- Vertical Rounded Pill Capsule with 100% Uniform Vector Stroke -->
+                <Grid x:Name="SidebarContainer"
+                      Visibility="{x:Bind ViewModel.SidebarVisibility, Mode=OneWay}"
+                      Background="{ThemeResource AppSidebarBg}"
+                      CornerRadius="26"
+                      Width="168"
+                      Margin="10,0,0,0"
+                      VerticalAlignment="Center">
                     <StackPanel Spacing="6" Padding="10,16">
                         <!-- Inicio -->
                         <Button Command="{x:Bind ViewModel.NavigateHomeCommand}"
                                 HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                                 Background="{x:Bind ViewModel.NavHomeBg, Mode=OneWay}"
-                                BorderThickness="0" CornerRadius="16" Padding="12,10">
+                                BorderThickness="0" CornerRadius="16" Padding="12,10"
+                                helpers:FluidAnimationHelper.HoverMode="Nav">
                             <StackPanel Orientation="Horizontal" Spacing="12">
                                 <FontIcon Glyph="&#xE80F;" FontSize="16" Foreground="{x:Bind ViewModel.NavHomeFg, Mode=OneWay}"/>
                                 <TextBlock Text="Inicio" FontSize="13" FontWeight="SemiBold"
@@ -116,7 +133,8 @@
                         <Button Command="{x:Bind ViewModel.NavigateSongsCommand}"
                                 HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                                 Background="{x:Bind ViewModel.NavSongsBg, Mode=OneWay}"
-                                BorderThickness="0" CornerRadius="16" Padding="12,10">
+                                BorderThickness="0" CornerRadius="16" Padding="12,10"
+                                helpers:FluidAnimationHelper.HoverMode="Nav">
                             <StackPanel Orientation="Horizontal" Spacing="12">
                                 <FontIcon Glyph="&#xEC4F;" FontSize="16" Foreground="{x:Bind ViewModel.NavSongsFg, Mode=OneWay}"/>
                                 <TextBlock Text="Canciones" FontSize="13" FontWeight="SemiBold"
@@ -128,7 +146,8 @@
                         <Button Command="{x:Bind ViewModel.NavigateAlbumsCommand}"
                                 HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                                 Background="{x:Bind ViewModel.NavAlbumsBg, Mode=OneWay}"
-                                BorderThickness="0" CornerRadius="16" Padding="12,10">
+                                BorderThickness="0" CornerRadius="16" Padding="12,10"
+                                helpers:FluidAnimationHelper.HoverMode="Nav">
                             <StackPanel Orientation="Horizontal" Spacing="12">
                                 <FontIcon Glyph="&#xE93C;" FontSize="16" Foreground="{x:Bind ViewModel.NavAlbumsFg, Mode=OneWay}"/>
                                 <TextBlock Text="Álbumes" FontSize="13" FontWeight="SemiBold"
@@ -140,7 +159,8 @@
                         <Button Command="{x:Bind ViewModel.NavigateArtistsCommand}"
                                 HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                                 Background="{x:Bind ViewModel.NavArtistsBg, Mode=OneWay}"
-                                BorderThickness="0" CornerRadius="16" Padding="12,10">
+                                BorderThickness="0" CornerRadius="16" Padding="12,10"
+                                helpers:FluidAnimationHelper.HoverMode="Nav">
                             <StackPanel Orientation="Horizontal" Spacing="12">
                                 <FontIcon Glyph="&#xE77B;" FontSize="16" Foreground="{x:Bind ViewModel.NavArtistsFg, Mode=OneWay}"/>
                                 <TextBlock Text="Artistas" FontSize="13" FontWeight="SemiBold"
@@ -152,7 +172,8 @@
                         <Button Command="{x:Bind ViewModel.NavigatePlaylistsCommand}"
                                 HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                                 Background="{x:Bind ViewModel.NavPlaylistsBg, Mode=OneWay}"
-                                BorderThickness="0" CornerRadius="16" Padding="12,10">
+                                BorderThickness="0" CornerRadius="16" Padding="12,10"
+                                helpers:FluidAnimationHelper.HoverMode="Nav">
                             <StackPanel Orientation="Horizontal" Spacing="12">
                                 <FontIcon Glyph="&#xE8F1;" FontSize="16" Foreground="{x:Bind ViewModel.NavPlaylistsFg, Mode=OneWay}"/>
                                 <TextBlock Text="Playlists" FontSize="13" FontWeight="SemiBold"
@@ -164,7 +185,8 @@
                         <Button Command="{x:Bind ViewModel.NavigateEqualizerCommand}"
                                 HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                                 Background="{x:Bind ViewModel.NavEqBg, Mode=OneWay}"
-                                BorderThickness="0" CornerRadius="16" Padding="12,10">
+                                BorderThickness="0" CornerRadius="16" Padding="12,10"
+                                helpers:FluidAnimationHelper.HoverMode="Nav">
                             <StackPanel Orientation="Horizontal" Spacing="12">
                                 <FontIcon Glyph="&#xE9E9;" FontSize="16" Foreground="{x:Bind ViewModel.NavEqFg, Mode=OneWay}"/>
                                 <TextBlock Text="Ecualizador" FontSize="13" FontWeight="SemiBold"
@@ -176,7 +198,8 @@
                         <Button Command="{x:Bind ViewModel.NavigateMultiOutputCommand}"
                                 HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                                 Background="{x:Bind ViewModel.NavMultiOutputBg, Mode=OneWay}"
-                                BorderThickness="0" CornerRadius="16" Padding="12,10">
+                                BorderThickness="0" CornerRadius="16" Padding="12,10"
+                                helpers:FluidAnimationHelper.HoverMode="Nav">
                             <StackPanel Orientation="Horizontal" Spacing="12">
                                 <FontIcon Glyph="&#xE95B;" FontSize="16" Foreground="{x:Bind ViewModel.NavMultiOutputFg, Mode=OneWay}"/>
                                 <TextBlock Text="Salidas de Audio" FontSize="13" FontWeight="SemiBold"
@@ -184,186 +207,213 @@
                             </StackPanel>
                         </Button>
                     </StackPanel>
-                </Border>
 
-                <!-- Sidebar Toggle Pill Button (< / >) -->
+                    <!-- Uniform Continuous Vector Border (Eliminates Corner vs Straight Edge Thickness Discrepancy) -->
+                    <Rectangle RadiusX="25" RadiusY="25"
+                               Stroke="{ThemeResource AppAccent}"
+                               StrokeThickness="1.35"
+                               Margin="1"
+                               UseLayoutRounding="False"
+                               IsHitTestVisible="False"/>
+                </Grid>
+
+                <!-- Sidebar Toggle Pill Button (< / >) with Uniform Vector Stroke -->
                 <Button Command="{x:Bind ViewModel.ToggleSidebarCommand}"
-                        Width="22" Height="38" CornerRadius="11" Padding="0"
-                        Background="{ThemeResource AppSidebarToggleBg}" BorderBrush="{ThemeResource AppAccent}" BorderThickness="1"
-                        Margin="6,0,10,0" VerticalAlignment="Center"
+                        Width="24" Height="40" CornerRadius="12" Padding="0"
+                        Background="{ThemeResource AppSidebarToggleBg}" BorderThickness="0"
+                        Margin="5,0,6,0" VerticalAlignment="Center"
+                        helpers:FluidAnimationHelper.HoverMode="Icon"
                         ToolTipService.ToolTip="{x:Bind ViewModel.SidebarToggleTooltip, Mode=OneWay}">
-                    <FontIcon Glyph="{x:Bind ViewModel.SidebarToggleIconGlyph, Mode=OneWay}" FontSize="10" Foreground="{ThemeResource AppAccent}"/>
+                    <Grid Width="24" Height="40">
+                        <Rectangle Tag="UniformBorderRect" RadiusX="11" RadiusY="11"
+                                   Stroke="{ThemeResource AppAccent}" StrokeThickness="1.3"
+                                   Margin="1" UseLayoutRounding="False" IsHitTestVisible="False"/>
+                        <FontIcon Glyph="{x:Bind ViewModel.SidebarToggleIconGlyph, Mode=OneWay}"
+                                  FontSize="10" Foreground="{ThemeResource AppAccent}"
+                                  HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Grid>
                 </Button>
             </StackPanel>
 
-            <!-- Dynamic Main View Content with Entrance Transitions -->
-            <ContentControl Grid.Column="1"
-                            x:Name="MainViewPresenter"
-                            Content="{x:Bind ViewModel.CurrentView, Mode=OneWay}"
-                            ContentTemplateSelector="{StaticResource MainViewSelector}"
-                            HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
-                <ContentControl.ContentTransitions>
-                    <TransitionCollection>
-                        <EntranceThemeTransition FromVerticalOffset="24" IsStaggeringEnabled="False"/>
-                    </TransitionCollection>
-                </ContentControl.ContentTransitions>
-            </ContentControl>
+            <!-- C. 100% FLOATING BOTTOM PLAYER BAR (Mockup Capsule Design with Uniform Vector Border) -->
+            <Grid x:Name="FloatingPlayerBar"
+                  Margin="24,0,24,14"
+                  Height="86"
+                  CornerRadius="24"
+                  Background="{ThemeResource AppPlayerBg}"
+                  VerticalAlignment="Bottom"
+                  HorizontalAlignment="Stretch"
+                  Canvas.ZIndex="20"
+                  Visibility="{x:Bind ViewModel.BottomPlayerBarVisibility, Mode=OneWay}">
+                <Grid Padding="20,4,20,4">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="260"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="260"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Left: Track Info (Clickable to open Now Playing Overlay) -->
+                    <Button Grid.Column="0" Command="{x:Bind ViewModel.OpenNowPlayingCommand}"
+                            Background="Transparent" BorderThickness="0" Padding="4" CornerRadius="12"
+                            HorizontalAlignment="Left" HorizontalContentAlignment="Left"
+                            helpers:FluidAnimationHelper.HoverMode="Button">
+                        <Grid ColumnSpacing="12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="46"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Album Cover Thumbnail -->
+                            <Grid Grid.Column="0" Width="46" Height="46" CornerRadius="10" Background="{ThemeResource AppCoverPlaceholderBg}">
+                                <FontIcon Glyph="&#xEC4F;" FontSize="20" Foreground="{ThemeResource AppCoverPlaceholderFg}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <Image Source="{x:Bind ViewModel.CurrentTrack.CoverThumbSource, Mode=OneWay}" Stretch="UniformToFill"/>
+                                <Rectangle RadiusX="9" RadiusY="9" Stroke="{ThemeResource AppBorder}" StrokeThickness="1" Margin="0.5" UseLayoutRounding="False" IsHitTestVisible="False"/>
+                            </Grid>
+
+                            <!-- Title and Artist -->
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="1">
+                                <TextBlock Text="{x:Bind ViewModel.CurrentTrack.Title, Mode=OneWay, FallbackValue='Sin música seleccionada'}"
+                                           FontWeight="SemiBold" FontSize="13" Foreground="{ThemeResource AppTextPrimary}"
+                                           TextTrimming="CharacterEllipsis" MaxLines="1"/>
+                                <TextBlock Text="{x:Bind ViewModel.CurrentTrack.Artist, Mode=OneWay, FallbackValue='Elige una canción para reproducir'}"
+                                           FontSize="11" Foreground="{ThemeResource AppTextMuted}"
+                                           TextTrimming="CharacterEllipsis" MaxLines="1"/>
+                            </StackPanel>
+                        </Grid>
+                    </Button>
+
+                    <!-- Center: Playback Controls & Responsive Progress Bar -->
+                    <Grid Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Stretch"
+                          MaxWidth="780" MinWidth="340" Margin="16,0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Buttons row -->
+                        <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="14" VerticalAlignment="Center">
+                            <!-- Shuffle -->
+                            <Button Command="{x:Bind ViewModel.ToggleShuffleCommand}"
+                                    Background="Transparent" BorderThickness="0" Padding="0" Width="30" Height="30" CornerRadius="15"
+                                    Foreground="{x:Bind ViewModel.ShuffleBrush, Mode=OneWay}" ToolTipService.ToolTip="Aleatorio"
+                                    helpers:FluidAnimationHelper.HoverMode="Icon">
+                                <FontIcon Glyph="&#xE8B1;" FontSize="13"/>
+                            </Button>
+
+                            <!-- Previous -->
+                            <Button Command="{x:Bind ViewModel.PreviousCommand}"
+                                    Background="Transparent" BorderThickness="0" Padding="0" Width="32" Height="32" CornerRadius="16"
+                                    Foreground="{ThemeResource AppTextPrimary}" ToolTipService.ToolTip="Anterior"
+                                    helpers:FluidAnimationHelper.HoverMode="Icon">
+                                <FontIcon Glyph="&#xE892;" FontSize="15"/>
+                            </Button>
+
+                            <!-- FAB PLAY/PAUSE (Material 3 Compact Action Button) -->
+                            <Button Command="{x:Bind ViewModel.PlayPauseCommand}"
+                                    Background="#BB86FC" Foreground="#121212"
+                                    Width="42" Height="42" CornerRadius="21" Padding="0"
+                                    ToolTipService.ToolTip="{x:Bind ViewModel.PlayPauseTooltip, Mode=OneWay}"
+                                    helpers:FluidAnimationHelper.HoverMode="Fab">
+                                <FontIcon Glyph="{x:Bind ViewModel.PlayPauseIconGlyph, Mode=OneWay}" FontSize="17"/>
+                            </Button>
+
+                            <!-- Next -->
+                            <Button Command="{x:Bind ViewModel.NextCommand}"
+                                    Background="Transparent" BorderThickness="0" Padding="0" Width="32" Height="32" CornerRadius="16"
+                                    Foreground="{ThemeResource AppTextPrimary}" ToolTipService.ToolTip="Siguiente"
+                                    helpers:FluidAnimationHelper.HoverMode="Icon">
+                                <FontIcon Glyph="&#xE893;" FontSize="15"/>
+                            </Button>
+
+                            <!-- Repeat -->
+                            <Button Command="{x:Bind ViewModel.ToggleRepeatCommand}"
+                                    Background="Transparent" BorderThickness="0" Padding="0" Width="30" Height="30" CornerRadius="15"
+                                    Foreground="{x:Bind ViewModel.RepeatBrush, Mode=OneWay}" ToolTipService.ToolTip="Repetir"
+                                    helpers:FluidAnimationHelper.HoverMode="Icon">
+                                <FontIcon Glyph="&#xE8EE;" FontSize="13"/>
+                            </Button>
+                        </StackPanel>
+
+                        <!-- Seek Bar row (Stretches smoothly when window maximizes/restores) -->
+                        <Grid Grid.Row="1" HorizontalAlignment="Stretch" ColumnSpacing="10" Margin="0,2,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Column="0" Text="{x:Bind ViewModel.CurrentPositionFormatted, Mode=OneWay, FallbackValue='00:00'}"
+                                       FontSize="11" Foreground="{ThemeResource AppTextSubtle}" VerticalAlignment="Center"/>
+
+                            <Slider Grid.Column="1"
+                                    Maximum="{x:Bind ViewModel.TotalDurationSeconds, Mode=OneWay, FallbackValue=100}"
+                                    Value="{x:Bind ViewModel.CurrentPositionSeconds, Mode=OneWay}"
+                                    ValueChanged="SeekSlider_ValueChanged"
+                                    VerticalAlignment="Center" Margin="0" MinHeight="0" Height="30"/>
+
+                            <TextBlock Grid.Column="2" Text="{x:Bind ViewModel.TotalDurationFormatted, Mode=OneWay, FallbackValue='00:00'}"
+                                       FontSize="11" Foreground="{ThemeResource AppTextSubtle}" VerticalAlignment="Center"/>
+                        </Grid>
+                    </Grid>
+
+                    <!-- Right: Extra Controls (Heart Like, Playlist, EQ Shortcut, Volume) -->
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Spacing="8">
+                        <!-- Like (Heart) Button -->
+                        <Button Command="{x:Bind ViewModel.LikeTrackCommand}"
+                                Background="Transparent" BorderThickness="0" Padding="0" Width="34" Height="34" CornerRadius="17"
+                                ToolTipService.ToolTip="{x:Bind ViewModel.LikeTooltipText, Mode=OneWay}"
+                                helpers:FluidAnimationHelper.HoverMode="Icon">
+                            <FontIcon Glyph="{x:Bind ViewModel.LikeGlyph, Mode=OneWay}" FontSize="16"
+                                      Foreground="{x:Bind ViewModel.LikeBrush, Mode=OneWay}"/>
+                        </Button>
+
+                        <!-- Add to Playlist Button -->
+                        <Button x:Name="PlayerAddToPlaylistBtn"
+                                Click="PlayerAddToPlaylist_Click"
+                                Background="Transparent" BorderThickness="0" Padding="0" Width="34" Height="34" CornerRadius="17"
+                                Foreground="#B0B0B0" ToolTipService.ToolTip="Añadir canción actual a una playlist"
+                                helpers:FluidAnimationHelper.HoverMode="Icon">
+                            <FontIcon Glyph="&#xE8F1;" FontSize="15"/>
+                        </Button>
+
+                        <!-- EQ Shortcut -->
+                        <Button Command="{x:Bind ViewModel.NavigateEqualizerCommand}"
+                                Background="Transparent" BorderThickness="0" Padding="0" Width="34" Height="34" CornerRadius="17"
+                                Foreground="#B0B0B0" ToolTipService.ToolTip="Abrir Ecualizador"
+                                helpers:FluidAnimationHelper.HoverMode="Icon">
+                            <FontIcon Glyph="&#xE9E9;" FontSize="15"/>
+                        </Button>
+
+                        <!-- Multi-Output Shortcut -->
+                        <Button Command="{x:Bind ViewModel.NavigateMultiOutputCommand}"
+                                Background="Transparent" BorderThickness="0" Padding="0" Width="34" Height="34" CornerRadius="17"
+                                Foreground="#B0B0B0" ToolTipService.ToolTip="Salidas de audio simultáneas"
+                                helpers:FluidAnimationHelper.HoverMode="Icon">
+                            <FontIcon Glyph="&#xE95B;" FontSize="15"/>
+                        </Button>
+
+                        <!-- Volume icon -->
+                        <FontIcon Glyph="{x:Bind ViewModel.VolumeIconGlyph, Mode=OneWay}" FontSize="14" Foreground="#888888" VerticalAlignment="Center"/>
+
+                        <!-- Volume slider -->
+                        <Slider Width="75" Minimum="0" Maximum="100"
+                                Value="{x:Bind ViewModel.Volume, Mode=TwoWay}"
+                                VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Grid>
+
+                <!-- Uniform Continuous Vector Border (Eliminates Corner vs Straight Edge Thickness Discrepancy) -->
+                <Rectangle RadiusX="23" RadiusY="23"
+                           Stroke="{ThemeResource AppAccent}"
+                           StrokeThickness="1.35"
+                           Margin="1"
+                           UseLayoutRounding="False"
+                           IsHitTestVisible="False"/>
+            </Grid>
         </Grid>
 
-        <!-- 2. FLOATING BOTTOM PLAYER BAR (Mockup Capsule Design) -->
-        <Border Grid.Row="2"
-                Margin="32,0,32,16"
-                Height="86"
-                CornerRadius="24"
-                Background="{ThemeResource AppPlayerBg}"
-                BorderBrush="{ThemeResource AppAccent}"
-                BorderThickness="1"
-                Visibility="{x:Bind ViewModel.BottomPlayerBarVisibility, Mode=OneWay}">
-            <Grid Padding="20,4,20,4">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="240"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-
-                <!-- Left: Track Info (Clickable to open Now Playing Overlay) -->
-                <Button Grid.Column="0" Command="{x:Bind ViewModel.OpenNowPlayingCommand}"
-                        Background="Transparent" BorderThickness="0" Padding="2" CornerRadius="10"
-                        HorizontalAlignment="Left" HorizontalContentAlignment="Left">
-                    <Grid ColumnSpacing="12">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="44"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-
-                        <!-- Album Cover Thumbnail -->
-                        <Border Grid.Column="0" Width="44" Height="44" CornerRadius="9" Background="{ThemeResource AppCoverPlaceholderBg}">
-                            <Grid>
-                                <FontIcon Glyph="&#xEC4F;" FontSize="20" Foreground="{ThemeResource AppCoverPlaceholderFg}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                <Image Source="{x:Bind ViewModel.CurrentTrack.CoverImagePath, Mode=OneWay}" Stretch="UniformToFill"/>
-                            </Grid>
-                        </Border>
-
-                        <!-- Title and Artist -->
-                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="1">
-                            <TextBlock Text="{x:Bind ViewModel.CurrentTrack.Title, Mode=OneWay, FallbackValue='Sin música seleccionada'}"
-                                       FontWeight="SemiBold" FontSize="13" Foreground="{ThemeResource AppTextPrimary}"
-                                       TextTrimming="CharacterEllipsis" MaxLines="1"/>
-                            <TextBlock Text="{x:Bind ViewModel.CurrentTrack.Artist, Mode=OneWay, FallbackValue='Elige una canción para reproducir'}"
-                                       FontSize="11" Foreground="{ThemeResource AppTextMuted}"
-                                       TextTrimming="CharacterEllipsis" MaxLines="1"/>
-                        </StackPanel>
-                    </Grid>
-                </Button>
-
-                <!-- Center: Playback Controls & Progress Bar -->
-                <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="2">
-                    <!-- Buttons row -->
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="14" VerticalAlignment="Center">
-                        <!-- Shuffle -->
-                        <Button Command="{x:Bind ViewModel.ToggleShuffleCommand}"
-                                Background="Transparent" BorderThickness="0" Padding="0" Width="28" Height="28" CornerRadius="14"
-                                Foreground="{x:Bind ViewModel.ShuffleBrush, Mode=OneWay}" ToolTipService.ToolTip="Aleatorio">
-                            <FontIcon Glyph="&#xE8B1;" FontSize="13"/>
-                        </Button>
-
-                        <!-- Previous -->
-                        <Button Command="{x:Bind ViewModel.PreviousCommand}"
-                                Background="Transparent" BorderThickness="0" Padding="0" Width="32" Height="32" CornerRadius="16"
-                                Foreground="{ThemeResource AppTextPrimary}" ToolTipService.ToolTip="Anterior">
-                            <FontIcon Glyph="&#xE892;" FontSize="15"/>
-                        </Button>
-
-                        <!-- FAB PLAY/PAUSE (Material 3 Compact Action Button) -->
-                        <Button Command="{x:Bind ViewModel.PlayPauseCommand}"
-                                Background="#BB86FC" Foreground="#121212"
-                                Width="42" Height="42" CornerRadius="21" Padding="0"
-                                ToolTipService.ToolTip="{x:Bind ViewModel.PlayPauseTooltip, Mode=OneWay}">
-                            <FontIcon Glyph="{x:Bind ViewModel.PlayPauseIconGlyph, Mode=OneWay}" FontSize="17"/>
-                        </Button>
-
-                        <!-- Next -->
-                        <Button Command="{x:Bind ViewModel.NextCommand}"
-                                Background="Transparent" BorderThickness="0" Padding="0" Width="32" Height="32" CornerRadius="16"
-                                Foreground="{ThemeResource AppTextPrimary}" ToolTipService.ToolTip="Siguiente">
-                            <FontIcon Glyph="&#xE893;" FontSize="15"/>
-                        </Button>
-
-                        <!-- Repeat -->
-                        <Button Command="{x:Bind ViewModel.ToggleRepeatCommand}"
-                                Background="Transparent" BorderThickness="0" Padding="0" Width="28" Height="28" CornerRadius="14"
-                                Foreground="{x:Bind ViewModel.RepeatBrush, Mode=OneWay}" ToolTipService.ToolTip="Repetir">
-                            <FontIcon Glyph="&#xE8EE;" FontSize="13"/>
-                        </Button>
-                    </StackPanel>
-
-                    <!-- Seek Bar row -->
-                    <Grid Width="450" ColumnSpacing="10" Margin="0,0,0,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-
-                        <TextBlock Grid.Column="0" Text="{x:Bind ViewModel.CurrentPositionFormatted, Mode=OneWay, FallbackValue='00:00'}"
-                                   FontSize="11" Foreground="{ThemeResource AppTextSubtle}" VerticalAlignment="Center"/>
-
-                        <Slider Grid.Column="1"
-                                Maximum="{x:Bind ViewModel.TotalDurationSeconds, Mode=OneWay, FallbackValue=100}"
-                                Value="{x:Bind ViewModel.CurrentPositionSeconds, Mode=OneWay}"
-                                ValueChanged="SeekSlider_ValueChanged"
-                                VerticalAlignment="Center" Margin="0" MinHeight="0" Height="30"/>
-
-                        <TextBlock Grid.Column="2" Text="{x:Bind ViewModel.TotalDurationFormatted, Mode=OneWay, FallbackValue='00:00'}"
-                                   FontSize="11" Foreground="{ThemeResource AppTextSubtle}" VerticalAlignment="Center"/>
-                    </Grid>
-                </StackPanel>
-
-                <!-- Right: Extra Controls (Heart Like, Playlist, EQ Shortcut, Volume) -->
-                <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Spacing="8">
-                    <!-- Like (Heart) Button -->
-                    <Button Command="{x:Bind ViewModel.LikeTrackCommand}"
-                            Background="Transparent" BorderThickness="0" Padding="0" Width="34" Height="34" CornerRadius="17"
-                            ToolTipService.ToolTip="{x:Bind ViewModel.LikeTooltipText, Mode=OneWay}">
-                        <FontIcon Glyph="{x:Bind ViewModel.LikeGlyph, Mode=OneWay}" FontSize="16"
-                                  Foreground="{x:Bind ViewModel.LikeBrush, Mode=OneWay}"/>
-                    </Button>
-
-                    <!-- Add to Playlist Button -->
-                    <Button x:Name="PlayerAddToPlaylistBtn"
-                            Click="PlayerAddToPlaylist_Click"
-                            Background="Transparent" BorderThickness="0" Padding="0" Width="34" Height="34" CornerRadius="17"
-                            Foreground="#B0B0B0" ToolTipService.ToolTip="Añadir canción actual a una playlist">
-                        <FontIcon Glyph="&#xE8F1;" FontSize="15"/>
-                    </Button>
-
-                    <!-- EQ Shortcut -->
-                    <Button Command="{x:Bind ViewModel.NavigateEqualizerCommand}"
-                            Background="Transparent" BorderThickness="0" Padding="0" Width="34" Height="34" CornerRadius="17"
-                            Foreground="#B0B0B0" ToolTipService.ToolTip="Abrir Ecualizador">
-                        <FontIcon Glyph="&#xE9E9;" FontSize="15"/>
-                    </Button>
-
-                    <!-- Multi-Output Shortcut -->
-                    <Button Command="{x:Bind ViewModel.NavigateMultiOutputCommand}"
-                            Background="Transparent" BorderThickness="0" Padding="0" Width="34" Height="34" CornerRadius="17"
-                            Foreground="#B0B0B0" ToolTipService.ToolTip="Salidas de audio simultáneas">
-                        <FontIcon Glyph="&#xE95B;" FontSize="15"/>
-                    </Button>
-
-                    <!-- Volume icon -->
-                    <FontIcon Glyph="{x:Bind ViewModel.VolumeIconGlyph, Mode=OneWay}" FontSize="14" Foreground="#888888" VerticalAlignment="Center"/>
-
-                    <!-- Volume slider -->
-                    <Slider Width="75" Minimum="0" Maximum="100"
-                            Value="{x:Bind ViewModel.Volume, Mode=TwoWay}"
-                            VerticalAlignment="Center"/>
-                </StackPanel>
-            </Grid>
-        </Border>
-
-        <!-- 3. NOW PLAYING FULL SCREEN OVERLAY (2.2v Redesign based on Mockup) -->
-        <Grid Grid.RowSpan="3" x:Name="NowPlayingOverlay"
+        <!-- 2. NOW PLAYING FULL SCREEN OVERLAY (2.2v Redesign based on Mockup) -->
+        <Grid Grid.RowSpan="2" x:Name="NowPlayingOverlay"
               Background="#0D0C12"
               Visibility="{x:Bind ViewModel.NowPlayingExpandedVisibility, Mode=OneWay}"
               Canvas.ZIndex="100">
@@ -383,7 +433,7 @@
             <Border Background="#260C0C14"/>
 
             <!-- Main Layout Grid: Top Bar, Center Content, Bottom Playback -->
-            <Grid Padding="36,20,36,24">
+            <Grid Padding="36,20,36,24" helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/> <!-- Top Bar -->
                     <RowDefinition Height="*"/>    <!-- Center Stage (Cover/Pill or Lyrics, plus Queue Drawer) -->
@@ -402,6 +452,7 @@
                     <Button Grid.Column="0" Command="{x:Bind ViewModel.CloseNowPlayingCommand}"
                             Background="#1C1C24" BorderBrush="#26FFFFFF" BorderThickness="1"
                             CornerRadius="16" Padding="14,8"
+                            helpers:FluidAnimationHelper.HoverMode="Button"
                             ToolTipService.ToolTip="Volver">
                         <StackPanel Orientation="Horizontal" Spacing="10">
                             <FontIcon Glyph="&#xE70D;" FontSize="13" Foreground="White" VerticalAlignment="Center"/>
@@ -411,12 +462,12 @@
                     </Button>
 
                     <!-- Top Center: Audio Technical Specifications Badge (Format, Bits, Bitrate, Base dB) -->
-                    <Border Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center"
-                            Background="#1C1C24" BorderBrush="#26FFFFFF" BorderThickness="1"
-                            CornerRadius="16" Padding="14,7"
-                            Visibility="{x:Bind ViewModel.AudioTechInfoVisibility, Mode=OneWay}"
-                            ToolTipService.ToolTip="Especificaciones técnicas de audio del archivo actual">
-                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <Grid Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center"
+                          Background="#1C1C24" CornerRadius="16"
+                          Visibility="{x:Bind ViewModel.AudioTechInfoVisibility, Mode=OneWay}"
+                          ToolTipService.ToolTip="Especificaciones técnicas de audio del archivo actual">
+                        <Rectangle RadiusX="15" RadiusY="15" Stroke="#26FFFFFF" StrokeThickness="1.15" Margin="1" UseLayoutRounding="False" IsHitTestVisible="False"/>
+                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Padding="14,7">
                             <!-- Format Badge (FLAC, MP3, etc.) -->
                             <Border Background="#22BB86FC" CornerRadius="6" Padding="7,2" VerticalAlignment="Center">
                                 <TextBlock Text="{x:Bind ViewModel.CurrentTrackAudioFormat, Mode=OneWay}"
@@ -441,12 +492,13 @@
                                            FontSize="11" FontWeight="Bold" Foreground="#D0BCFF"/>
                             </Border>
                         </StackPanel>
-                    </Border>
+                    </Grid>
 
                     <!-- Top Right: "Cola de Reproducción" Toggle Button - 100% Solid Opacity -->
                     <Button Grid.Column="2" Command="{x:Bind ViewModel.ToggleNowPlayingQueueCommand}"
                             Background="{x:Bind ViewModel.QueueToggleBrush, Mode=OneWay}"
                             BorderBrush="#26FFFFFF" BorderThickness="1" CornerRadius="16" Padding="16,8"
+                            helpers:FluidAnimationHelper.HoverMode="Button"
                             ToolTipService.ToolTip="Mostrar u ocultar la cola de reproducción">
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <FontIcon Glyph="&#xE8D6;" FontSize="14" Foreground="{x:Bind ViewModel.QueueToggleForegroundBrush, Mode=OneWay}" VerticalAlignment="Center"/>
@@ -456,37 +508,36 @@
                 </Grid>
 
                 <!-- CENTER STAGE: Content Area (Art + Tag or Lyrics) + Right Queue Drawer -->
-                <Grid Grid.Row="1" Margin="0,8,0,12">
+                <Grid Grid.Row="1" Margin="0,8,0,12" helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
                     <!-- LEFT / CENTER AREA: Standard Cover & Tag Pill OR Synchronized Lyrics View -->
-                    <Grid Grid.Column="0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                    <Grid Grid.Column="0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
 
                         <!-- View Mode 1: Standard Cover Art & Song Tag Pill (Mockup Layout in Bottom-Left) -->
                         <Grid HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="32,0,0,16"
-                              Visibility="{x:Bind ViewModel.AlbumCoverVisibility, Mode=OneWay}">
+                              Visibility="{x:Bind ViewModel.AlbumCoverVisibility, Mode=OneWay}"
+                              helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
 
                             <!-- Big Album Art with Rounded Corners -->
-                            <Border Grid.Column="0" Width="380" Height="380" CornerRadius="28" Background="#1E1E24"
-                                    BorderBrush="#20FFFFFF" BorderThickness="1">
-                                <Grid>
-                                    <FontIcon Glyph="&#xEC4F;" FontSize="96" Foreground="#444450" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                    <Image Source="{x:Bind ViewModel.CurrentTrack.CoverImagePath, Mode=OneWay}" Stretch="UniformToFill"/>
-                                </Grid>
-                            </Border>
+                            <Grid Grid.Column="0" Width="380" Height="380" CornerRadius="28" Background="#1E1E24">
+                                <FontIcon Glyph="&#xEC4F;" FontSize="96" Foreground="#444450" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <Image Source="{x:Bind ViewModel.CurrentTrack.CoverHeroSource, Mode=OneWay}" Stretch="UniformToFill"/>
+                                <Rectangle RadiusX="27" RadiusY="27" Stroke="#26FFFFFF" StrokeThickness="1.2" Margin="1" UseLayoutRounding="False" IsHitTestVisible="False"/>
+                            </Grid>
 
                             <!-- Dark Tag Box Pill (100% Solid Opacity) -->
-                            <Border Grid.Column="1" VerticalAlignment="Bottom" Margin="-30,0,0,28"
-                                    Background="#16161C" BorderBrush="#26FFFFFF" BorderThickness="1"
-                                    CornerRadius="18" Padding="24,18" MaxWidth="380">
-                                <StackPanel Spacing="3">
+                            <Grid Grid.Column="1" VerticalAlignment="Bottom" Margin="-30,0,0,28"
+                                  Background="#16161C" CornerRadius="18" MaxWidth="380">
+                                <Rectangle RadiusX="17" RadiusY="17" Stroke="#26FFFFFF" StrokeThickness="1.2" Margin="1" UseLayoutRounding="False" IsHitTestVisible="False"/>
+                                <StackPanel Spacing="3" Padding="24,18">
                                     <TextBlock Text="{x:Bind ViewModel.CurrentTrack.Title, Mode=OneWay, FallbackValue='Sin Canción'}"
                                                FontSize="32" FontWeight="Bold" Foreground="White"
                                                TextTrimming="CharacterEllipsis" MaxLines="2"/>
@@ -495,12 +546,13 @@
                                     <TextBlock Text="{x:Bind ViewModel.CurrentTrack.Album, Mode=OneWay, FallbackValue=''}"
                                                FontSize="14" Foreground="#888888" TextTrimming="CharacterEllipsis" MaxLines="1"/>
                                 </StackPanel>
-                            </Border>
+                            </Grid>
                         </Grid>
 
                         <!-- View Mode 2: Synchronized LRC Lyrics View -->
                         <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="20,0,20,0"
-                              Visibility="{x:Bind ViewModel.LyricsVisibility, Mode=OneWay}">
+                              Visibility="{x:Bind ViewModel.LyricsVisibility, Mode=OneWay}"
+                              helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
@@ -508,12 +560,11 @@
 
                             <!-- Medium Album Art + Track Info -->
                             <StackPanel Grid.Column="0" Spacing="16" VerticalAlignment="Bottom" Margin="16,0,36,24" MaxWidth="280">
-                                <Border Width="260" Height="260" CornerRadius="22" Background="#1E1E24" BorderBrush="#20FFFFFF" BorderThickness="1">
-                                    <Grid>
-                                        <FontIcon Glyph="&#xEC4F;" FontSize="64" Foreground="#444450" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                        <Image Source="{x:Bind ViewModel.CurrentTrack.CoverImagePath, Mode=OneWay}" Stretch="UniformToFill"/>
-                                    </Grid>
-                                </Border>
+                                <Grid Width="260" Height="260" CornerRadius="22" Background="#1E1E24">
+                                    <FontIcon Glyph="&#xEC4F;" FontSize="64" Foreground="#444450" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    <Image Source="{x:Bind ViewModel.CurrentTrack.CoverHeroSource, Mode=OneWay}" Stretch="UniformToFill"/>
+                                    <Rectangle RadiusX="21" RadiusY="21" Stroke="#20FFFFFF" StrokeThickness="1.15" Margin="1" UseLayoutRounding="False" IsHitTestVisible="False"/>
+                                </Grid>
                                 <StackPanel Spacing="2">
                                     <TextBlock Text="{x:Bind ViewModel.CurrentTrack.Title, Mode=OneWay}" FontSize="22" FontWeight="Bold" Foreground="White" TextTrimming="CharacterEllipsis"/>
                                     <TextBlock Text="{x:Bind ViewModel.CurrentTrack.Artist, Mode=OneWay}" FontSize="15" Foreground="#CCCCCC" TextTrimming="CharacterEllipsis"/>
@@ -528,6 +579,7 @@
                                         CornerRadius="20"
                                         Padding="16,8"
                                         HorizontalAlignment="Left"
+                                        helpers:FluidAnimationHelper.HoverMode="Button"
                                         ToolTipService.ToolTip="{x:Bind ViewModel.KaraokeTooltip, Mode=OneWay}">
                                     <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                                         <FontIcon Glyph="{x:Bind ViewModel.KaraokeIconGlyph, Mode=OneWay}" FontSize="15" Foreground="{x:Bind ViewModel.KaraokeIconBrush, Mode=OneWay}"/>
@@ -604,7 +656,8 @@
                                                FontSize="12" Foreground="#777788" HorizontalAlignment="Center" TextWrapping="Wrap" MaxWidth="360" TextAlignment="Center"/>
                                     <Button Click="OpenLyricsMetadata_Click"
                                             Background="#2A2438" BorderBrush="#BB86FC" BorderThickness="1" CornerRadius="14" Padding="16,8"
-                                            HorizontalAlignment="Center" Margin="0,8,0,0">
+                                            HorizontalAlignment="Center" Margin="0,8,0,0"
+                                            helpers:FluidAnimationHelper.HoverMode="Button">
                                         <StackPanel Orientation="Horizontal" Spacing="8">
                                             <FontIcon Glyph="&#xE70F;" FontSize="13" Foreground="#BB86FC"/>
                                             <TextBlock Text="Crear letra sincronizada" FontSize="13" Foreground="#BB86FC" FontWeight="SemiBold"/>
@@ -616,12 +669,13 @@
                     </Grid>
 
                     <!-- RIGHT COLUMN: Cola de Reproducción (Queue Drawer, 100% Solid Opacity) -->
-                    <Border Grid.Column="1" Width="360"
-                            Background="#141419" BorderBrush="#26FFFFFF" BorderThickness="1"
-                            CornerRadius="20" Padding="16,14"
-                            Visibility="{x:Bind ViewModel.NowPlayingQueueVisibility, Mode=OneWay}"
-                            Margin="24,0,0,0">
-                        <Grid>
+                    <Grid Grid.Column="1" Width="360"
+                          Background="#141419" CornerRadius="20"
+                          Visibility="{x:Bind ViewModel.NowPlayingQueueVisibility, Mode=OneWay}"
+                          Margin="24,0,0,0"
+                          helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
+                        <Rectangle RadiusX="19" RadiusY="19" Stroke="#26FFFFFF" StrokeThickness="1.2" Margin="1" UseLayoutRounding="False" IsHitTestVisible="False"/>
+                        <Grid Padding="16,14">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
@@ -646,6 +700,7 @@
                                     <!-- Guardar como Playlist Button -->
                                     <Button Click="SaveQueueAsPlaylist_Click"
                                             Background="#22BB86FC" BorderThickness="0" Padding="8,4" CornerRadius="10"
+                                            helpers:FluidAnimationHelper.HoverMode="Button"
                                             ToolTipService.ToolTip="Guardar la cola de reproducción como una nueva Playlist">
                                         <StackPanel Orientation="Horizontal" Spacing="5">
                                             <FontIcon Glyph="&#xE8F8;" FontSize="11" Foreground="#D0BCFF"/>
@@ -656,6 +711,7 @@
                                     <!-- Limpiar Button -->
                                     <Button Click="ClearQueue_Click"
                                             Background="Transparent" BorderThickness="0" Padding="6,4" CornerRadius="10"
+                                            helpers:FluidAnimationHelper.HoverMode="Button"
                                             ToolTipService.ToolTip="Vaciar cola de reproducción">
                                         <StackPanel Orientation="Horizontal" Spacing="4">
                                             <FontIcon Glyph="&#xE74D;" FontSize="11" Foreground="#888888"/>
@@ -699,7 +755,8 @@
 
                                             <Button Grid.Column="3" Click="RemoveQueueTrack_Click" Tag="{x:Bind}"
                                                     Background="Transparent" BorderThickness="0" Padding="0" Width="24" Height="24" CornerRadius="12"
-                                                    HorizontalAlignment="Right" ToolTipService.ToolTip="Quitar de la cola">
+                                                    HorizontalAlignment="Right" ToolTipService.ToolTip="Quitar de la cola"
+                                                    helpers:FluidAnimationHelper.HoverMode="Icon">
                                                 <FontIcon Glyph="&#xE711;" FontSize="10" Foreground="#888899"/>
                                             </Button>
                                         </Grid>
@@ -707,11 +764,11 @@
                                 </ListView.ItemTemplate>
                             </ListView>
                         </Grid>
-                    </Border>
+                    </Grid>
                 </Grid>
 
                 <!-- BOTTOM PLAYBACK BAR: Full-Width Seek Bar Flanked by Timestamps + Controls Row -->
-                <Grid Grid.Row="2" Margin="0,16,0,0">
+                <Grid Grid.Row="2" Margin="0,16,0,0" helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/> <!-- Full-width seek bar with timestamps -->
                         <RowDefinition Height="Auto"/> <!-- Controls row -->
@@ -726,11 +783,11 @@
                         </Grid.ColumnDefinitions>
 
                         <!-- Current Position Timestamp Badge -->
-                        <Border Grid.Column="0" Background="#1C1C24" BorderBrush="#26FFFFFF" BorderThickness="1"
-                                CornerRadius="12" Padding="12,5" VerticalAlignment="Center">
+                        <Grid Grid.Column="0" Background="#1C1C24" CornerRadius="12" VerticalAlignment="Center">
+                            <Rectangle RadiusX="11" RadiusY="11" Stroke="#26FFFFFF" StrokeThickness="1.15" Margin="1" UseLayoutRounding="False" IsHitTestVisible="False"/>
                             <TextBlock Text="{x:Bind ViewModel.CurrentPositionFormatted, Mode=OneWay, FallbackValue='00:00'}"
-                                       FontSize="13" FontWeight="Bold" Foreground="White" VerticalAlignment="Center"/>
-                        </Border>
+                                       FontSize="13" FontWeight="Bold" Foreground="White" VerticalAlignment="Center" Padding="12,5"/>
+                        </Grid>
 
                         <Slider Grid.Column="1"
                                 Maximum="{x:Bind ViewModel.TotalDurationSeconds, Mode=OneWay, FallbackValue=100}"
@@ -739,11 +796,11 @@
                                 VerticalAlignment="Center" Margin="14,0" MinHeight="0" Height="26"/>
 
                         <!-- Total Duration Timestamp Badge -->
-                        <Border Grid.Column="2" Background="#1C1C24" BorderBrush="#26FFFFFF" BorderThickness="1"
-                                CornerRadius="12" Padding="12,5" VerticalAlignment="Center">
+                        <Grid Grid.Column="2" Background="#1C1C24" CornerRadius="12" VerticalAlignment="Center">
+                            <Rectangle RadiusX="11" RadiusY="11" Stroke="#26FFFFFF" StrokeThickness="1.15" Margin="1" UseLayoutRounding="False" IsHitTestVisible="False"/>
                             <TextBlock Text="{x:Bind ViewModel.TotalDurationFormatted, Mode=OneWay, FallbackValue='00:00'}"
-                                       FontSize="13" FontWeight="Bold" Foreground="White" VerticalAlignment="Center"/>
-                        </Border>
+                                       FontSize="13" FontWeight="Bold" Foreground="White" VerticalAlignment="Center" Padding="12,5"/>
+                        </Grid>
                     </Grid>
 
                     <!-- Controls Row: Playback Controls Capsule + Pill with Like, Lyrics, EQ, Fullscreen, Volume -->
@@ -754,20 +811,22 @@
                         </Grid.ColumnDefinitions>
 
                         <!-- Left: Solid pill capsule for Playback Controls (Shuffle, Prev, Play/Pause, Next, Repeat) -->
-                        <Border Grid.Column="0" HorizontalAlignment="Left" Background="#1C1C24" BorderBrush="#26FFFFFF" BorderThickness="1"
-                                CornerRadius="28" Padding="14,6">
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="10">
+                        <Grid Grid.Column="0" HorizontalAlignment="Left" Background="#1C1C24" CornerRadius="28">
+                            <Rectangle RadiusX="27" RadiusY="27" Stroke="#26FFFFFF" StrokeThickness="1.2" Margin="1" UseLayoutRounding="False" IsHitTestVisible="False"/>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="10" Padding="14,6">
                                 <!-- Shuffle -->
                                 <Button Command="{x:Bind ViewModel.ToggleShuffleCommand}"
                                         Background="Transparent" BorderThickness="0" Width="38" Height="38" CornerRadius="19"
-                                        Foreground="{x:Bind ViewModel.ShuffleBrush, Mode=OneWay}" ToolTipService.ToolTip="Aleatorio">
+                                        Foreground="{x:Bind ViewModel.ShuffleBrush, Mode=OneWay}" ToolTipService.ToolTip="Aleatorio"
+                                        helpers:FluidAnimationHelper.HoverMode="Icon">
                                     <FontIcon Glyph="&#xE8B1;" FontSize="16"/>
                                 </Button>
 
                                 <!-- Previous -->
                                 <Button Command="{x:Bind ViewModel.PreviousCommand}"
                                         Background="Transparent" BorderThickness="0" Width="40" Height="40" CornerRadius="20"
-                                        Foreground="White" ToolTipService.ToolTip="Anterior">
+                                        Foreground="White" ToolTipService.ToolTip="Anterior"
+                                        helpers:FluidAnimationHelper.HoverMode="Icon">
                                     <FontIcon Glyph="&#xE892;" FontSize="18"/>
                                 </Button>
 
@@ -775,33 +834,38 @@
                                 <Button Command="{x:Bind ViewModel.PlayPauseCommand}"
                                         Background="#BB86FC" Foreground="#121212"
                                         Width="50" Height="50" CornerRadius="25" Padding="0"
-                                        ToolTipService.ToolTip="{x:Bind ViewModel.PlayPauseTooltip, Mode=OneWay}">
+                                        ToolTipService.ToolTip="{x:Bind ViewModel.PlayPauseTooltip, Mode=OneWay}"
+                                        helpers:FluidAnimationHelper.HoverMode="Fab">
                                     <FontIcon Glyph="{x:Bind ViewModel.PlayPauseIconGlyph, Mode=OneWay}" FontSize="20"/>
                                 </Button>
 
                                 <!-- Next -->
                                 <Button Command="{x:Bind ViewModel.NextCommand}"
                                         Background="Transparent" BorderThickness="0" Width="40" Height="40" CornerRadius="20"
-                                        Foreground="White" ToolTipService.ToolTip="Siguiente">
+                                        Foreground="White" ToolTipService.ToolTip="Siguiente"
+                                        helpers:FluidAnimationHelper.HoverMode="Icon">
                                     <FontIcon Glyph="&#xE893;" FontSize="18"/>
                                 </Button>
 
                                 <!-- Repeat -->
                                 <Button Command="{x:Bind ViewModel.ToggleRepeatCommand}"
                                         Background="Transparent" BorderThickness="0" Width="38" Height="38" CornerRadius="19"
-                                        Foreground="{x:Bind ViewModel.RepeatBrush, Mode=OneWay}" ToolTipService.ToolTip="Repetir">
+                                        Foreground="{x:Bind ViewModel.RepeatBrush, Mode=OneWay}" ToolTipService.ToolTip="Repetir"
+                                        helpers:FluidAnimationHelper.HoverMode="Icon">
                                     <FontIcon Glyph="&#xE8EE;" FontSize="16"/>
                                 </Button>
                             </StackPanel>
-                        </Border>
+                        </Grid>
 
                         <!-- Right: Capsule pill (100% Solid Opacity) with Like, Lyrics, EQ, Fullscreen, Volume -->
-                        <Border Grid.Column="1" Background="#1C1C24" BorderBrush="#26FFFFFF" BorderThickness="1" CornerRadius="28" Padding="14,6">
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="10">
+                        <Grid Grid.Column="1" Background="#1C1C24" CornerRadius="28">
+                            <Rectangle RadiusX="27" RadiusY="27" Stroke="#26FFFFFF" StrokeThickness="1.2" Margin="1" UseLayoutRounding="False" IsHitTestVisible="False"/>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="10" Padding="14,6">
                                 <!-- Like (Heart) Button -->
                                 <Button Command="{x:Bind ViewModel.LikeTrackCommand}"
                                         Background="Transparent" BorderThickness="0" Padding="0" Width="36" Height="36" CornerRadius="18"
-                                        ToolTipService.ToolTip="{x:Bind ViewModel.LikeTooltipText, Mode=OneWay}">
+                                        ToolTipService.ToolTip="{x:Bind ViewModel.LikeTooltipText, Mode=OneWay}"
+                                        helpers:FluidAnimationHelper.HoverMode="Icon">
                                     <FontIcon Glyph="{x:Bind ViewModel.LikeGlyph, Mode=OneWay}" FontSize="16"
                                               Foreground="{x:Bind ViewModel.LikeBrush, Mode=OneWay}"/>
                                 </Button>
@@ -809,7 +873,8 @@
                                 <!-- Lyrics Toggle Button ("Mostrar letra") -->
                                 <Button Command="{x:Bind ViewModel.ToggleLyricsCommand}"
                                         Background="Transparent" BorderThickness="0" Padding="0" Width="36" Height="36" CornerRadius="18"
-                                        ToolTipService.ToolTip="Mostrar/Ocultar letra sincronizada (LRC)">
+                                        ToolTipService.ToolTip="Mostrar/Ocultar letra sincronizada (LRC)"
+                                        helpers:FluidAnimationHelper.HoverMode="Icon">
                                     <FontIcon Glyph="&#xEC4F;" FontSize="16" Foreground="{x:Bind ViewModel.LyricsBrush, Mode=OneWay}"/>
                                 </Button>
 
@@ -817,21 +882,24 @@
                                 <Button Command="{x:Bind ViewModel.ToggleKaraokeCommand}"
                                         Visibility="{x:Bind ViewModel.KaraokeButtonVisibility, Mode=OneWay}"
                                         Background="Transparent" BorderThickness="0" Padding="0" Width="36" Height="36" CornerRadius="18"
-                                        ToolTipService.ToolTip="{x:Bind ViewModel.KaraokeTooltip, Mode=OneWay}">
+                                        ToolTipService.ToolTip="{x:Bind ViewModel.KaraokeTooltip, Mode=OneWay}"
+                                        helpers:FluidAnimationHelper.HoverMode="Icon">
                                     <FontIcon Glyph="{x:Bind ViewModel.KaraokeIconGlyph, Mode=OneWay}" FontSize="16" Foreground="{x:Bind ViewModel.KaraokeIconBrush, Mode=OneWay}"/>
                                 </Button>
 
                                 <!-- EQ Shortcut Button -->
                                 <Button Command="{x:Bind ViewModel.NavigateEqualizerCommand}"
                                         Background="Transparent" BorderThickness="0" Padding="0" Width="36" Height="36" CornerRadius="18"
-                                        Foreground="#D0D0DC" ToolTipService.ToolTip="Abrir Ecualizador">
+                                        Foreground="#D0D0DC" ToolTipService.ToolTip="Abrir Ecualizador"
+                                        helpers:FluidAnimationHelper.HoverMode="Icon">
                                     <FontIcon Glyph="&#xE9E9;" FontSize="16"/>
                                 </Button>
 
                                 <!-- FullScreen Toggle Button -->
                                 <Button Click="ToggleFullScreen_Click"
                                         Background="Transparent" BorderThickness="0" Padding="0" Width="36" Height="36" CornerRadius="18"
-                                        Foreground="#D0D0DC" ToolTipService.ToolTip="{x:Bind ViewModel.FullScreenTooltip, Mode=OneWay}">
+                                        Foreground="#D0D0DC" ToolTipService.ToolTip="{x:Bind ViewModel.FullScreenTooltip, Mode=OneWay}"
+                                        helpers:FluidAnimationHelper.HoverMode="Icon">
                                     <FontIcon Glyph="{x:Bind ViewModel.FullScreenGlyph, Mode=OneWay}" FontSize="16"/>
                                 </Button>
 
@@ -843,11 +911,10 @@
                                         Value="{x:Bind ViewModel.Volume, Mode=TwoWay}"
                                         VerticalAlignment="Center"/>
                             </StackPanel>
-                        </Border>
+                        </Grid>
                     </Grid>
                 </Grid>
             </Grid>
         </Grid>
     </Grid>
 </Window>
-

@@ -122,9 +122,21 @@ namespace KakiEQ_WinUI.Models
                 {
                     _coverImagePath = value;
                     OnPropertyChanged();
+                    OnPropertyChanged(nameof(CoverThumbSource));
+                    OnPropertyChanged(nameof(CoverCardSource));
+                    OnPropertyChanged(nameof(CoverHeroSource));
                 }
             }
         }
+
+        [JsonIgnore]
+        public Microsoft.UI.Xaml.Media.ImageSource? CoverThumbSource => Helpers.ImageHelper.GetCachedThumbCover(_coverImagePath);
+
+        [JsonIgnore]
+        public Microsoft.UI.Xaml.Media.ImageSource? CoverCardSource => Helpers.ImageHelper.GetCachedCardCover(_coverImagePath);
+
+        [JsonIgnore]
+        public Microsoft.UI.Xaml.Media.ImageSource? CoverHeroSource => Helpers.ImageHelper.GetCachedHeroCover(_coverImagePath);
 
         private int _playCount = 0;
         public int PlayCount

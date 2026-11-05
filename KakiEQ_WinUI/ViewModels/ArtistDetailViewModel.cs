@@ -26,8 +26,15 @@ namespace KakiEQ_WinUI.ViewModels
         public string? BannerImagePath
         {
             get => _bannerImagePath;
-            set { _bannerImagePath = value; OnPropertyChanged(); }
+            set
+            {
+                _bannerImagePath = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(BannerImageSource));
+            }
         }
+
+        public Microsoft.UI.Xaml.Media.ImageSource? BannerImageSource => ImageHelper.GetCachedHeroCover(_bannerImagePath);
 
         public int TotalAlbums => Albums.Count;
         public string TotalAlbumsText => $"ÁLBUMES ({Albums.Count})";
@@ -92,22 +99,26 @@ namespace KakiEQ_WinUI.ViewModels
 
         public async Task LoadArtistDetailsAsync()
         {
-            var tracks = await _dbService.GetAllTracksAsync();
-            var artistTracks = tracks.Where(t => Helpers.ArtistHelper.TrackHasArtist(t, ArtistName)).ToList();
-
-            var uniqueAlbums = artistTracks.GroupBy(t => t.Album).Select(g => new AlbumItem
+            var (artistTracks, uniqueAlbums, genreStr, banner, lengthStr) = await Task.Run(async () =>
             {
-                Title = g.Key,
-                Artist = ArtistName,
-                CoverImagePath = g.FirstOrDefault(t => !string.IsNullOrEmpty(t.CoverImagePath))?.CoverImagePath
-            }).OrderBy(a => a.Title).ToList();
+                var tracks = await _dbService.GetAllTracksAsync();
+                var aTracks = tracks.Where(t => Helpers.ArtistHelper.TrackHasArtist(t, ArtistName)).ToList();
 
-            string genreStr = artistTracks.FirstOrDefault()?.Genre ?? "Unknown Genre";
-            string? customPhoto = _dbService.GetArtistPhotoPath(ArtistName);
-            string? banner = customPhoto ?? artistTracks.FirstOrDefault(t => !string.IsNullOrEmpty(t.CoverImagePath))?.CoverImagePath;
+                var uAlbums = aTracks.GroupBy(t => t.Album).Select(g => new AlbumItem
+                {
+                    Title = g.Key,
+                    Artist = ArtistName,
+                    CoverImagePath = g.FirstOrDefault(t => !string.IsNullOrEmpty(t.CoverImagePath))?.CoverImagePath
+                }).OrderBy(a => a.Title).ToList();
 
-            TimeSpan totalSpan = TimeSpan.FromSeconds(artistTracks.Sum(t => t.Duration.TotalSeconds));
-            string lengthStr = $"{(int)totalSpan.TotalMinutes}m {totalSpan.Seconds}s";
+                string gStr = aTracks.FirstOrDefault()?.Genre ?? "Unknown Genre";
+                string? customPhoto = _dbService.GetArtistPhotoPath(ArtistName);
+                string? bPath = customPhoto ?? aTracks.FirstOrDefault(t => !string.IsNullOrEmpty(t.CoverImagePath))?.CoverImagePath;
+
+                TimeSpan totalSpan = TimeSpan.FromSeconds(aTracks.Sum(t => t.Duration.TotalSeconds));
+                string lStr = $"{(int)totalSpan.TotalMinutes}m {totalSpan.Seconds}s";
+                return (aTracks, uAlbums, gStr, bPath, lStr);
+            });
 
             RunOnUIThread(() =>
             {

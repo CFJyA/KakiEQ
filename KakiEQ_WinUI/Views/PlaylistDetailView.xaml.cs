@@ -3,13 +3,14 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Navigation;
 using KakiEQ_WinUI.Helpers;
 using KakiEQ_WinUI.Models;
 using KakiEQ_WinUI.ViewModels;
 
 namespace KakiEQ_WinUI.Views
 {
-    public sealed partial class PlaylistDetailView : UserControl
+    public sealed partial class PlaylistDetailView : Page
     {
         public PlaylistDetailViewModel? ViewModel => DataContext as PlaylistDetailViewModel;
         private INotifyCollectionChanged? _observedTracks;
@@ -23,6 +24,16 @@ namespace KakiEQ_WinUI.Views
                 HookTracksCollection();
             };
             Loaded += (s, e) => HookTracksCollection();
+        }
+
+        protected override void OnNavigatedTo(NavigationEventArgs e)
+        {
+            base.OnNavigatedTo(e);
+            if (e.Parameter is PlaylistDetailViewModel vm)
+            {
+                DataContext = vm;
+            }
+            FluidAnimationHelper.PlayPageEntranceAnimation(this);
         }
 
         private void HookTracksCollection()

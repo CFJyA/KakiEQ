@@ -8,10 +8,6 @@
     mc:Ignorable="d"
     Title="Ajustes - Kaki EQ">
 
-    <Window.SystemBackdrop>
-        <MicaBackdrop />
-    </Window.SystemBackdrop>
-
     <Grid Background="{ThemeResource AppBackground}">
         <Grid.RowDefinitions>
             <RowDefinition Height="54"/>

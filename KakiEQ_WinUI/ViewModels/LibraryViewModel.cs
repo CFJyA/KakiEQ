@@ -15,6 +15,7 @@ namespace KakiEQ_WinUI.ViewModels
         private readonly DatabaseService _dbService;
         private List<Track> _allTracksCache = new();
 
+        public IReadOnlyList<Track> AllTracks => _allTracksCache;
         public ObservableCollection<Track> FilteredTracks { get; } = new();
 
         private string _searchQuery = string.Empty;

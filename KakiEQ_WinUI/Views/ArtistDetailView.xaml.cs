@@ -2,17 +2,28 @@ using System;
 using System.Collections.Generic;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Navigation;
 using KakiEQ_WinUI.Helpers;
 using KakiEQ_WinUI.Models;
 using KakiEQ_WinUI.ViewModels;
 
 namespace KakiEQ_WinUI.Views
 {
-    public sealed partial class ArtistDetailView : UserControl
+    public sealed partial class ArtistDetailView : Page
     {
         public ArtistDetailView()
         {
             InitializeComponent();
+        }
+
+        protected override void OnNavigatedTo(NavigationEventArgs e)
+        {
+            base.OnNavigatedTo(e);
+            if (e.Parameter is ArtistDetailViewModel vm)
+            {
+                DataContext = vm;
+            }
+            FluidAnimationHelper.PlayPageEntranceAnimation(this);
         }
 
         private void Track_ItemClick(object sender, ItemClickEventArgs e)

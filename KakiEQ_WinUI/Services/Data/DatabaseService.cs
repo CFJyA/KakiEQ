@@ -1,8 +1,10 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using KakiEQ_WinUI.Models;
 
@@ -12,6 +14,16 @@ namespace KakiEQ_WinUI.Services.Data
     {
         private readonly string _dbPath;
         private readonly string _playlistsDbPath;
+        private readonly SemaphoreSlim _dbLock = new(1, 1);
+
+        private List<Track>? _cachedTracks;
+        private List<Playlist>? _cachedPlaylists;
+        private readonly ConcurrentDictionary<string, string?> _artistPhotoCache = new(StringComparer.OrdinalIgnoreCase);
+
+        private static readonly JsonSerializerOptions JsonOptions = new()
+        {
+            WriteIndented = true
+        };
 
         public DatabaseService()
         {
@@ -23,59 +35,125 @@ namespace KakiEQ_WinUI.Services.Data
 
         public async Task<List<Track>> GetAllTracksAsync()
         {
-            if (!File.Exists(_dbPath))
-                return new List<Track>();
+            if (_cachedTracks != null)
+            {
+                return _cachedTracks.ToList();
+            }
 
+            await _dbLock.WaitAsync();
             try
             {
+                if (_cachedTracks != null)
+                {
+                    return _cachedTracks.ToList();
+                }
+
+                if (!File.Exists(_dbPath))
+                {
+                    _cachedTracks = new List<Track>();
+                    return new List<Track>();
+                }
+
                 var json = await Task.Run(() => File.ReadAllText(_dbPath));
                 var tracks = JsonSerializer.Deserialize<List<Track>>(json) ?? new List<Track>();
-                return tracks.OrderBy(t => t.Artist).ThenBy(t => t.Album).ThenBy(t => t.TrackNumber).ToList();
+                _cachedTracks = tracks.OrderBy(t => t.Artist).ThenBy(t => t.Album).ThenBy(t => t.TrackNumber).ToList();
+                return _cachedTracks.ToList();
             }
             catch
             {
+                _cachedTracks = new List<Track>();
                 return new List<Track>();
+            }
+            finally
+            {
+                _dbLock.Release();
             }
         }
 
         public async Task InsertTracksAsync(IEnumerable<Track> tracks)
         {
-            var json = JsonSerializer.Serialize(tracks, new JsonSerializerOptions { WriteIndented = true });
-            await Task.Run(() => File.WriteAllText(_dbPath, json));
+            await _dbLock.WaitAsync();
+            try
+            {
+                var ordered = tracks.OrderBy(t => t.Artist).ThenBy(t => t.Album).ThenBy(t => t.TrackNumber).ToList();
+                _cachedTracks = ordered;
+                var json = JsonSerializer.Serialize(ordered, JsonOptions);
+                await Task.Run(() => File.WriteAllText(_dbPath, json));
+            }
+            finally
+            {
+                _dbLock.Release();
+            }
         }
 
         public async Task ClearLibraryAsync()
         {
-            if (File.Exists(_dbPath))
+            await _dbLock.WaitAsync();
+            try
             {
-                await Task.Run(() => File.Delete(_dbPath));
+                _cachedTracks = new List<Track>();
+                if (File.Exists(_dbPath))
+                {
+                    await Task.Run(() => File.Delete(_dbPath));
+                }
+            }
+            finally
+            {
+                _dbLock.Release();
             }
         }
 
         public async Task<List<Playlist>> GetAllPlaylistsAsync()
         {
-            if (!File.Exists(_playlistsDbPath))
+            if (_cachedPlaylists != null)
             {
-                return new List<Playlist>();
+                return _cachedPlaylists.Where(p => !p.IsCreateCard).ToList();
             }
 
+            await _dbLock.WaitAsync();
             try
             {
+                if (_cachedPlaylists != null)
+                {
+                    return _cachedPlaylists.Where(p => !p.IsCreateCard).ToList();
+                }
+
+                if (!File.Exists(_playlistsDbPath))
+                {
+                    _cachedPlaylists = new List<Playlist>();
+                    return new List<Playlist>();
+                }
+
                 var json = await Task.Run(() => File.ReadAllText(_playlistsDbPath));
                 var playlists = JsonSerializer.Deserialize<List<Playlist>>(json) ?? new List<Playlist>();
-                return playlists.Where(p => !p.IsCreateCard).ToList();
+                _cachedPlaylists = playlists.Where(p => !p.IsCreateCard).ToList();
+                return _cachedPlaylists.ToList();
             }
             catch
             {
+                _cachedPlaylists = new List<Playlist>();
                 return new List<Playlist>();
+            }
+            finally
+            {
+                _dbLock.Release();
             }
         }
 
         public async Task SavePlaylistsAsync(IEnumerable<Playlist> playlists)
         {
-            var cleanList = playlists.Where(p => !p.IsCreateCard).ToList();
-            var json = JsonSerializer.Serialize(cleanList, new JsonSerializerOptions { WriteIndented = true });
-            await Task.Run(() => File.WriteAllText(_playlistsDbPath, json));
+            await _dbLock.WaitAsync();
+            try
+            {
+                var cleanList = playlists.Where(p => !p.IsCreateCard).ToList();
+                _cachedPlaylists = cleanList;
+                var json = JsonSerializer.Serialize(cleanList, JsonOptions);
+                await Task.Run(() => File.WriteAllText(_playlistsDbPath, json));
+            }
+            finally
+            {
+                _dbLock.Release();
+            }
         }
 
         public async Task AddPlaylistAsync(Playlist playlist)
@@ -201,8 +279,9 @@ namespace KakiEQ_WinUI.Services.Data
 
             var allTracks = await GetAllTracksAsync();
             var trackByPath = allTracks.Where(t => !string.IsNullOrEmpty(t.FilePath))
-                                       .ToDictionary(t => t.FilePath, t => t, StringComparer.OrdinalIgnoreCase);
-            var trackById = allTracks.ToDictionary(t => t.Id, t => t);
+                                       .GroupBy(t => t.FilePath, StringComparer.OrdinalIgnoreCase)
+                                       .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+            var trackById = allTracks.GroupBy(t => t.Id).ToDictionary(g => g.Key, g => g.First());
 
             var result = new List<Track>();
 
@@ -297,19 +376,23 @@ namespace KakiEQ_WinUI.Services.Data
         public string? GetArtistPhotoPath(string artistName)
         {
             if (string.IsNullOrWhiteSpace(artistName)) return null;
-            var artistsFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KakiEQ", "Artists");
-            if (!Directory.Exists(artistsFolder)) return null;
-            string safeName = string.Join("_", artistName.Split(Path.GetInvalidFileNameChars()));
-            try
+
+            return _artistPhotoCache.GetOrAdd(artistName, name =>
             {
-                var files = Directory.GetFiles(artistsFolder, $"{safeName}*.jpg");
-                if (files.Length > 0)
+                var artistsFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KakiEQ", "Artists");
+                if (!Directory.Exists(artistsFolder)) return null;
+                string safeName = string.Join("_", name.Split(Path.GetInvalidFileNameChars()));
+                try
                 {
-                    return files.OrderByDescending(f => File.GetLastWriteTimeUtc(f)).First();
+                    var files = Directory.GetFiles(artistsFolder, $"{safeName}*.jpg");
+                    if (files.Length > 0)
+                    {
+                        return files.OrderByDescending(f => File.GetLastWriteTimeUtc(f)).First();
+                    }
                 }
-            }
-            catch { }
-            return null;
+                catch { }
+                return null;
+            });
         }
 
         public string SaveArtistPhoto(string artistName, string sourceImagePath)
@@ -317,8 +400,7 @@ namespace KakiEQ_WinUI.Services.Data
             var artistsFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KakiEQ", "Artists");
             Directory.CreateDirectory(artistsFolder);
             string safeName = string.Join("_", artistName.Split(Path.GetInvalidFileNameChars()));
-            
-            // Remove previous photos for this artist to save space
+
             try
             {
                 var oldFiles = Directory.GetFiles(artistsFolder, $"{safeName}*.*");
@@ -329,10 +411,13 @@ namespace KakiEQ_WinUI.Services.Data
             }
             catch { }
 
-            string ext = Path.GetExtension(sourceImagePath); if (string.IsNullOrEmpty(ext)) ext = ".jpg"; string targetPath = Path.Combine(artistsFolder, $"{safeName}_{DateTime.Now.Ticks}{ext}");
+            string ext = Path.GetExtension(sourceImagePath);
+            if (string.IsNullOrEmpty(ext)) ext = ".jpg";
+            string targetPath = Path.Combine(artistsFolder, $"{safeName}_{DateTime.Now.Ticks}{ext}");
             File.Copy(sourceImagePath, targetPath, true);
+
+            _artistPhotoCache[artistName] = targetPath;
             return targetPath;
         }
     }
 }
-

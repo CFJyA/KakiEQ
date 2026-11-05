@@ -70,21 +70,8 @@ namespace KakiEQ_WinUI.Helpers
             if (value is not string path || string.IsNullOrWhiteSpace(path))
                 return null!;
 
-            try
-            {
-                string displayPath = Helpers.ImageHelper.EnsureDisplayableImage(path);
-                Uri uri;
-                if (System.IO.File.Exists(displayPath))
-                    uri = new Uri(System.IO.Path.GetFullPath(displayPath));
-                else if (!Uri.TryCreate(displayPath, UriKind.Absolute, out uri!))
-                    return null!;
-
-                return new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(uri);
-            }
-            catch
-            {
-                return null!;
-            }
+            bool isHero = parameter is string p && p.Equals("hero", StringComparison.OrdinalIgnoreCase);
+            return (isHero ? ImageHelper.GetCachedHeroCover(path) : ImageHelper.GetCachedCardCover(path))!;
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, string language)

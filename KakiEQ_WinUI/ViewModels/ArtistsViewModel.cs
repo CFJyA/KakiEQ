@@ -40,41 +40,44 @@ namespace KakiEQ_WinUI.ViewModels
 
         public async Task LoadArtistsAsync()
         {
-            var tracks = await _dbService.GetAllTracksAsync();
-            var artistTracksMap = new Dictionary<string, List<Track>>(StringComparer.OrdinalIgnoreCase);
-
-            foreach (var track in tracks)
+            var uniqueArtists = await Task.Run(async () =>
             {
-                var artists = Helpers.ArtistHelper.SplitArtists(track.Artist);
-                foreach (var artist in artists)
+                var tracks = await _dbService.GetAllTracksAsync();
+                var artistTracksMap = new Dictionary<string, List<Track>>(StringComparer.OrdinalIgnoreCase);
+
+                foreach (var track in tracks)
                 {
-                    if (!artistTracksMap.TryGetValue(artist, out var list))
+                    var artists = Helpers.ArtistHelper.SplitArtists(track.Artist);
+                    foreach (var artist in artists)
                     {
-                        list = new List<Track>();
-                        artistTracksMap[artist] = list;
+                        if (!artistTracksMap.TryGetValue(artist, out var list))
+                        {
+                            list = new List<Track>();
+                            artistTracksMap[artist] = list;
+                        }
+                        list.Add(track);
                     }
-                    list.Add(track);
                 }
-            }
 
-            var uniqueArtists = new List<ArtistItem>();
-            foreach (var kvp in artistTracksMap)
-            {
-                string artistName = kvp.Key;
-                var aTracks = kvp.Value;
-                string? customPhoto = _dbService.GetArtistPhotoPath(artistName);
-                string? cover = customPhoto ?? aTracks.FirstOrDefault(t => !string.IsNullOrEmpty(t.CoverImagePath))?.CoverImagePath;
-
-                uniqueArtists.Add(new ArtistItem
+                var result = new List<ArtistItem>();
+                foreach (var kvp in artistTracksMap)
                 {
-                    Name = artistName,
-                    CoverImagePath = cover,
-                    TrackCount = aTracks.Count,
-                    AlbumCount = aTracks.Select(t => t.Album).Distinct(StringComparer.OrdinalIgnoreCase).Count()
-                });
-            }
+                    string artistName = kvp.Key;
+                    var aTracks = kvp.Value;
+                    string? customPhoto = _dbService.GetArtistPhotoPath(artistName);
+                    string? cover = customPhoto ?? aTracks.FirstOrDefault(t => !string.IsNullOrEmpty(t.CoverImagePath))?.CoverImagePath;
 
-            uniqueArtists = uniqueArtists.OrderBy(a => a.Name, StringComparer.OrdinalIgnoreCase).ToList();
+                    result.Add(new ArtistItem
+                    {
+                        Name = artistName,
+                        CoverImagePath = cover,
+                        TrackCount = aTracks.Count,
+                        AlbumCount = aTracks.Select(t => t.Album).Distinct(StringComparer.OrdinalIgnoreCase).Count()
+                    });
+                }
+
+                return result.OrderBy(a => a.Name, StringComparer.OrdinalIgnoreCase).ToList();
+            });
 
             RunOnUIThread(() =>
             {

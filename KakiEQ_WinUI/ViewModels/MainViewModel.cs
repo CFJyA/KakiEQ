@@ -62,18 +62,16 @@ namespace KakiEQ_WinUI.ViewModels
         }
 
         private static readonly SolidColorBrush NavInactiveBg = new(Windows.UI.Color.FromArgb(0, 0, 0, 0)); // Transparent
+        private static readonly SolidColorBrush NavActiveBgLight = new(Windows.UI.Color.FromArgb(255, 237, 231, 246)); // #EDE7F6
+        private static readonly SolidColorBrush NavActiveBgDark = new(Windows.UI.Color.FromArgb(255, 56, 30, 114));   // #381E72
+        private static readonly SolidColorBrush NavActiveFgLight = new(Windows.UI.Color.FromArgb(255, 124, 77, 255));  // #7C4DFF
+        private static readonly SolidColorBrush NavActiveFgDark = new(Windows.UI.Color.FromArgb(255, 208, 188, 255));  // #D0BCFF
+        private static readonly SolidColorBrush NavInactiveFgLight = new(Windows.UI.Color.FromArgb(255, 85, 85, 85));  // #555555
+        private static readonly SolidColorBrush NavInactiveFgDark = new(Windows.UI.Color.FromArgb(255, 180, 180, 180));// #B4B4B4
 
-        private SolidColorBrush NavActiveBg => IsLightTheme
-            ? new SolidColorBrush(Windows.UI.Color.FromArgb(255, 237, 231, 246)) // #EDE7F6
-            : new SolidColorBrush(Windows.UI.Color.FromArgb(255, 56, 30, 114));  // #381E72
-
-        private SolidColorBrush NavActiveFg => IsLightTheme
-            ? new SolidColorBrush(Windows.UI.Color.FromArgb(255, 124, 77, 255)) // #7C4DFF
-            : new SolidColorBrush(Windows.UI.Color.FromArgb(255, 208, 188, 255)); // #D0BCFF
-
-        private SolidColorBrush NavInactiveFg => IsLightTheme
-            ? new SolidColorBrush(Windows.UI.Color.FromArgb(255, 85, 85, 85))   // #555555
-            : new SolidColorBrush(Windows.UI.Color.FromArgb(255, 180, 180, 180)); // #B4B4B4
+        private SolidColorBrush NavActiveBg => IsLightTheme ? NavActiveBgLight : NavActiveBgDark;
+        private SolidColorBrush NavActiveFg => IsLightTheme ? NavActiveFgLight : NavActiveFgDark;
+        private SolidColorBrush NavInactiveFg => IsLightTheme ? NavInactiveFgLight : NavInactiveFgDark;
 
         private string _currentSectionTitle = "Inicio";
         public string CurrentSectionTitle
@@ -138,12 +136,14 @@ namespace KakiEQ_WinUI.ViewModels
                 OnPropertyChanged(nameof(SidebarVisibility));
                 OnPropertyChanged(nameof(SidebarToggleIconGlyph));
                 OnPropertyChanged(nameof(SidebarToggleTooltip));
+                OnPropertyChanged(nameof(WorkspaceContentMargin));
             }
         }
 
         public Visibility SidebarVisibility => IsSidebarExpanded ? Visibility.Visible : Visibility.Collapsed;
         public string SidebarToggleIconGlyph => IsSidebarExpanded ? "\uE76B" : "\uE76C"; // < when expanded, > when collapsed
         public string SidebarToggleTooltip => IsSidebarExpanded ? "Ocultar barra lateral" : "Mostrar barra lateral";
+        public Thickness WorkspaceContentMargin => IsSidebarExpanded ? new Thickness(198, 0, 0, 0) : new Thickness(28, 0, 0, 0);
 
         // --- Scanning / Library state ---
         private bool _isScanning;
@@ -724,9 +724,13 @@ namespace KakiEQ_WinUI.ViewModels
             get => _currentPositionSeconds;
             set
             {
+                int prevSec = (int)_currentPositionSeconds;
                 _currentPositionSeconds = value;
                 OnPropertyChanged();
-                OnPropertyChanged(nameof(CurrentPositionFormatted));
+                if (prevSec != (int)value)
+                {
+                    OnPropertyChanged(nameof(CurrentPositionFormatted));
+                }
             }
         }
 
@@ -816,7 +820,8 @@ namespace KakiEQ_WinUI.ViewModels
 
         public void UpdateCurrentTrackTechnicalInfo()
         {
-            if (CurrentTrack == null)
+            var track = CurrentTrack;
+            if (track == null)
             {
                 CurrentTrackAudioFormat = string.Empty;
                 CurrentTrackBitDepth = string.Empty;
@@ -826,13 +831,33 @@ namespace KakiEQ_WinUI.ViewModels
                 return;
             }
 
-            AudioTechnicalInfoHelper.EnsureTrackTechnicalInfo(CurrentTrack);
+            // Fast-path if already populated
+            if (!string.IsNullOrWhiteSpace(track.AudioFormat) && track.Bitrate > 0)
+            {
+                CurrentTrackAudioFormat = AudioTechnicalInfoHelper.FormatFormat(track.AudioFormat);
+                CurrentTrackBitDepth = AudioTechnicalInfoHelper.FormatBits(track.BitsPerSample);
+                CurrentTrackBitrate = AudioTechnicalInfoHelper.FormatBitrate(track.Bitrate);
+                CurrentTrackBaseDecibels = AudioTechnicalInfoHelper.FormatDecibels(track.BaseDecibels);
+                OnPropertyChanged(nameof(AudioTechInfoVisibility));
+                return;
+            }
 
-            CurrentTrackAudioFormat = AudioTechnicalInfoHelper.FormatFormat(CurrentTrack.AudioFormat);
-            CurrentTrackBitDepth = AudioTechnicalInfoHelper.FormatBits(CurrentTrack.BitsPerSample);
-            CurrentTrackBitrate = AudioTechnicalInfoHelper.FormatBitrate(CurrentTrack.Bitrate);
-            CurrentTrackBaseDecibels = AudioTechnicalInfoHelper.FormatDecibels(CurrentTrack.BaseDecibels);
-            OnPropertyChanged(nameof(AudioTechInfoVisibility));
+            // Otherwise extract via TagLib on a background thread so playback start never stutters on the UI thread
+            _ = Task.Run(() =>
+            {
+                AudioTechnicalInfoHelper.EnsureTrackTechnicalInfo(track);
+                _dispatcherQueue.TryEnqueue(() =>
+                {
+                    if (CurrentTrack == track)
+                    {
+                        CurrentTrackAudioFormat = AudioTechnicalInfoHelper.FormatFormat(track.AudioFormat);
+                        CurrentTrackBitDepth = AudioTechnicalInfoHelper.FormatBits(track.BitsPerSample);
+                        CurrentTrackBitrate = AudioTechnicalInfoHelper.FormatBitrate(track.Bitrate);
+                        CurrentTrackBaseDecibels = AudioTechnicalInfoHelper.FormatDecibels(track.BaseDecibels);
+                        OnPropertyChanged(nameof(AudioTechInfoVisibility));
+                    }
+                });
+            });
         }
 
         // --- Playlists & Queue ---
@@ -944,7 +969,7 @@ namespace KakiEQ_WinUI.ViewModels
 
             // Timer for tracking playback progression, lyrics synchronization, and crossfade trigger
             _timer = _dispatcherQueue.CreateTimer();
-            _timer.Interval = TimeSpan.FromMilliseconds(150);
+            _timer.Interval = TimeSpan.FromMilliseconds(220);
             _timer.Tick += (s, e) =>
             {
                 if (_audioEngine.IsPlaying)
@@ -999,42 +1024,49 @@ namespace KakiEQ_WinUI.ViewModels
 
             NavigateHomeCommand = new RelayCommand(() =>
             {
+                if (IsNowPlayingExpanded) { IsNowPlayingExpanded = false; ExitFullScreenIfActive?.Invoke(); }
                 CurrentSectionTitle = "Inicio";
                 CurrentView = HomeVm;
             });
 
             NavigateSongsCommand = new RelayCommand(() =>
             {
+                if (IsNowPlayingExpanded) { IsNowPlayingExpanded = false; ExitFullScreenIfActive?.Invoke(); }
                 CurrentSectionTitle = "Canciones";
                 CurrentView = LibraryVm;
             });
 
             NavigateArtistsCommand = new RelayCommand(() =>
             {
+                if (IsNowPlayingExpanded) { IsNowPlayingExpanded = false; ExitFullScreenIfActive?.Invoke(); }
                 CurrentSectionTitle = "Artistas";
                 CurrentView = ArtistsVm;
             });
 
             NavigateAlbumsCommand = new RelayCommand(() =>
             {
+                if (IsNowPlayingExpanded) { IsNowPlayingExpanded = false; ExitFullScreenIfActive?.Invoke(); }
                 CurrentSectionTitle = "Álbumes";
                 CurrentView = AlbumsVm;
             });
 
             NavigatePlaylistsCommand = new RelayCommand(() =>
             {
+                if (IsNowPlayingExpanded) { IsNowPlayingExpanded = false; ExitFullScreenIfActive?.Invoke(); }
                 CurrentSectionTitle = "Playlists";
                 CurrentView = PlaylistsVm;
             });
 
             NavigateEqualizerCommand = new RelayCommand(() =>
             {
+                if (IsNowPlayingExpanded) { IsNowPlayingExpanded = false; ExitFullScreenIfActive?.Invoke(); }
                 CurrentSectionTitle = "Ecualizador";
                 CurrentView = EqualizerVm;
             });
 
             NavigateMultiOutputCommand = new RelayCommand(() =>
             {
+                if (IsNowPlayingExpanded) { IsNowPlayingExpanded = false; ExitFullScreenIfActive?.Invoke(); }
                 CurrentSectionTitle = "Salidas de Audio";
                 CurrentView = MultiOutputVm;
             });
@@ -1131,6 +1163,17 @@ namespace KakiEQ_WinUI.ViewModels
             CurrentView = HomeVm;
             RefreshNavBrushes();
             _ = LoadGlobalPlaylistsAsync();
+
+            // Pre-warm secondary ViewModels at low priority so first navigation is 0ms
+            _dispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
+            {
+                _ = MultiOutputVm;
+                _ = EqualizerVm;
+                _ = LibraryVm;
+                _ = AlbumsVm;
+                _ = ArtistsVm;
+                _ = PlaylistsVm;
+            });
 
             KaraokeService.TrackKaraokeReady += (s, track) =>
             {
@@ -1446,6 +1489,7 @@ namespace KakiEQ_WinUI.ViewModels
 
         public void NotifyArtistPhotoChanged(string artistName, string photoPath)
         {
+            Helpers.ImageHelper.InvalidateCache(photoPath);
             _dispatcherQueue.TryEnqueue(() =>
             {
                 _artistsVm?.NotifyArtistPhotoChanged(artistName, photoPath);
@@ -1467,6 +1511,7 @@ namespace KakiEQ_WinUI.ViewModels
         public void NotifyTrackMetadataChanged(Track updatedTrack, bool lyricsUpdated = false)
         {
             if (updatedTrack == null) return;
+            Helpers.ImageHelper.InvalidateCache(updatedTrack.CoverImagePath);
 
             _dispatcherQueue.TryEnqueue(async () =>
             {

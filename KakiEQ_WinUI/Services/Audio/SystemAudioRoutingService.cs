@@ -30,39 +30,17 @@ namespace KakiEQ_WinUI.Services.Audio
         public event EventHandler? RoutingStateChanged;
         public event EventHandler? DriverStatusChanged;
 
+        private volatile bool _isDriverInstalled;
+
         public bool IsRouting => _isRouting;
 
-        public bool IsDriverInstalled
-        {
-            get
-            {
-                try
-                {
-                    using var enumerator = new MMDeviceEnumerator();
-                    var endpoints = enumerator.EnumerateAudioEndPoints(DataFlow.Render, DeviceState.Active);
-                    if (endpoints.Any(IsVirtualCableEndpoint))
-                    {
-                        return true;
-                    }
-                }
-                catch { }
-
-                try
-                {
-                    using var key = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Services\VBAudioVACMME");
-                    if (key != null) return true;
-                }
-                catch { }
-
-                return false;
-            }
-        }
+        public bool IsDriverInstalled => _isDriverInstalled;
 
         public string DriverStatusSummary
         {
             get
             {
-                if (IsDriverInstalled)
+                if (_isDriverInstalled)
                 {
                     return _isRouting
                         ? "Dispositivo 'Kaki EQ | Audio Virtual' activo: transmitiendo todo el audio de Windows sin desfase a tus salidas."
@@ -76,9 +54,56 @@ namespace KakiEQ_WinUI.Services.Audio
         {
             _multiOutputService = multiOutputService ?? throw new ArgumentNullException(nameof(multiOutputService));
 
-            // If a previous session exited while the virtual cable was still set as Windows default output,
-            // restore the physical speaker as default until the user turns on routing.
-            EnsurePhysicalDefaultWhenIdle();
+            // Fast non-blocking initial check via registry (<0.05ms)
+            _isDriverInstalled = CheckDriverRegistryFast();
+
+            // Perform full CoreAudio COM endpoint check and idle default restoration on background thread
+            _ = Task.Run(() =>
+            {
+                RefreshDriverStatusCore();
+                EnsurePhysicalDefaultWhenIdle();
+            });
+        }
+
+        private static bool CheckDriverRegistryFast()
+        {
+            try
+            {
+                using var key = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Services\VBAudioVACMME");
+                if (key != null) return true;
+            }
+            catch { }
+            return false;
+        }
+
+        private bool RefreshDriverStatusCore()
+        {
+            bool installed = CheckDriverRegistryFast();
+            if (!installed)
+            {
+                try
+                {
+                    using var enumerator = new MMDeviceEnumerator();
+                    var endpoints = enumerator.EnumerateAudioEndPoints(DataFlow.Render, DeviceState.Active);
+                    if (endpoints.Any(IsVirtualCableEndpoint))
+                    {
+                        installed = true;
+                    }
+                }
+                catch { }
+            }
+
+            if (_isDriverInstalled != installed)
+            {
+                _isDriverInstalled = installed;
+                DriverStatusChanged?.Invoke(this, EventArgs.Empty);
+            }
+            return installed;
+        }
+
+        public Task<bool> RefreshDriverStatusAsync()
+        {
+            return Task.Run(RefreshDriverStatusCore);
         }
 
         private static bool IsVirtualCableEndpoint(MMDevice device)
@@ -120,7 +145,7 @@ namespace KakiEQ_WinUI.Services.Audio
 
         public void NotifyDriverStatus()
         {
-            DriverStatusChanged?.Invoke(this, EventArgs.Empty);
+            _ = RefreshDriverStatusAsync();
         }
 
         public async Task<bool> InstallDriverAsync()
@@ -163,8 +188,7 @@ namespace KakiEQ_WinUI.Services.Audio
                     {
                         proc.WaitForExit();
                         RenameVirtualEndpointToKakiEQ();
-                        NotifyDriverStatus();
-                        return IsDriverInstalled;
+                        return RefreshDriverStatusCore();
                     }
                 }
                 catch (Exception ex)
@@ -172,7 +196,7 @@ namespace KakiEQ_WinUI.Services.Audio
                     Debug.WriteLine($"[SystemAudioRouting] InstallDriverAsync error: {ex.Message}");
                 }
 
-                NotifyDriverStatus();
+                RefreshDriverStatusCore();
                 return false;
             });
         }

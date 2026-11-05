@@ -24,6 +24,8 @@ namespace KakiEQ_WinUI.ViewModels
         public bool HasMultipleActiveDevices => ActiveDevicesCount > 1;
 
         public bool IsDriverInstalled => _routingService.IsDriverInstalled;
+        public Microsoft.UI.Xaml.Visibility InstallButtonVisibility => IsDriverInstalled ? Microsoft.UI.Xaml.Visibility.Collapsed : Microsoft.UI.Xaml.Visibility.Visible;
+        public Microsoft.UI.Xaml.Visibility RoutingSwitchVisibility => IsDriverInstalled ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed;
         public string DriverBadgeText => IsDriverInstalled ? "Dispositivo 'Kaki EQ' Registrado" : "Controlador no instalado";
         public string DriverBadgeColor => IsDriverInstalled ? "#4CAF50" : "#FFA726";
         public string DriverStatusSummary => _routingService.DriverStatusSummary;
@@ -109,10 +111,16 @@ namespace KakiEQ_WinUI.ViewModels
                 _dispatcherQueue.TryEnqueue(() =>
                 {
                     OnPropertyChanged(nameof(IsSystemRoutingActive));
+                    OnPropertyChanged(nameof(DriverStatusSummary));
                     OnPropertyChanged(nameof(RoutingStatusSummary));
                     OnPropertyChanged(nameof(RoutingBadgeText));
                     OnPropertyChanged(nameof(RoutingBadgeColor));
                 });
+            };
+
+            _routingService.DriverStatusChanged += (s, e) =>
+            {
+                _dispatcherQueue.TryEnqueue(NotifyDriverChanged);
             };
 
             ToggleDeviceCommand = new RelayCommand<AudioOutputDevice>(device =>
@@ -131,9 +139,10 @@ namespace KakiEQ_WinUI.ViewModels
                 OnPropertyChanged(nameof(Devices));
             });
 
-            RefreshDevicesCommand = new RelayCommand(() =>
+            RefreshDevicesCommand = new RelayCommand(async () =>
             {
-                _multiOutputService.RefreshDevices();
+                await _multiOutputService.RefreshDevicesAsync();
+                await _routingService.RefreshDriverStatusAsync();
                 NotifyCountsChanged();
                 NotifyDriverChanged();
             });
@@ -148,7 +157,7 @@ namespace KakiEQ_WinUI.ViewModels
             {
                 IsBusy = true;
                 await _routingService.InstallDriverAsync();
-                _multiOutputService.RefreshDevices();
+                await _multiOutputService.RefreshDevicesAsync();
                 NotifyDriverChanged();
                 NotifyCountsChanged();
                 IsBusy = false;
@@ -170,6 +179,7 @@ namespace KakiEQ_WinUI.ViewModels
                     _routingService.StartRouting();
                 }
                 OnPropertyChanged(nameof(IsSystemRoutingActive));
+                OnPropertyChanged(nameof(DriverStatusSummary));
                 OnPropertyChanged(nameof(RoutingStatusSummary));
                 OnPropertyChanged(nameof(RoutingBadgeText));
                 OnPropertyChanged(nameof(RoutingBadgeColor));
@@ -184,6 +194,8 @@ namespace KakiEQ_WinUI.ViewModels
         private void NotifyDriverChanged()
         {
             OnPropertyChanged(nameof(IsDriverInstalled));
+            OnPropertyChanged(nameof(InstallButtonVisibility));
+            OnPropertyChanged(nameof(RoutingSwitchVisibility));
             OnPropertyChanged(nameof(DriverStatusSummary));
             OnPropertyChanged(nameof(DriverBadgeText));
             OnPropertyChanged(nameof(DriverBadgeColor));

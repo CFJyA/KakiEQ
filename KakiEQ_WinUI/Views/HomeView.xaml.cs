@@ -1,94 +1,39 @@
+using System.Collections.Generic;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Navigation;
+using KakiEQ_WinUI.Helpers;
 using KakiEQ_WinUI.Models;
 using KakiEQ_WinUI.ViewModels;
 
 namespace KakiEQ_WinUI.Views
 {
-    public sealed partial class HomeView : UserControl
+    public sealed partial class HomeView : Page
     {
-        public HomeViewModel? ViewModel => DataContext as HomeViewModel;
-
-        private bool? _isMaximizedLayout = null;
+        public HomeViewModel? ViewModel => (DataContext as HomeViewModel) ?? MainViewModel.Instance?.HomeVm;
 
         public HomeView()
         {
+            if (MainViewModel.Instance != null)
+            {
+                DataContext = MainViewModel.Instance.HomeVm;
+            }
             InitializeComponent();
             DataContextChanged += (s, e) =>
             {
                 Bindings?.Update();
             };
-            Loaded += (s, e) =>
+        }
+
+        protected override void OnNavigatedTo(NavigationEventArgs e)
+        {
+            base.OnNavigatedTo(e);
+            if (e.Parameter is HomeViewModel vm && DataContext != vm)
             {
-                ApplyItemDimensions(CheckIsMaximized(ActualWidth));
-            };
-        }
-
-        private void UserControl_Loaded(object sender, RoutedEventArgs e)
-        {
-            UpdateGridItemSize(ActualWidth);
-        }
-
-        private void UserControl_SizeChanged(object sender, SizeChangedEventArgs e)
-        {
-            UpdateGridItemSize(e.NewSize.Width);
-        }
-
-        private bool CheckIsMaximized(double width)
-        {
-            return (MainWindow.Instance?.IsMaximized == true) || width > 1250;
-        }
-
-        private void UpdateGridItemSize(double width)
-        {
-            if (width <= 0) return;
-            bool isMax = CheckIsMaximized(width);
-            if (_isMaximizedLayout != isMax)
-            {
-                _isMaximizedLayout = isMax;
-                ApplyItemDimensions(isMax);
+                DataContext = vm;
+                Bindings?.Update();
             }
-        }
-
-        private void ApplyItemDimensions(bool isMax)
-        {
-            double targetWidth = isMax ? 180 : 171;
-            double targetHeight = isMax ? 230 : 224;
-
-            UpdateWrapGrid(HistoryGridView, targetWidth, targetHeight);
-            UpdateWrapGrid(SuggestedGridView, targetWidth, targetHeight);
-            UpdateWrapGrid(FavoriteGridView, targetWidth, targetHeight);
-        }
-
-        private static void UpdateWrapGrid(GridView? gridView, double targetWidth, double targetHeight)
-        {
-            var wrapGrid = GetWrapGrid(gridView);
-            if (wrapGrid != null && (wrapGrid.ItemWidth != targetWidth || wrapGrid.ItemHeight != targetHeight))
-            {
-                wrapGrid.ItemWidth = targetWidth;
-                wrapGrid.ItemHeight = targetHeight;
-            }
-        }
-
-        private static ItemsWrapGrid? GetWrapGrid(GridView? gridView)
-        {
-            if (gridView == null) return null;
-            if (gridView.ItemsPanelRoot is ItemsWrapGrid panel) return panel;
-            return FindChild<ItemsWrapGrid>(gridView);
-        }
-
-        private static T? FindChild<T>(DependencyObject parent) where T : DependencyObject
-        {
-            int count = VisualTreeHelper.GetChildrenCount(parent);
-            for (int i = 0; i < count; i++)
-            {
-                var child = VisualTreeHelper.GetChild(parent, i);
-                if (child is T typedChild) return typedChild;
-                var found = FindChild<T>(child);
-                if (found != null) return found;
-            }
-            return null;
+            FluidAnimationHelper.PlayPageEntranceAnimation(this);
         }
 
         private void HistoryTrack_ItemClick(object sender, ItemClickEventArgs e)
@@ -96,7 +41,7 @@ namespace KakiEQ_WinUI.Views
             var vm = ViewModel ?? DataContext as HomeViewModel;
             if (e.ClickedItem is Track track && vm != null)
             {
-                _ = MainViewModel.Instance?.PlayTrackAsync(track, new System.Collections.Generic.List<Track>(vm.HistoryTracks));
+                _ = MainViewModel.Instance?.PlayTrackAsync(track, new List<Track>(vm.HistoryTracks));
             }
         }
 
@@ -105,7 +50,7 @@ namespace KakiEQ_WinUI.Views
             var vm = ViewModel ?? DataContext as HomeViewModel;
             if (e.ClickedItem is Track track && vm != null)
             {
-                _ = MainViewModel.Instance?.PlayTrackAsync(track, new System.Collections.Generic.List<Track>(vm.SuggestedTracks));
+                _ = MainViewModel.Instance?.PlayTrackAsync(track, new List<Track>(vm.SuggestedTracks));
             }
         }
 
@@ -114,7 +59,7 @@ namespace KakiEQ_WinUI.Views
             var vm = ViewModel ?? DataContext as HomeViewModel;
             if (e.ClickedItem is Track track && vm != null)
             {
-                _ = MainViewModel.Instance?.PlayTrackAsync(track, new System.Collections.Generic.List<Track>(vm.FavoriteTracks));
+                _ = MainViewModel.Instance?.PlayTrackAsync(track, new List<Track>(vm.FavoriteTracks));
             }
         }
 
@@ -123,7 +68,7 @@ namespace KakiEQ_WinUI.Views
             var vm = ViewModel ?? DataContext as HomeViewModel;
             if (e.ClickedItem is Track track && vm != null)
             {
-                _ = MainViewModel.Instance?.PlayTrackAsync(track, new System.Collections.Generic.List<Track>(vm.RecentlyAddedTracks));
+                _ = MainViewModel.Instance?.PlayTrackAsync(track, new List<Track>(vm.RecentlyAddedTracks));
             }
         }
 
@@ -151,7 +96,5 @@ namespace KakiEQ_WinUI.Views
         {
             MainViewModel.Instance?.NavigateEqualizerCommand.Execute(null);
         }
-
     }
 }
-

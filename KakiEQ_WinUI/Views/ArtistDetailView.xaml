@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<UserControl
+<Page
     x:Class="KakiEQ_WinUI.Views.ArtistDetailView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -7,9 +7,11 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:models="using:KakiEQ_WinUI.Models"
     xmlns:vm="using:KakiEQ_WinUI.ViewModels"
+    xmlns:helpers="using:KakiEQ_WinUI.Helpers"
+    Background="Transparent"
     mc:Ignorable="d">
 
-    <Grid Padding="24,18,24,16">
+    <Grid Padding="24,18,24,0" helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="360"/>
             <ColumnDefinition Width="Auto"/>
@@ -17,24 +19,26 @@
         </Grid.ColumnDefinitions>
 
         <!-- LEFT COLUMN: Artist Sidebar (Matching Image 1: Circular Avatar, Name, Stats & Discography Play Button) -->
-        <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="0,0,14,0">
-            <StackPanel Width="330" HorizontalAlignment="Left" Spacing="14">
+        <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="0,0,14,116">
+            <StackPanel Width="330" HorizontalAlignment="Left" Spacing="14" helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
                 <!-- Back Button -->
                 <Button Command="{Binding GoBackCommand}"
                         Background="#22FFFFFF" Foreground="{ThemeResource AppTextPrimary}" Width="40" Height="40"
                         CornerRadius="20" Padding="0" HorizontalAlignment="Left"
+                        helpers:FluidAnimationHelper.HoverMode="Icon"
                         ToolTipService.ToolTip="Regresar a Artistas">
                     <FontIcon Glyph="&#xE72B;" FontSize="15"/>
                 </Button>
 
                 <!-- Large Circular Artist Avatar (Centered, 280x280) with Edit Photo Button -->
-                <Grid Width="280" Height="280" HorizontalAlignment="Center">
+                <Grid Width="280" Height="280" HorizontalAlignment="Center" helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
                     <Border Width="280" Height="280" CornerRadius="140" Background="{ThemeResource AppCoverPlaceholderBg}">
                         <Grid>
                             <FontIcon Glyph="&#xE77B;" FontSize="72" Foreground="{ThemeResource AppCoverPlaceholderFg}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            <Image Source="{Binding BannerImagePath}" Stretch="UniformToFill"/>
+                            <Image Source="{Binding BannerImageSource}" Stretch="UniformToFill"/>
                         </Grid>
                     </Border>
+                    <Ellipse Width="278" Height="278" Stroke="{ThemeResource AppBorder}" StrokeThickness="1.15" UseLayoutRounding="False" IsHitTestVisible="False"/>
 
                     <!-- Change Artist Photo Floating Button -->
                     <Button Click="ChangeArtistPhoto_Click"
@@ -43,6 +47,7 @@
                             Width="44" Height="44" CornerRadius="22"
                             Background="{ThemeResource AppSurfaceElevated}"
                             BorderBrush="{ThemeResource AppAccent}" BorderThickness="1.5"
+                            helpers:FluidAnimationHelper.HoverMode="Fab"
                             ToolTipService.ToolTip="Cambiar foto del artista manualmente">
                         <FontIcon Glyph="&#xE70F;" FontSize="16" Foreground="{ThemeResource AppAccent}"/>
                     </Button>
@@ -70,36 +75,40 @@
                         </Grid.ColumnDefinitions>
 
                         <!-- Álbumes -->
-                        <Border Grid.Column="0" Background="{ThemeResource AppCardBackground}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1" CornerRadius="14" Padding="14,10">
-                            <StackPanel Spacing="2">
+                        <Grid Grid.Column="0" Background="{ThemeResource AppCardBackground}" CornerRadius="14">
+                            <Rectangle RadiusX="13" RadiusY="13" Stroke="{ThemeResource AppBorder}" StrokeThickness="1.15" Margin="1" UseLayoutRounding="False" IsHitTestVisible="False"/>
+                            <StackPanel Spacing="2" Padding="14,10">
                                 <TextBlock Text="{Binding TotalAlbums}" FontSize="24" FontWeight="Bold" Foreground="{ThemeResource AppAccent}"/>
                                 <TextBlock Text="Álbumes" FontSize="11" Foreground="{ThemeResource AppTextSubtle}"/>
                             </StackPanel>
-                        </Border>
+                        </Grid>
 
                         <!-- Canciones -->
-                        <Border Grid.Column="1" Background="{ThemeResource AppCardBackground}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1" CornerRadius="14" Padding="14,10">
-                            <StackPanel Spacing="2">
+                        <Grid Grid.Column="1" Background="{ThemeResource AppCardBackground}" CornerRadius="14">
+                            <Rectangle RadiusX="13" RadiusY="13" Stroke="{ThemeResource AppBorder}" StrokeThickness="1.15" Margin="1" UseLayoutRounding="False" IsHitTestVisible="False"/>
+                            <StackPanel Spacing="2" Padding="14,10">
                                 <TextBlock Text="{Binding TotalSongs}" FontSize="24" FontWeight="Bold" Foreground="{ThemeResource AppSecondary}"/>
                                 <TextBlock Text="Canciones" FontSize="11" Foreground="{ThemeResource AppTextSubtle}"/>
                             </StackPanel>
-                        </Border>
+                        </Grid>
                     </Grid>
 
                     <!-- Row 2: Duración Total -->
-                    <Border Background="{ThemeResource AppCardBackground}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1" CornerRadius="14" Padding="14,10">
-                        <StackPanel Spacing="2">
+                    <Grid Background="{ThemeResource AppCardBackground}" CornerRadius="14">
+                        <Rectangle RadiusX="13" RadiusY="13" Stroke="{ThemeResource AppBorder}" StrokeThickness="1.15" Margin="1" UseLayoutRounding="False" IsHitTestVisible="False"/>
+                        <StackPanel Spacing="2" Padding="14,10">
                             <TextBlock Text="{Binding TotalLength}" FontSize="20" FontWeight="Bold" Foreground="#FFB74D"/>
                             <TextBlock Text="Duración Total" FontSize="11" Foreground="{ThemeResource AppTextSubtle}"/>
                         </StackPanel>
-                    </Border>
+                    </Grid>
                 </StackPanel>
 
                 <!-- Action Button: Reproducir Discografía (Full width 330px) -->
                 <Button Command="{Binding PlayAllArtistCommand}"
                         HorizontalAlignment="Stretch" Height="42"
                         Background="{ThemeResource AppAccent}" Foreground="#121212"
-                        CornerRadius="21" Padding="16,0" Margin="0,4,0,16">
+                        CornerRadius="21" Padding="16,0" Margin="0,4,0,16"
+                        helpers:FluidAnimationHelper.HoverMode="Fab">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="8">
                         <FontIcon Glyph="&#xE768;" FontSize="14" Foreground="#121212"/>
                         <TextBlock Text="Reproducir Discografía" VerticalAlignment="Center" FontSize="13" FontWeight="SemiBold" Foreground="#121212"/>
@@ -109,10 +118,10 @@
         </ScrollViewer>
 
         <!-- Subtle Vertical Separator -->
-        <Border Grid.Column="1" Width="1" Background="{ThemeResource AppBorder}" Margin="0,4,20,12"/>
+        <Border Grid.Column="1" Width="1" Background="{ThemeResource AppBorder}" Margin="0,4,20,116"/>
 
         <!-- RIGHT COLUMN: 50% / 50% Vertical Split (Álbumes en tiles arriba + Lista de canciones abajo) -->
-        <Grid Grid.Column="2">
+        <Grid Grid.Column="2" Margin="0,0,0,104" helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
             <Grid.RowDefinitions>
                 <RowDefinition Height="*"/>   <!-- Top 50%: Álbumes en TILES -->
                 <RowDefinition Height="Auto"/> <!-- Sutil separador horizontal -->
@@ -120,7 +129,7 @@
             </Grid.RowDefinitions>
 
             <!-- 1. TOP HALF (50%): Álbumes en TILES -->
-            <Grid Grid.Row="0" Margin="0,0,0,8">
+            <Grid Grid.Row="0" Margin="0,0,0,8" helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
@@ -139,7 +148,13 @@
                           SelectionMode="Single"
                           IsItemClickEnabled="True"
                           ItemClick="Album_ItemClick"
-                          Padding="0,0,0,6">
+                          Padding="0,0,0,6"
+                          helpers:FluidAnimationHelper.EnableGridViewReflow="True">
+                    <GridView.ItemContainerTransitions>
+                        <TransitionCollection>
+                            <RepositionThemeTransition IsStaggeringEnabled="False"/>
+                        </TransitionCollection>
+                    </GridView.ItemContainerTransitions>
                     <GridView.ItemsPanel>
                         <ItemsPanelTemplate>
                             <ItemsWrapGrid Orientation="Horizontal"/>
@@ -147,31 +162,33 @@
                     </GridView.ItemsPanel>
                     <GridView.ItemTemplate>
                         <DataTemplate x:DataType="models:AlbumItem">
-                            <Grid Width="145" Height="200" Margin="0,0,12,12">
-                                <Border Background="{ThemeResource AppCardBackground}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1" CornerRadius="14">
-                                    <Grid>
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height="145"/>
-                                            <RowDefinition Height="*"/>
-                                        </Grid.RowDefinitions>
+                            <Grid Width="145" Height="200" Margin="0,0,12,12"
+                                  Background="{ThemeResource AppCardBackground}" CornerRadius="14"
+                                  helpers:FluidAnimationHelper.HoverMode="Card"
+                                  helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="145"/>
+                                        <RowDefinition Height="*"/>
+                                    </Grid.RowDefinitions>
 
-                                        <!-- Cover Tile -->
-                                        <Border Grid.Row="0" CornerRadius="14,14,0,0" Background="{ThemeResource AppCoverPlaceholderBg}">
-                                            <Grid>
-                                                <FontIcon Glyph="&#xE93C;" FontSize="32" Foreground="{ThemeResource AppCoverPlaceholderFg}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                <Image Source="{x:Bind CoverImagePath}" Stretch="UniformToFill"/>
-                                            </Grid>
-                                        </Border>
+                                    <!-- Cover Tile -->
+                                    <Border Grid.Row="0" CornerRadius="14,14,0,0" Background="{ThemeResource AppCoverPlaceholderBg}">
+                                        <Grid>
+                                            <FontIcon Glyph="&#xE93C;" FontSize="32" Foreground="{ThemeResource AppCoverPlaceholderFg}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            <Image Source="{x:Bind CoverCardSource, Mode=OneWay}" Stretch="UniformToFill"/>
+                                        </Grid>
+                                    </Border>
 
-                                        <!-- Title & Artist -->
-                                        <StackPanel Grid.Row="1" Padding="8,6" VerticalAlignment="Center">
-                                            <TextBlock Text="{x:Bind Title}" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource AppTextPrimary}"
-                                                       TextTrimming="CharacterEllipsis" MaxLines="1"/>
-                                            <TextBlock Text="{x:Bind Artist}" FontSize="10" Foreground="{ThemeResource AppTextSubtle}"
-                                                       TextTrimming="CharacterEllipsis" MaxLines="1"/>
-                                        </StackPanel>
-                                    </Grid>
-                                </Border>
+                                    <!-- Title & Artist -->
+                                    <StackPanel Grid.Row="1" Padding="8,6" VerticalAlignment="Center">
+                                        <TextBlock Text="{x:Bind Title}" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource AppTextPrimary}"
+                                                   TextTrimming="CharacterEllipsis" MaxLines="1"/>
+                                        <TextBlock Text="{x:Bind Artist}" FontSize="10" Foreground="{ThemeResource AppTextSubtle}"
+                                                   TextTrimming="CharacterEllipsis" MaxLines="1"/>
+                                    </StackPanel>
+                                </Grid>
+                                <Rectangle Tag="UniformBorderRect" RadiusX="13" RadiusY="13" Stroke="{ThemeResource AppBorder}" StrokeThickness="1.15" Margin="1" UseLayoutRounding="False" IsHitTestVisible="False"/>
                             </Grid>
                         </DataTemplate>
                     </GridView.ItemTemplate>
@@ -182,7 +199,7 @@
             <Border Grid.Row="1" Height="1" Background="{ThemeResource AppBorder}" Margin="0,4,0,10"/>
 
             <!-- 3. BOTTOM HALF (50%): Pistas del Álbum Seleccionado -->
-            <Grid Grid.Row="2">
+            <Grid Grid.Row="2" helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
@@ -200,7 +217,7 @@
                         <Border Width="42" Height="42" CornerRadius="10" Background="{ThemeResource AppCoverPlaceholderBg}">
                             <Grid>
                                 <FontIcon Glyph="&#xE93C;" FontSize="20" Foreground="{ThemeResource AppCoverPlaceholderFg}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                <Image Source="{Binding SelectedAlbum.CoverImagePath}" Stretch="UniformToFill"/>
+                                <Image Source="{Binding SelectedAlbum.CoverThumbSource}" Stretch="UniformToFill"/>
                             </Grid>
                         </Border>
                         <StackPanel VerticalAlignment="Center" Spacing="1">
@@ -214,7 +231,8 @@
                     <!-- Botón Reproducir Álbum -->
                     <Button Grid.Column="1" Command="{Binding PlayAlbumCommand}"
                             Background="{ThemeResource AppAccent}" Foreground="#121212"
-                            CornerRadius="18" Padding="16,8" FontWeight="SemiBold" VerticalAlignment="Center">
+                            CornerRadius="18" Padding="16,8" FontWeight="SemiBold" VerticalAlignment="Center"
+                            helpers:FluidAnimationHelper.HoverMode="Fab">
                         <StackPanel Orientation="Horizontal" Spacing="7">
                             <FontIcon Glyph="&#xE768;" FontSize="13" Foreground="#121212"/>
                             <TextBlock Text="Reproducir Álbum" VerticalAlignment="Center" FontSize="12" FontWeight="SemiBold" Foreground="#121212"/>
@@ -223,12 +241,14 @@
                 </Grid>
 
                 <!-- Scrollable Tracklist of selected album -->
-                <Border Grid.Row="1" Background="{ThemeResource AppCardBackground}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1" CornerRadius="14" Padding="4,4">
+                <Grid Grid.Row="1" Background="{ThemeResource AppCardBackground}" CornerRadius="14" Padding="4,4">
+                    <Rectangle RadiusX="13" RadiusY="13" Stroke="{ThemeResource AppBorder}" StrokeThickness="1.15" Margin="1" UseLayoutRounding="False" IsHitTestVisible="False"/>
                     <ListView ItemsSource="{Binding SelectedAlbumTracks}"
                               SelectionMode="None"
                               IsItemClickEnabled="True"
                               ItemClick="Track_ItemClick"
-                              Padding="0,0,4,8">
+                              Padding="0,0,4,8"
+                              helpers:FluidAnimationHelper.EnableGridViewReflow="True">
                         <ListView.ItemTemplate>
                             <DataTemplate x:DataType="models:Track">
                                 <Grid Padding="10,7" CornerRadius="6" Background="Transparent"
@@ -255,15 +275,16 @@
                                     <!-- Options Menu (3 dots) -->
                                     <Button Grid.Column="3" Background="Transparent" BorderThickness="0" Foreground="{ThemeResource AppTextSubtle}"
                                             Click="MoreButton_Click" Tag="{x:Bind}" Padding="0" Width="28" Height="28" CornerRadius="14"
-                                            HorizontalAlignment="Right" ToolTipService.ToolTip="Más opciones">
+                                            HorizontalAlignment="Right" ToolTipService.ToolTip="Más opciones"
+                                            helpers:FluidAnimationHelper.HoverMode="Icon">
                                         <FontIcon Glyph="&#xE712;" FontSize="13"/>
                                     </Button>
                                 </Grid>
                             </DataTemplate>
                         </ListView.ItemTemplate>
                     </ListView>
-                </Border>
+                </Grid>
             </Grid>
         </Grid>
     </Grid>
-</UserControl>
+</Page>

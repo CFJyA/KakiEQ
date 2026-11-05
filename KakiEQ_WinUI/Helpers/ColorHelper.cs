@@ -12,9 +12,12 @@ namespace KakiEQ_WinUI.Helpers
 {
     public static class ColorHelper
     {
-        private static readonly SolidColorBrush DefaultBrush = new(Color.FromArgb(255, 30, 30, 30));
+        private static SolidColorBrush? _defaultBrush;
 
-        public static SolidColorBrush GetDefaultBrush() => DefaultBrush;
+        public static SolidColorBrush GetDefaultBrush()
+        {
+            return _defaultBrush ??= new SolidColorBrush(Color.FromArgb(255, 30, 30, 30));
+        }
 
         public static SolidColorBrush FromHex(string hex)
         {
@@ -38,13 +41,13 @@ namespace KakiEQ_WinUI.Helpers
                 }
             }
             catch { }
-            return DefaultBrush;
+            return GetDefaultBrush();
         }
 
         public static async Task<SolidColorBrush> GetDominantColorAsync(string? imagePath)
         {
             if (string.IsNullOrEmpty(imagePath) || !File.Exists(imagePath))
-                return DefaultBrush;
+                return GetDefaultBrush();
 
             try
             {
@@ -79,7 +82,7 @@ namespace KakiEQ_WinUI.Helpers
                     count++;
                 }
 
-                if (count == 0) return DefaultBrush;
+                if (count == 0) return GetDefaultBrush();
 
                 byte avgR = (byte)(r / count);
                 byte avgG = (byte)(g / count);
@@ -94,7 +97,7 @@ namespace KakiEQ_WinUI.Helpers
             }
             catch
             {
-                return DefaultBrush;
+                return GetDefaultBrush();
             }
         }
     }

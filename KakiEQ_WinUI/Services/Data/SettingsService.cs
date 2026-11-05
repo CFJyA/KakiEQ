@@ -1,6 +1,8 @@
 using System;
 using System.IO;
 using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 using KakiEQ_WinUI.Models;
 
 namespace KakiEQ_WinUI.Services.Data
@@ -25,6 +27,14 @@ namespace KakiEQ_WinUI.Services.Data
     public class SettingsService
     {
         private readonly string _settingsPath;
+        private readonly object _lock = new();
+        private AppSettings? _cachedSettings;
+        private CancellationTokenSource? _saveDebounceCts;
+
+        private static readonly JsonSerializerOptions JsonOptions = new()
+        {
+            WriteIndented = true
+        };
 
         public SettingsService()
         {
@@ -35,30 +45,61 @@ namespace KakiEQ_WinUI.Services.Data
 
         public AppSettings LoadSettings()
         {
-            if (File.Exists(_settingsPath))
+            lock (_lock)
             {
-                try
+                if (_cachedSettings != null)
                 {
-                    var json = File.ReadAllText(_settingsPath);
-                    return JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
+                    return _cachedSettings;
                 }
-                catch
+
+                if (File.Exists(_settingsPath))
                 {
-                    return new AppSettings();
+                    try
+                    {
+                        var json = File.ReadAllText(_settingsPath);
+                        _cachedSettings = JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
+                        return _cachedSettings;
+                    }
+                    catch
+                    {
+                        _cachedSettings = new AppSettings();
+                        return _cachedSettings;
+                    }
                 }
+
+                _cachedSettings = new AppSettings();
+                return _cachedSettings;
             }
-            return new AppSettings();
         }
 
         public void SaveSettings(AppSettings settings)
         {
-            try
+            lock (_lock)
             {
-                var json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
-                File.WriteAllText(_settingsPath, json);
+                _cachedSettings = settings;
+                _saveDebounceCts?.Cancel();
+                _saveDebounceCts = new CancellationTokenSource();
+                var token = _saveDebounceCts.Token;
+
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await Task.Delay(180, token);
+                        if (token.IsCancellationRequested) return;
+
+                        string json;
+                        lock (_lock)
+                        {
+                            json = JsonSerializer.Serialize(_cachedSettings, JsonOptions);
+                        }
+                        await File.WriteAllTextAsync(_settingsPath, json, token);
+                    }
+                    catch
+                    {
+                    }
+                }, token);
             }
-            catch { }
         }
     }
 }
-

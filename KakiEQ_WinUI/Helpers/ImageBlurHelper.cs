@@ -43,7 +43,9 @@ namespace KakiEQ_WinUI.Helpers
                 {
                     try
                     {
-                        string effectiveSource = ImageHelper.EnsureDisplayableImage(originalCoverPath);
+                        string? effectiveSource = ImageHelper.EnsureDisplayableImage(originalCoverPath);
+                        if (string.IsNullOrEmpty(effectiveSource) || !File.Exists(effectiveSource))
+                            return null;
                         using var inFs = new FileStream(effectiveSource, FileMode.Open, FileAccess.Read, FileShare.Read);
                         using var inStream = inFs.AsRandomAccessStream();
                         var decoder = await BitmapDecoder.CreateAsync(inStream);

@@ -26,6 +26,9 @@ namespace KakiEQ_WinUI
         private Views.MetadataWindow? _metadataWindow;
         private Views.MiniPlayerWindow? _miniPlayerWindow;
         private bool _isExiting = false;
+        private OverlappedPresenterState _lastWindowState = OverlappedPresenterState.Restored;
+        private readonly System.Collections.Generic.Dictionary<Type, Page> _persistentPages = new();
+        private FrameworkElement? _activePageElement;
 
         public MainWindow()
         {
@@ -33,8 +36,9 @@ namespace KakiEQ_WinUI
             InitializeComponent();
 
             // Setup Custom TitleBar with Native Windows Caption Buttons
+            // Use AppTitleBarDragRegion (Columns 0 & 1) so Column 2 buttons (Metadatos & Ajustes) receive full pointer hover events
             ExtendsContentIntoTitleBar = true;
-            SetTitleBar(AppTitleBar);
+            SetTitleBar(AppTitleBarDragRegion);
 
             // Configure Window Size and Position
             var appWindow = GetAppWindow();
@@ -42,7 +46,7 @@ namespace KakiEQ_WinUI
             {
                 appWindow.Resize(new SizeInt32(1150, 760));
                 UpdateWindowIcon(appWindow);
-                
+
                 var settings = ViewModel.SettingsService.LoadSettings();
                 bool isLight = !settings.IsDarkMode;
                 if (Content is FrameworkElement fe)
@@ -54,7 +58,12 @@ namespace KakiEQ_WinUI
                 // Intercept close event to offer background execution
                 appWindow.Closing += AppWindow_Closing;
 
-                // Sync FullScreen state and Maximized state
+                if (appWindow.Presenter is OverlappedPresenter initialOp)
+                {
+                    _lastWindowState = initialOp.State;
+                }
+
+                // Sync FullScreen state, Maximized state, and trigger smooth Window State Reflow Animation
                 appWindow.Changed += (s, args) =>
                 {
                     if (args.DidPresenterChange)
@@ -63,7 +72,29 @@ namespace KakiEQ_WinUI
                     }
                     if (appWindow.Presenter is OverlappedPresenter op)
                     {
-                        ViewModel.IsWindowMaximized = (op.State == OverlappedPresenterState.Maximized);
+                        var currentState = op.State;
+                        bool isMax = (currentState == OverlappedPresenterState.Maximized);
+                        ViewModel.IsWindowMaximized = isMax;
+
+                        if (currentState != _lastWindowState)
+                        {
+                            _lastWindowState = currentState;
+                            if (currentState == OverlappedPresenterState.Maximized || currentState == OverlappedPresenterState.Restored)
+                            {
+                                DispatcherQueue.TryEnqueue(() =>
+                                {
+                                    Helpers.FluidAnimationHelper.PlayWindowStateReflowAnimation(_activePageElement ?? ContentFrame.Content as FrameworkElement, isMax);
+                                    foreach (var mountedPage in _persistentPages.Values)
+                                    {
+                                        if (!ReferenceEquals(mountedPage, _activePageElement))
+                                        {
+                                            Helpers.FluidAnimationHelper.PlayWindowStateReflowAnimation(mountedPage, isMax);
+                                            Helpers.FluidAnimationHelper.SetPageActiveState(mountedPage, false, false);
+                                        }
+                                    }
+                                });
+                            }
+                        }
                     }
                 };
 
@@ -95,10 +126,14 @@ namespace KakiEQ_WinUI
             _trayService.PreviousRequested += () => ViewModel.PreviousCommand.Execute(null);
             _trayService.ExitRequested += ExitApplication;
 
-            // Monitor track change to update tray tooltip
+            // Monitor ViewModel changes for Frame Page navigation and tray tooltip
             ViewModel.PropertyChanged += (s, e) =>
             {
-                if (e.PropertyName == nameof(ViewModel.CurrentTrack))
+                if (e.PropertyName == nameof(ViewModel.CurrentView))
+                {
+                    NavigateToView(ViewModel.CurrentView);
+                }
+                else if (e.PropertyName == nameof(ViewModel.CurrentTrack))
                 {
                     var track = ViewModel.CurrentTrack;
                     if (track != null)
@@ -112,8 +147,158 @@ namespace KakiEQ_WinUI
                 }
             };
 
+            // Navigate to initial Page
+            NavigateToView(ViewModel.CurrentView);
+
+            // Pre-mount primary pages in the visual tree during idle ticks so first switch is 0ms
+            _ = PrewarmPrimaryPagesAsync();
+
             // Check if initial music folder needs to be selected
             _ = CheckInitialMusicFolderAsync();
+        }
+
+        private Page? GetOrMountPrimaryPage(Type pageType, object viewModel)
+        {
+            if (PagesHostGrid == null) return null;
+
+            if (_persistentPages.TryGetValue(pageType, out var existingPage))
+            {
+                if (!ReferenceEquals(existingPage.DataContext, viewModel))
+                {
+                    existingPage.DataContext = viewModel;
+                }
+                return existingPage;
+            }
+
+            Page? newPage = pageType switch
+            {
+                Type t when t == typeof(Views.HomeView) => new Views.HomeView { DataContext = viewModel },
+                Type t when t == typeof(Views.LibraryView) => new Views.LibraryView { DataContext = viewModel },
+                Type t when t == typeof(Views.AlbumsView) => new Views.AlbumsView { DataContext = viewModel },
+                Type t when t == typeof(Views.ArtistsView) => new Views.ArtistsView { DataContext = viewModel },
+                Type t when t == typeof(Views.PlaylistsView) => new Views.PlaylistsView { DataContext = viewModel },
+                Type t when t == typeof(Views.EqualizerView) => new Views.EqualizerView { DataContext = viewModel },
+                Type t when t == typeof(Views.MultiOutputView) => new Views.MultiOutputView { DataContext = viewModel },
+                _ => null
+            };
+
+            if (newPage != null)
+            {
+                newPage.HorizontalAlignment = HorizontalAlignment.Stretch;
+                newPage.VerticalAlignment = VerticalAlignment.Stretch;
+                Helpers.FluidAnimationHelper.SetPageActiveState(newPage, false, false);
+                _persistentPages[pageType] = newPage;
+                PagesHostGrid.Children.Add(newPage);
+            }
+
+            return newPage;
+        }
+
+        private async Task PrewarmPrimaryPagesAsync()
+        {
+            await Task.Delay(320);
+
+            (Type pageType, Func<object> getVm)[] pagesToWarm = new (Type, Func<object>)[]
+            {
+                (typeof(Views.LibraryView), () => ViewModel.LibraryVm),
+                (typeof(Views.ArtistsView), () => ViewModel.ArtistsVm),
+                (typeof(Views.AlbumsView), () => ViewModel.AlbumsVm),
+                (typeof(Views.PlaylistsView), () => ViewModel.PlaylistsVm),
+            };
+
+            foreach (var (pageType, getVm) in pagesToWarm)
+            {
+                await Task.Delay(90);
+                DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
+                {
+                    if (!_persistentPages.ContainsKey(pageType))
+                    {
+                        var page = GetOrMountPrimaryPage(pageType, getVm());
+                        if (page != null && !ReferenceEquals(_activePageElement, page))
+                        {
+                            Helpers.FluidAnimationHelper.SetPageActiveState(page, false, false);
+                        }
+                    }
+                });
+            }
+        }
+
+        private void NavigateToView(object? viewModel)
+        {
+            if (viewModel == null || PagesHostGrid == null || ContentFrame == null) return;
+
+            bool isDetailView = viewModel is AlbumDetailViewModel or ArtistDetailViewModel or PlaylistDetailViewModel;
+
+            if (!isDetailView)
+            {
+                Type? primaryPageType = viewModel switch
+                {
+                    HomeViewModel => typeof(Views.HomeView),
+                    LibraryViewModel => typeof(Views.LibraryView),
+                    AlbumsViewModel => typeof(Views.AlbumsView),
+                    ArtistsViewModel => typeof(Views.ArtistsView),
+                    PlaylistsViewModel => typeof(Views.PlaylistsView),
+                    EqualizerViewModel => typeof(Views.EqualizerView),
+                    MultiOutputViewModel => typeof(Views.MultiOutputView),
+                    _ => null
+                };
+
+                if (primaryPageType == null) return;
+
+                var targetPage = GetOrMountPrimaryPage(primaryPageType, viewModel);
+                if (targetPage == null) return;
+
+                if (ReferenceEquals(_activePageElement, targetPage) && ContentFrame.Visibility == Visibility.Collapsed)
+                {
+                    return;
+                }
+
+                // Hide Detail Frame without unloading primary pages
+                if (ContentFrame.Visibility == Visibility.Visible)
+                {
+                    Helpers.FluidAnimationHelper.SetPageActiveState(ContentFrame, false, false);
+                    ContentFrame.Visibility = Visibility.Collapsed;
+                }
+
+                // Deactivate other primary pages while keeping them mounted in the visual tree
+                foreach (var kvp in _persistentPages)
+                {
+                    if (!ReferenceEquals(kvp.Value, targetPage))
+                    {
+                        Helpers.FluidAnimationHelper.SetPageActiveState(kvp.Value, false, false);
+                    }
+                }
+
+                // Activate target primary page with zero visual tree rebuild
+                _activePageElement = targetPage;
+                Helpers.FluidAnimationHelper.SetPageActiveState(targetPage, true, animateEntrance: true);
+                return;
+            }
+
+            Type? detailPageType = viewModel switch
+            {
+                AlbumDetailViewModel => typeof(Views.AlbumDetailView),
+                ArtistDetailViewModel => typeof(Views.ArtistDetailView),
+                PlaylistDetailViewModel => typeof(Views.PlaylistDetailView),
+                _ => null
+            };
+
+            if (detailPageType == null) return;
+
+            // Keep all primary pages mounted in the visual tree (zero container teardown!) while hiding them visually
+            foreach (var kvp in _persistentPages)
+            {
+                Helpers.FluidAnimationHelper.SetPageActiveState(kvp.Value, false, false);
+            }
+
+            ContentFrame.Visibility = Visibility.Visible;
+            _activePageElement = ContentFrame;
+            Helpers.FluidAnimationHelper.SetPageActiveState(ContentFrame, true, animateEntrance: true);
+
+            ContentFrame.Navigate(
+                detailPageType,
+                viewModel,
+                new Microsoft.UI.Xaml.Media.Animation.SuppressNavigationTransitionInfo());
         }
 
         public AppWindow? GetAppWindow()
@@ -253,23 +438,28 @@ namespace KakiEQ_WinUI
         {
             _isExiting = true;
             _trayService?.Dispose();
-            _settingsWindow?.Close();
-            _metadataWindow?.Close();
+            if (_settingsWindow != null)
+            {
+                _settingsWindow.AllowClose = true;
+                _settingsWindow.Close();
+            }
+            if (_metadataWindow != null)
+            {
+                _metadataWindow.AllowClose = true;
+                _metadataWindow.Close();
+            }
             _miniPlayerWindow?.Close();
             Application.Current.Exit();
         }
 
         public void OpenSettings_Click(object sender, RoutedEventArgs e)
         {
-            if (_settingsWindow != null)
+            if (_settingsWindow == null)
             {
-                _settingsWindow.Activate();
-                return;
+                _settingsWindow = new Views.SettingsWindow();
+                _settingsWindow.Closed += (s, ev) => _settingsWindow = null;
             }
-
-            _settingsWindow = new Views.SettingsWindow();
-            _settingsWindow.Closed += (s, ev) => _settingsWindow = null;
-            _settingsWindow.Activate();
+            _settingsWindow.ShowWindow();
         }
 
         public void OpenMetadata_Click(object sender, RoutedEventArgs e)
@@ -279,15 +469,12 @@ namespace KakiEQ_WinUI
 
         public void OpenMetadataWindow(Track? track = null)
         {
-            if (_metadataWindow != null)
+            if (_metadataWindow == null)
             {
-                _metadataWindow.Activate();
-                return;
+                _metadataWindow = new Views.MetadataWindow();
+                _metadataWindow.Closed += (s, ev) => _metadataWindow = null;
             }
-
-            _metadataWindow = new Views.MetadataWindow(track);
-            _metadataWindow.Closed += (s, ev) => _metadataWindow = null;
-            _metadataWindow.Activate();
+            _metadataWindow.ShowWindow(track);
         }
 
         public void OpenMiniPlayer_Click(object sender, RoutedEventArgs e)
@@ -706,7 +893,7 @@ namespace KakiEQ_WinUI
                 // Add to the root grid
                 if (Content is Grid rootGrid)
                 {
-                    Grid.SetRowSpan(toastBorder, 3);
+                    Grid.SetRowSpan(toastBorder, 2);
                     Canvas.SetZIndex(toastBorder, 200);
                     rootGrid.Children.Add(toastBorder);
 
@@ -725,4 +912,3 @@ namespace KakiEQ_WinUI
         }
     }
 }
-

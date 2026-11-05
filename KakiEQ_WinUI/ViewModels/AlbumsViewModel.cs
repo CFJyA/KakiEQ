@@ -41,60 +41,57 @@ namespace KakiEQ_WinUI.ViewModels
 
         public async Task LoadAlbumsAsync()
         {
-            var tracks = await _dbService.GetAllTracksAsync();
-
-            var uniqueAlbums = new List<AlbumItem>();
-            var albumGroups = tracks
-                .Where(t => !string.IsNullOrWhiteSpace(t.Album))
-                .GroupBy(t => t.Album.Trim(), StringComparer.OrdinalIgnoreCase);
-
-            foreach (var group in albumGroups)
+            var uniqueAlbums = await Task.Run(async () =>
             {
-                // Find all individual artists mentioned across tracks in this album
-                var allArtists = group.SelectMany(t => ArtistHelper.SplitArtists(t.Artist)).ToList();
+                var tracks = await _dbService.GetAllTracksAsync();
 
-                // Determine the dominant artist for this album (the most frequent primary artist)
-                string dominantArtist = allArtists
-                    .GroupBy(a => a, StringComparer.OrdinalIgnoreCase)
-                    .OrderByDescending(ag => ag.Count())
-                    .FirstOrDefault()?.Key
-                    ?? group.FirstOrDefault()?.Artist
-                    ?? "Desconocido";
+                var result = new List<AlbumItem>();
+                var albumGroups = tracks
+                    .Where(t => !string.IsNullOrWhiteSpace(t.Album))
+                    .GroupBy(t => t.Album.Trim(), StringComparer.OrdinalIgnoreCase);
 
-                // Tracks that share the dominant artist belong to this main album
-                var matchingTracks = group.Where(t => ArtistHelper.TrackHasArtist(t, dominantArtist)).ToList();
-                var otherTracks = group.Where(t => !ArtistHelper.TrackHasArtist(t, dominantArtist)).ToList();
-
-                var coverPath = matchingTracks.FirstOrDefault(t => !string.IsNullOrEmpty(t.CoverImagePath))?.CoverImagePath
-                             ?? group.FirstOrDefault(t => !string.IsNullOrEmpty(t.CoverImagePath))?.CoverImagePath;
-
-                uniqueAlbums.Add(new AlbumItem
+                foreach (var group in albumGroups)
                 {
-                    Title = group.Key,
-                    Artist = dominantArtist,
-                    CoverImagePath = coverPath,
-                    DominantColorBrush = ColorHelper.GetDefaultBrush()
-                });
+                    var allArtists = group.SelectMany(t => ArtistHelper.SplitArtists(t.Artist)).ToList();
 
-                // If there are tracks with the exact same album title by completely disjoint artists (e.g. another artist's "Greatest Hits")
-                if (otherTracks.Count > 0)
-                {
-                    var otherGroups = otherTracks.GroupBy(t => ArtistHelper.SplitArtists(t.Artist).FirstOrDefault() ?? t.Artist.Trim(), StringComparer.OrdinalIgnoreCase);
-                    foreach (var og in otherGroups)
+                    string dominantArtist = allArtists
+                        .GroupBy(a => a, StringComparer.OrdinalIgnoreCase)
+                        .OrderByDescending(ag => ag.Count())
+                        .FirstOrDefault()?.Key
+                        ?? group.FirstOrDefault()?.Artist
+                        ?? "Desconocido";
+
+                    var matchingTracks = group.Where(t => ArtistHelper.TrackHasArtist(t, dominantArtist)).ToList();
+                    var otherTracks = group.Where(t => !ArtistHelper.TrackHasArtist(t, dominantArtist)).ToList();
+
+                    var coverPath = matchingTracks.FirstOrDefault(t => !string.IsNullOrEmpty(t.CoverImagePath))?.CoverImagePath
+                                 ?? group.FirstOrDefault(t => !string.IsNullOrEmpty(t.CoverImagePath))?.CoverImagePath;
+
+                    result.Add(new AlbumItem
                     {
-                        var otherCover = og.FirstOrDefault(t => !string.IsNullOrEmpty(t.CoverImagePath))?.CoverImagePath;
-                        uniqueAlbums.Add(new AlbumItem
+                        Title = group.Key,
+                        Artist = dominantArtist,
+                        CoverImagePath = coverPath
+                    });
+
+                    if (otherTracks.Count > 0)
+                    {
+                        var otherGroups = otherTracks.GroupBy(t => ArtistHelper.SplitArtists(t.Artist).FirstOrDefault() ?? t.Artist.Trim(), StringComparer.OrdinalIgnoreCase);
+                        foreach (var og in otherGroups)
                         {
-                            Title = group.Key,
-                            Artist = og.Key,
-                            CoverImagePath = otherCover,
-                            DominantColorBrush = ColorHelper.GetDefaultBrush()
-                        });
+                            var otherCover = og.FirstOrDefault(t => !string.IsNullOrEmpty(t.CoverImagePath))?.CoverImagePath;
+                            result.Add(new AlbumItem
+                            {
+                                Title = group.Key,
+                                Artist = og.Key,
+                                CoverImagePath = otherCover
+                            });
+                        }
                     }
                 }
-            }
 
-            uniqueAlbums = uniqueAlbums.OrderBy(a => a.Title).ToList();
+                return result.OrderBy(a => a.Title).ToList();
+            });
 
             RunOnUIThread(() =>
             {

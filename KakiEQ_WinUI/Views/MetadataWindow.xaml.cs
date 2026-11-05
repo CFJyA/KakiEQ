@@ -26,6 +26,8 @@ namespace KakiEQ_WinUI.Views
         private Track? _selectedTrack;
         private string? _pendingNewCoverPath;
         private string? _loadedLyrics;
+        private AppWindow? _appWindow;
+        public bool AllowClose { get; set; } = false;
 
         // LRC Preview playback fields
         private int _lrcStream = 0;
@@ -41,25 +43,51 @@ namespace KakiEQ_WinUI.Views
 
             ConfigureWindow();
             this.Closed += (s, e) => StopLrcPlayback();
-            _ = LoadTracksAsync(trackToSelect);
+        }
+
+        public void ShowWindow(Track? trackToSelect = null)
+        {
+            var vm = MainViewModel.Instance;
+            if (vm != null && Content is FrameworkElement fe)
+            {
+                fe.RequestedTheme = vm.IsLightTheme ? ElementTheme.Light : ElementTheme.Dark;
+            }
+
+            _appWindow?.Show();
+            Activate();
+
+            // Defer track list binding until after the window frame is visible and active
+            DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
+            {
+                _ = LoadTracksAsync(trackToSelect);
+            });
         }
 
         private void ConfigureWindow()
         {
             IntPtr hwnd = WindowNative.GetWindowHandle(this);
             WindowId windowId = Win32Interop.GetWindowIdFromWindow(hwnd);
-            var appWindow = AppWindow.GetFromWindowId(windowId);
-            if (appWindow != null)
+            _appWindow = AppWindow.GetFromWindowId(windowId);
+            if (_appWindow != null)
             {
-                appWindow.Resize(new SizeInt32(1100, 740));
+                _appWindow.Resize(new SizeInt32(1100, 740));
+                _appWindow.Closing += (s, args) =>
+                {
+                    if (!AllowClose)
+                    {
+                        args.Cancel = true;
+                        StopLrcPlayback();
+                        _appWindow.Hide();
+                    }
+                };
                 
                 string iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "Kaki_Oficial_Blanco.ico");
                 if (File.Exists(iconPath))
                 {
-                    appWindow.SetIcon(iconPath);
+                    _appWindow.SetIcon(iconPath);
                 }
 
-                var titleBar = appWindow.TitleBar;
+                var titleBar = _appWindow.TitleBar;
                 if (titleBar != null)
                 {
                     titleBar.ButtonBackgroundColor = Colors.Transparent;
@@ -80,15 +108,33 @@ namespace KakiEQ_WinUI.Views
             var vm = MainViewModel.Instance;
             if (vm != null)
             {
-                _allTracks = await vm.DbService.GetAllTracksAsync();
-                
-                // Assign display indexes
-                for (int i = 0; i < _allTracks.Count; i++)
+                // Reuse in-memory tracks if already loaded, otherwise query SQLite on background thread
+                if (vm.LibraryVm.AllTracks.Count > 0)
                 {
-                    _allTracks[i].DisplayIndex = i + 1;
+                    _allTracks = vm.LibraryVm.AllTracks.ToList();
+                }
+                else
+                {
+                    _allTracks = await Task.Run(() => vm.DbService.GetAllTracksAsync());
                 }
 
-                FilterAndDisplayTracks();
+                // Assign display indexes without redundant PropertyChanged notifications
+                for (int i = 0; i < _allTracks.Count; i++)
+                {
+                    if (_allTracks[i].DisplayIndex != i + 1)
+                    {
+                        _allTracks[i].DisplayIndex = i + 1;
+                    }
+                }
+
+                if (!ReferenceEquals(TracksListView.ItemsSource, _allTracks) || !string.IsNullOrEmpty(SearchBox.Text))
+                {
+                    FilterAndDisplayTracks();
+                }
+                else
+                {
+                    FileCountLabel.Text = $"{_allTracks.Count} canciones";
+                }
 
                 if (initialTrack != null)
                 {
@@ -99,7 +145,7 @@ namespace KakiEQ_WinUI.Views
                         TracksListView.ScrollIntoView(match);
                     }
                 }
-                else if (_allTracks.Count > 0)
+                else if (TracksListView.SelectedItem == null && _allTracks.Count > 0)
                 {
                     TracksListView.SelectedIndex = 0;
                 }
@@ -155,70 +201,102 @@ namespace KakiEQ_WinUI.Views
 
             string ext = Path.GetExtension(track.FilePath).TrimStart('.').ToUpperInvariant();
             FormatText.Text = ext;
+            DisplayLyricsStatusText.Text = "Cargando letra...";
 
-            // Load extended tags with TagLib
-            try
+            // Fast non-blocking cover preview from cached cover file if available
+            string? coverPath = track.CoverImagePath;
+            bool hasCachedCover = !string.IsNullOrEmpty(coverPath) && File.Exists(coverPath);
+            if (hasCachedCover && coverPath != null)
             {
-                if (File.Exists(track.FilePath))
+                try
                 {
-                    using var tfile = TagLib.File.Create(track.FilePath);
-                    var tag = tfile.Tag;
+                    CoverImageDisplay.Source = new BitmapImage(new Uri(coverPath));
+                }
+                catch
+                {
+                    CoverImageDisplay.Source = null;
+                }
+            }
+            else
+            {
+                CoverImageDisplay.Source = null;
+            }
 
-                    DisplayYearText.Text = tag.Year > 0 ? tag.Year.ToString() : "-";
-                    DisplayTrackNumberText.Text = tag.Track > 0 ? tag.Track.ToString() : "-";
-                    DisplayGenreText.Text = string.IsNullOrWhiteSpace(tag.FirstGenre) ? "-" : tag.FirstGenre;
-                    DisplayComposerText.Text = string.IsNullOrWhiteSpace(tag.FirstComposer) ? "-" : tag.FirstComposer;
-                    DisplayAlbumArtistText.Text = string.IsNullOrWhiteSpace(tag.FirstAlbumArtist) ? "-" : tag.FirstAlbumArtist;
-                    DisplayLyricsStatusText.Text = "Cargando letra...";
+            // Read TagLib extended tags and LRC on a background thread so UI never freezes
+            string filePath = track.FilePath;
+            _ = Task.Run(async () =>
+            {
+                string yearText = "-";
+                string trackNumText = "-";
+                string genreText = "-";
+                string composerText = "-";
+                string albumArtistText = "-";
+                string tagTypesText = "ID3v2 / Metadata";
+                byte[]? embeddedCoverBytes = null;
 
-                    _ = Task.Run(async () =>
+                try
+                {
+                    if (File.Exists(filePath))
                     {
-                        var lrc = await LrcService.LoadRawLrcForTrackAsync(track);
-                        this.DispatcherQueue.TryEnqueue(() =>
+                        using var tfile = TagLib.File.Create(filePath);
+                        var tag = tfile.Tag;
+
+                        yearText = tag.Year > 0 ? tag.Year.ToString() : "-";
+                        trackNumText = tag.Track > 0 ? tag.Track.ToString() : "-";
+                        genreText = string.IsNullOrWhiteSpace(tag.FirstGenre) ? "-" : tag.FirstGenre;
+                        composerText = string.IsNullOrWhiteSpace(tag.FirstComposer) ? "-" : tag.FirstComposer;
+                        albumArtistText = string.IsNullOrWhiteSpace(tag.FirstAlbumArtist) ? "-" : tag.FirstAlbumArtist;
+                        tagTypesText = tfile.TagTypes.ToString().Replace(", ", " • ");
+
+                        if (!hasCachedCover && tag.Pictures.Length > 0)
                         {
-                            _loadedLyrics = lrc;
-                            if (!string.IsNullOrWhiteSpace(lrc))
-                            {
-                                if (lrc.Contains("[") && lrc.Contains("]"))
-                                    DisplayLyricsStatusText.Text = "Letra sincronizada (LRC)";
-                                else
-                                    DisplayLyricsStatusText.Text = "Letra disponible (Texto plano)";
-                            }
-                            else
-                            {
-                                DisplayLyricsStatusText.Text = "Sin letra sincronizada";
-                            }
-                        });
-                    });
-
-                    string tagTypes = tfile.TagTypes.ToString();
-                    TagTypeText.Text = tagTypes.Replace(", ", " • ");
-
-                    // Artwork display
-                    if (tag.Pictures.Length > 0)
-                    {
-                        var pic = tag.Pictures[0];
-                        byte[] dispBytes = Helpers.ImageHelper.EnsureDisplayableBytes(pic.Data.Data);
-                        using var ms = new MemoryStream(dispBytes);
-                        var bitmap = new BitmapImage();
-                        _ = bitmap.SetSourceAsync(ms.AsRandomAccessStream());
-                        CoverImageDisplay.Source = bitmap;
+                            embeddedCoverBytes = Helpers.ImageHelper.EnsureDisplayableBytes(tag.Pictures[0].Data.Data);
+                        }
                     }
-                    else if (!string.IsNullOrEmpty(track.CoverImagePath) && File.Exists(track.CoverImagePath))
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Error reading tags: {ex.Message}");
+                }
+
+                var lrc = await LrcService.LoadRawLrcForTrackAsync(track);
+
+                DispatcherQueue.TryEnqueue(() =>
+                {
+                    if (_selectedTrack != track) return;
+
+                    DisplayYearText.Text = yearText;
+                    DisplayTrackNumberText.Text = trackNumText;
+                    DisplayGenreText.Text = genreText;
+                    DisplayComposerText.Text = composerText;
+                    DisplayAlbumArtistText.Text = albumArtistText;
+                    TagTypeText.Text = tagTypesText;
+
+                    _loadedLyrics = lrc;
+                    if (!string.IsNullOrWhiteSpace(lrc))
                     {
-                        CoverImageDisplay.Source = Helpers.ImageHelper.LoadBitmapSync(track.CoverImagePath);
+                        DisplayLyricsStatusText.Text = (lrc.Contains("[") && lrc.Contains("]"))
+                            ? "Letra sincronizada (LRC)"
+                            : "Letra disponible (Texto plano)";
                     }
                     else
                     {
-                        CoverImageDisplay.Source = null;
+                        DisplayLyricsStatusText.Text = "Sin letra sincronizada";
                     }
-                }
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Error reading tags: {ex.Message}");
-                CoverImageDisplay.Source = null;
-            }
+
+                    if (!hasCachedCover && embeddedCoverBytes != null)
+                    {
+                        try
+                        {
+                            using var ms = new MemoryStream(embeddedCoverBytes);
+                            var bitmap = new BitmapImage();
+                            _ = bitmap.SetSourceAsync(ms.AsRandomAccessStream());
+                            CoverImageDisplay.Source = bitmap;
+                        }
+                        catch { }
+                    }
+                });
+            });
         }
 
         private void StartEditMode_Click(object sender, RoutedEventArgs e)

@@ -29,9 +29,12 @@ namespace KakiEQ_WinUI.Models
                 {
                     _coverImagePath = value;
                     OnPropertyChanged();
+                    OnPropertyChanged(nameof(CoverCardSource));
                 }
             }
         }
+
+        public Microsoft.UI.Xaml.Media.ImageSource? CoverCardSource => Helpers.ImageHelper.GetCachedCardCover(_coverImagePath);
 
         private int _trackCount;
         public int TrackCount
