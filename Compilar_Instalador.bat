@@ -8,7 +8,7 @@ echo ==========================================================
 echo.
 
 echo [1/3] Publicando aplicacion independiente (self-contained)...
-dotnet publish "KakiEQ_WinUI\KakiEQ_WinUI.csproj" /p:PublishProfile=win-x64
+dotnet publish "KakiEQ_WinUI\KakiEQ_WinUI.csproj" -c Release -r win-x64 --self-contained true -p:Platform=x64 /p:PublishProfile=win-x64 -o "publish\win-x64"
 if %ERRORLEVEL% NEQ 0 (
     echo Error al compilar y publicar la aplicacion.
     pause
