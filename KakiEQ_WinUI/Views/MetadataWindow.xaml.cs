@@ -228,6 +228,7 @@ namespace KakiEQ_WinUI.Views
             {
                 string yearText = "-";
                 string trackNumText = "-";
+                string discText = "-";
                 string genreText = "-";
                 string composerText = "-";
                 string albumArtistText = "-";
@@ -243,6 +244,8 @@ namespace KakiEQ_WinUI.Views
 
                         yearText = tag.Year > 0 ? tag.Year.ToString() : "-";
                         trackNumText = tag.Track > 0 ? tag.Track.ToString() : "-";
+                        string extractedDisc = Helpers.DiscMetadataHelper.GetDiscFromTag(tfile);
+                        discText = string.IsNullOrWhiteSpace(extractedDisc) ? "-" : extractedDisc;
                         genreText = string.IsNullOrWhiteSpace(tag.FirstGenre) ? "-" : tag.FirstGenre;
                         composerText = string.IsNullOrWhiteSpace(tag.FirstComposer) ? "-" : tag.FirstComposer;
                         albumArtistText = string.IsNullOrWhiteSpace(tag.FirstAlbumArtist) ? "-" : tag.FirstAlbumArtist;
@@ -267,6 +270,7 @@ namespace KakiEQ_WinUI.Views
 
                     DisplayYearText.Text = yearText;
                     DisplayTrackNumberText.Text = trackNumText;
+                    DisplayDiscText.Text = discText;
                     DisplayGenreText.Text = genreText;
                     DisplayComposerText.Text = composerText;
                     DisplayAlbumArtistText.Text = albumArtistText;
@@ -313,20 +317,24 @@ namespace KakiEQ_WinUI.Views
             EditYearBox.Text = DisplayYearText.Text != "-" ? DisplayYearText.Text : string.Empty;
             EditTrackBox.Text = DisplayTrackNumberText.Text != "-" ? DisplayTrackNumberText.Text : string.Empty;
             EditGenreBox.Text = DisplayGenreText.Text != "-" ? DisplayGenreText.Text : string.Empty;
-            EditDiscBox.Text = string.Empty;
+            EditDiscBox.Text = DisplayDiscText.Text != "-" ? DisplayDiscText.Text : string.Empty;
             EditAlbumArtistBox.Text = DisplayAlbumArtistText.Text != "-" ? DisplayAlbumArtistText.Text : string.Empty;
             EditComposerBox.Text = DisplayComposerText.Text != "-" ? DisplayComposerText.Text : string.Empty;
             EditLyricsBox.Text = _loadedLyrics ?? string.Empty;
 
-            try
+            if (string.IsNullOrEmpty(EditDiscBox.Text))
             {
-                if (File.Exists(_selectedTrack.FilePath))
+                try
                 {
-                    using var tfile = TagLib.File.Create(_selectedTrack.FilePath);
-                    if (tfile.Tag.Disc > 0) EditDiscBox.Text = tfile.Tag.Disc.ToString();
+                    if (File.Exists(_selectedTrack.FilePath))
+                    {
+                        using var tfile = TagLib.File.Create(_selectedTrack.FilePath);
+                        string discVal = Helpers.DiscMetadataHelper.GetDiscFromTag(tfile);
+                        if (!string.IsNullOrEmpty(discVal)) EditDiscBox.Text = discVal;
+                    }
                 }
+                catch { }
             }
-            catch { }
         }
 
         private void CancelEdit_Click(object sender, RoutedEventArgs e)
@@ -386,8 +394,7 @@ namespace KakiEQ_WinUI.Views
                     if (uint.TryParse(EditTrackBox.Text.Trim(), out uint trk))
                         tfile.Tag.Track = trk;
 
-                    if (uint.TryParse(EditDiscBox.Text.Trim(), out uint disc))
-                        tfile.Tag.Disc = disc;
+                    Helpers.DiscMetadataHelper.SetDiscInTag(tfile, EditDiscBox.Text);
 
                     if (!string.IsNullOrWhiteSpace(EditGenreBox.Text))
                         tfile.Tag.Genres = new[] { EditGenreBox.Text.Trim() };
@@ -443,6 +450,7 @@ namespace KakiEQ_WinUI.Views
                 _selectedTrack.Artist = string.Join("; ", finalPerformers);
                 _selectedTrack.Album = EditAlbumBox.Text.Trim();
                 if (int.TryParse(EditTrackBox.Text.Trim(), out int trkNum)) _selectedTrack.TrackNumber = trkNum;
+                _selectedTrack.Disc = Helpers.DiscMetadataHelper.NormalizeSavedDiscValue(EditDiscBox.Text);
                 if (int.TryParse(EditYearBox.Text.Trim(), out int yrNum)) _selectedTrack.Year = yrNum;
                 _selectedTrack.Genre = EditGenreBox.Text.Trim();
 

@@ -67,6 +67,30 @@ namespace KakiEQ_WinUI.Models
             }
         }
 
+        private static readonly SolidColorBrush SelectedBorderBrush =
+            new(Windows.UI.Color.FromArgb(255, 187, 134, 252)); // #BB86FC
+        private static readonly SolidColorBrush DefaultBorderBrush =
+            new(Windows.UI.Color.FromArgb(255, 42, 42, 42));    // #2A2A2A
+
+        private bool _isSelected;
+        public bool IsSelected
+        {
+            get => _isSelected;
+            set
+            {
+                if (_isSelected != value)
+                {
+                    _isSelected = value;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(CardBorderBrush));
+                    OnPropertyChanged(nameof(CardBorderThickness));
+                }
+            }
+        }
+
+        public Brush CardBorderBrush => _isSelected ? SelectedBorderBrush : DefaultBorderBrush;
+        public double CardBorderThickness => _isSelected ? 2.0 : 1.15;
+
         public event PropertyChangedEventHandler? PropertyChanged;
         public void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         {

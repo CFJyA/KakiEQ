@@ -96,6 +96,20 @@ namespace KakiEQ_WinUI.Models
             }
         }
 
+        private string? _disc;
+        public string? Disc
+        {
+            get => _disc;
+            set
+            {
+                if (_disc != value)
+                {
+                    _disc = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
         private int _year;
         public int Year
         {
@@ -238,6 +252,20 @@ namespace KakiEQ_WinUI.Models
 
         [JsonIgnore]
         public string DisplayIndexFormatted => DisplayIndex > 0 ? DisplayIndex.ToString() : (TrackNumber > 0 ? TrackNumber.ToString() : "•");
+
+        [JsonIgnore]
+        public bool IsDiscHeader { get; set; }
+
+        [JsonIgnore]
+        public string DiscHeaderTitle { get; set; } = string.Empty;
+
+        [JsonIgnore]
+        public Microsoft.UI.Xaml.Visibility DiscHeaderRowVisibility =>
+            IsDiscHeader ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed;
+
+        [JsonIgnore]
+        public Microsoft.UI.Xaml.Visibility NormalTrackRowVisibility =>
+            IsDiscHeader ? Microsoft.UI.Xaml.Visibility.Collapsed : Microsoft.UI.Xaml.Visibility.Visible;
 
         public string DurationFormatted => Duration.TotalHours >= 1
             ? Duration.ToString(@"hh\:mm\:ss")

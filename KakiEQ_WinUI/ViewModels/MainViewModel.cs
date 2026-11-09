@@ -1524,6 +1524,7 @@ namespace KakiEQ_WinUI.ViewModels
                     CurrentTrack.Genre = updatedTrack.Genre;
                     CurrentTrack.Year = updatedTrack.Year;
                     CurrentTrack.TrackNumber = updatedTrack.TrackNumber;
+                    CurrentTrack.Disc = updatedTrack.Disc;
 
                     if (!string.IsNullOrEmpty(updatedTrack.CoverImagePath))
                     {
@@ -1552,6 +1553,7 @@ namespace KakiEQ_WinUI.ViewModels
                         qTrack.Genre = updatedTrack.Genre;
                         qTrack.Year = updatedTrack.Year;
                         qTrack.TrackNumber = updatedTrack.TrackNumber;
+                        qTrack.Disc = updatedTrack.Disc;
                         if (!string.IsNullOrEmpty(updatedTrack.CoverImagePath))
                         {
                             qTrack.CoverImagePath = updatedTrack.CoverImagePath;

@@ -28,9 +28,17 @@ namespace KakiEQ_WinUI.Views
 
         private void Track_ItemClick(object sender, ItemClickEventArgs e)
         {
-            if (e.ClickedItem is Track track && DataContext is AlbumDetailViewModel vm)
+            if (e.ClickedItem is Track track && !track.IsDiscHeader && DataContext is AlbumDetailViewModel vm)
             {
                 _ = MainViewModel.Instance?.PlayTrackAsync(track, new List<Track>(vm.Tracks));
+            }
+        }
+
+        private void TracksListView_ContainerContentChanging(ListViewBase sender, ContainerContentChangingEventArgs args)
+        {
+            if (args.ItemContainer is ListViewItem itemContainer && args.Item is Track track)
+            {
+                itemContainer.IsHitTestVisible = !track.IsDiscHeader;
             }
         }
 
@@ -68,7 +76,7 @@ namespace KakiEQ_WinUI.Views
 
         private void MoreButton_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is FrameworkElement btn && ((btn.Tag as Track) ?? (btn.DataContext as Track)) is Track track)
+            if (sender is FrameworkElement btn && ((btn.Tag as Track) ?? (btn.DataContext as Track)) is Track track && !track.IsDiscHeader)
             {
                 TrackContextMenuHelper.ShowAtTarget(track, btn);
             }
@@ -76,7 +84,7 @@ namespace KakiEQ_WinUI.Views
 
         private void TrackRow_RightTapped(object sender, Microsoft.UI.Xaml.Input.RightTappedRoutedEventArgs e)
         {
-            if (sender is FrameworkElement row && ((row.Tag as Track) ?? (row.DataContext as Track)) is Track track)
+            if (sender is FrameworkElement row && ((row.Tag as Track) ?? (row.DataContext as Track)) is Track track && !track.IsDiscHeader)
             {
                 TrackContextMenuHelper.ShowAtTarget(track, row, e.GetPosition(row));
             }

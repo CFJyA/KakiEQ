@@ -122,8 +122,9 @@ namespace KakiEQ_WinUI.Helpers
                 if (gridView.ActualWidth <= 100) return;
                 if (gridView.ItemsPanelRoot is not ItemsWrapGrid wrapGrid) return;
 
-                // Do not override fixed small side-grids (like AlbumDetailView's 330px "More by Artist" grid)
+                // Do not override fixed small side-grids (like AlbumDetailView's 330px "More by Artist" grid or ArtistDetailView's 145x200 tiles)
                 if (!double.IsNaN(gridView.Width) && gridView.Width <= 400) return;
+                if (gridView.Name == "ArtistAlbumsGridView") return;
 
                 double availWidth = gridView.ActualWidth - gridView.Padding.Left - gridView.Padding.Right - 2.0;
                 if (availWidth <= 120) return;
@@ -308,23 +309,32 @@ namespace KakiEQ_WinUI.Helpers
                 {
                     if (isHovered)
                     {
-                        if (rect.GetValue(OriginalStrokeProperty) == null && rect.Stroke != null)
+                        if (root.DataContext is not Models.AlbumItem { IsSelected: true } &&
+                            rect.GetValue(OriginalStrokeProperty) == null && rect.Stroke != null)
                         {
                             rect.SetValue(OriginalStrokeProperty, rect.Stroke);
                             rect.SetValue(OriginalStrokeThicknessProperty, rect.StrokeThickness);
                         }
                         rect.Stroke = HoverCardBorderBrush;
-                        rect.StrokeThickness = 1.65;
+                        rect.StrokeThickness = root.DataContext is Models.AlbumItem { IsSelected: true } ? 2.1 : 1.65;
                     }
                     else
                     {
-                        if (rect.GetValue(OriginalStrokeProperty) is Brush origBrush)
+                        if (root.DataContext is Models.AlbumItem albumItem)
                         {
-                            rect.Stroke = origBrush;
+                            rect.Stroke = albumItem.CardBorderBrush;
+                            rect.StrokeThickness = albumItem.CardBorderThickness;
                         }
-                        if (rect.GetValue(OriginalStrokeThicknessProperty) is double origThickness)
+                        else
                         {
-                            rect.StrokeThickness = origThickness;
+                            if (rect.GetValue(OriginalStrokeProperty) is Brush origBrush)
+                            {
+                                rect.Stroke = origBrush;
+                            }
+                            if (rect.GetValue(OriginalStrokeThicknessProperty) is double origThickness)
+                            {
+                                rect.StrokeThickness = origThickness;
+                            }
                         }
                     }
                 }

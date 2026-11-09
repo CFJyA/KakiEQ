@@ -47,6 +47,7 @@ namespace KakiEQ_WinUI.ViewModels
         }
 
         public ObservableCollection<Track> Tracks { get; } = new();
+        public ObservableCollection<Track> DisplayTracks { get; } = new();
         public ObservableCollection<AlbumItem> MoreByArtist { get; } = new();
 
         public ICommand GoBackCommand { get; }
@@ -79,24 +80,31 @@ namespace KakiEQ_WinUI.ViewModels
 
         public async Task LoadAlbumDetailsAsync()
         {
-            var (albumTracks, artist, cover, lengthStr, uniqueAlbums) = await Task.Run(async () =>
+            var (orderedTracks, displayTracks, artist, cover, lengthStr, uniqueAlbums) = await Task.Run(async () =>
             {
                 var allTracks = await _dbService.GetAllTracksAsync();
 
                 var aTracks = allTracks.Where(t => t.Album.Equals(AlbumTitle, StringComparison.OrdinalIgnoreCase) &&
                                                        (string.IsNullOrEmpty(_artistName) || ArtistHelper.TrackHasArtist(t, _artistName)))
-                                           .OrderBy(t => t.TrackNumber).ToList();
+                                           .ToList();
                 if (aTracks.Count == 0)
                 {
                     aTracks = allTracks.Where(t => t.Album.Equals(AlbumTitle, StringComparison.OrdinalIgnoreCase))
-                                           .OrderBy(t => t.TrackNumber).ToList();
+                                           .ToList();
                 }
-                var firstTrack = aTracks.FirstOrDefault();
+
+                if (DiscMetadataHelper.EnsureTracksDiscLoaded(aTracks))
+                {
+                    await _dbService.InsertTracksAsync(allTracks);
+                }
+
+                var (ordTracks, dispTracks) = DiscMetadataHelper.BuildAlbumTrackLists(aTracks);
+                var firstTrack = ordTracks.FirstOrDefault();
 
                 string art = firstTrack?.Artist ?? string.Empty;
                 string? cov = firstTrack?.CoverImagePath;
 
-                TimeSpan totalSpan = TimeSpan.FromSeconds(aTracks.Sum(t => t.Duration.TotalSeconds));
+                TimeSpan totalSpan = TimeSpan.FromSeconds(ordTracks.Sum(t => t.Duration.TotalSeconds));
                 string lStr = $"{(int)totalSpan.TotalMinutes}m {totalSpan.Seconds}s";
 
                 var artistTracks = allTracks.Where(t => t.Artist == art && t.Album != AlbumTitle);
@@ -107,7 +115,7 @@ namespace KakiEQ_WinUI.ViewModels
                     CoverImagePath = g.FirstOrDefault(t => !string.IsNullOrEmpty(t.CoverImagePath))?.CoverImagePath
                 }).OrderBy(a => a.Title).ToList();
 
-                return (aTracks, art, cov, lStr, uAlbums);
+                return (ordTracks, dispTracks, art, cov, lStr, uAlbums);
             });
 
             RunOnUIThread(() =>
@@ -117,9 +125,15 @@ namespace KakiEQ_WinUI.ViewModels
                 TotalLength = lengthStr;
 
                 Tracks.Clear();
-                foreach (var t in albumTracks)
+                foreach (var t in orderedTracks)
                 {
                     Tracks.Add(t);
+                }
+
+                DisplayTracks.Clear();
+                foreach (var item in displayTracks)
+                {
+                    DisplayTracks.Add(item);
                 }
 
                 MoreByArtist.Clear();
@@ -129,6 +143,7 @@ namespace KakiEQ_WinUI.ViewModels
                 }
 
                 OnPropertyChanged(nameof(Tracks));
+                OnPropertyChanged(nameof(DisplayTracks));
                 OnPropertyChanged(nameof(TotalSongs));
                 OnPropertyChanged(nameof(TotalSongsText));
             });

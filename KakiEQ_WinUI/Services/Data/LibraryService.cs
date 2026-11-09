@@ -164,6 +164,7 @@ namespace KakiEQ_WinUI.Services.Data
                             Genre = string.IsNullOrWhiteSpace(tfile.Tag.FirstGenre) ? "Unknown Genre" : tfile.Tag.FirstGenre,
                             Duration = tfile.Properties.Duration,
                             TrackNumber = (int)tfile.Tag.Track,
+                            Disc = Helpers.DiscMetadataHelper.GetDiscFromTag(tfile),
                             Year = (int)tfile.Tag.Year,
                             DateAdded = dateAdded,
                             CoverImagePath = coverPath,

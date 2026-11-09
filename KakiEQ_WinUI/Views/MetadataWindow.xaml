@@ -99,6 +99,14 @@
                                         <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Disco:" FontSize="12" Foreground="{ThemeResource AppTextSubtle}" Width="90"/>
+                                    <TextBlock Grid.Column="1" x:Name="DisplayDiscText" Text="-" FontSize="12" Foreground="{ThemeResource AppTextPrimary}"/>
+                                </Grid>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
                                     <TextBlock Text="Género:" FontSize="12" Foreground="{ThemeResource AppTextSubtle}" Width="90"/>
                                     <TextBlock Grid.Column="1" x:Name="DisplayGenreText" Text="-" FontSize="12" Foreground="{ThemeResource AppTextPrimary}"/>
                                 </Grid>

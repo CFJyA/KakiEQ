@@ -142,10 +142,10 @@
                 </StackPanel>
 
                 <!-- GridView con TILES de los álbumes -->
-                <GridView Grid.Row="1"
+                <GridView x:Name="ArtistAlbumsGridView"
+                          Grid.Row="1"
                           ItemsSource="{Binding Albums}"
-                          SelectedItem="{Binding SelectedAlbum, Mode=TwoWay}"
-                          SelectionMode="Single"
+                          SelectionMode="None"
                           IsItemClickEnabled="True"
                           ItemClick="Album_ItemClick"
                           Padding="0,0,0,6"
@@ -155,6 +155,25 @@
                             <RepositionThemeTransition IsStaggeringEnabled="False"/>
                         </TransitionCollection>
                     </GridView.ItemContainerTransitions>
+                    <GridView.ItemContainerStyle>
+                        <Style TargetType="GridViewItem">
+                            <Setter Property="Margin" Value="0,0,12,12"/>
+                            <Setter Property="Padding" Value="0"/>
+                            <Setter Property="MinWidth" Value="0"/>
+                            <Setter Property="MinHeight" Value="0"/>
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                            <Setter Property="VerticalContentAlignment" Value="Stretch"/>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="GridViewItem">
+                                        <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                          Margin="{TemplateBinding Padding}"/>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </GridView.ItemContainerStyle>
                     <GridView.ItemsPanel>
                         <ItemsPanelTemplate>
                             <ItemsWrapGrid Orientation="Horizontal"/>
@@ -162,7 +181,7 @@
                     </GridView.ItemsPanel>
                     <GridView.ItemTemplate>
                         <DataTemplate x:DataType="models:AlbumItem">
-                            <Grid Width="145" Height="200" Margin="0,0,12,12"
+                            <Grid Width="145" Height="200"
                                   Background="{ThemeResource AppCardBackground}" CornerRadius="14"
                                   helpers:FluidAnimationHelper.HoverMode="Card"
                                   helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
@@ -188,7 +207,11 @@
                                                    TextTrimming="CharacterEllipsis" MaxLines="1"/>
                                     </StackPanel>
                                 </Grid>
-                                <Rectangle Tag="UniformBorderRect" RadiusX="13" RadiusY="13" Stroke="{ThemeResource AppBorder}" StrokeThickness="1.15" Margin="1" UseLayoutRounding="False" IsHitTestVisible="False"/>
+                                <Rectangle Tag="UniformBorderRect"
+                                           RadiusX="13" RadiusY="13"
+                                           Stroke="{x:Bind CardBorderBrush, Mode=OneWay}"
+                                           StrokeThickness="{x:Bind CardBorderThickness, Mode=OneWay}"
+                                           Margin="1" UseLayoutRounding="False" IsHitTestVisible="False"/>
                             </Grid>
                         </DataTemplate>
                     </GridView.ItemTemplate>
@@ -243,42 +266,59 @@
                 <!-- Scrollable Tracklist of selected album -->
                 <Grid Grid.Row="1" Background="{ThemeResource AppCardBackground}" CornerRadius="14" Padding="4,4">
                     <Rectangle RadiusX="13" RadiusY="13" Stroke="{ThemeResource AppBorder}" StrokeThickness="1.15" Margin="1" UseLayoutRounding="False" IsHitTestVisible="False"/>
-                    <ListView ItemsSource="{Binding SelectedAlbumTracks}"
+                    <ListView ItemsSource="{Binding SelectedAlbumDisplayTracks}"
                               SelectionMode="None"
                               IsItemClickEnabled="True"
                               ItemClick="Track_ItemClick"
+                              ContainerContentChanging="TracksListView_ContainerContentChanging"
                               Padding="0,0,4,8"
                               helpers:FluidAnimationHelper.EnableGridViewReflow="True">
                         <ListView.ItemTemplate>
                             <DataTemplate x:DataType="models:Track">
-                                <Grid Padding="10,7" CornerRadius="6" Background="Transparent"
-                                      RightTapped="TrackRow_RightTapped" Tag="{x:Bind}">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="36"/>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="70"/>
-                                        <ColumnDefinition Width="36"/>
-                                    </Grid.ColumnDefinitions>
+                                <Grid>
+                                    <!-- Spotify-style Disc Separator Header (Only visible when album has >1 disc) -->
+                                    <Grid Padding="10,12,10,5" Visibility="{x:Bind DiscHeaderRowVisibility, Mode=OneWay}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="36"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <FontIcon Grid.Column="0" Glyph="&#xE93C;" FontSize="14" Foreground="{ThemeResource AppTextSecondary}"
+                                                  HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="1" Text="{x:Bind DiscHeaderTitle, Mode=OneWay}" FontSize="13" FontWeight="Bold"
+                                                   Foreground="{ThemeResource AppTextSecondary}" VerticalAlignment="Center"/>
+                                    </Grid>
 
-                                    <!-- Track Number -->
-                                    <TextBlock Grid.Column="0" Text="{x:Bind TrackNumber}" FontSize="12" Foreground="{ThemeResource AppTextMuted}"
-                                               VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                    <!-- Standard Track Row -->
+                                    <Grid Padding="10,7" CornerRadius="6" Background="Transparent"
+                                          Visibility="{x:Bind NormalTrackRowVisibility, Mode=OneWay}"
+                                          RightTapped="TrackRow_RightTapped" Tag="{x:Bind}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="36"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="70"/>
+                                            <ColumnDefinition Width="36"/>
+                                        </Grid.ColumnDefinitions>
 
-                                    <!-- Title -->
-                                    <TextBlock Grid.Column="1" Text="{x:Bind Title}" FontSize="13" FontWeight="SemiBold"
-                                               Foreground="{ThemeResource AppTextPrimary}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                        <!-- Track Number -->
+                                        <TextBlock Grid.Column="0" Text="{x:Bind TrackNumber}" FontSize="12" Foreground="{ThemeResource AppTextMuted}"
+                                                   VerticalAlignment="Center" HorizontalAlignment="Center"/>
 
-                                    <!-- Duration -->
-                                    <TextBlock Grid.Column="2" Text="{x:Bind DurationFormatted}" FontSize="11" Foreground="{ThemeResource AppTextMuted}"
-                                               VerticalAlignment="Center" HorizontalAlignment="Right"/>
+                                        <!-- Title -->
+                                        <TextBlock Grid.Column="1" Text="{x:Bind Title}" FontSize="13" FontWeight="SemiBold"
+                                                   Foreground="{ThemeResource AppTextPrimary}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
 
-                                    <!-- Options Menu (3 dots) -->
-                                    <Button Grid.Column="3" Background="Transparent" BorderThickness="0" Foreground="{ThemeResource AppTextSubtle}"
-                                            Click="MoreButton_Click" Tag="{x:Bind}" Padding="0" Width="28" Height="28" CornerRadius="14"
-                                            HorizontalAlignment="Right" ToolTipService.ToolTip="Más opciones"
-                                            helpers:FluidAnimationHelper.HoverMode="Icon">
-                                        <FontIcon Glyph="&#xE712;" FontSize="13"/>
-                                    </Button>
+                                        <!-- Duration -->
+                                        <TextBlock Grid.Column="2" Text="{x:Bind DurationFormatted}" FontSize="11" Foreground="{ThemeResource AppTextMuted}"
+                                                   VerticalAlignment="Center" HorizontalAlignment="Right"/>
+
+                                        <!-- Options Menu (3 dots) -->
+                                        <Button Grid.Column="3" Background="Transparent" BorderThickness="0" Foreground="{ThemeResource AppTextSubtle}"
+                                                Click="MoreButton_Click" Tag="{x:Bind}" Padding="0" Width="28" Height="28" CornerRadius="14"
+                                                HorizontalAlignment="Right" ToolTipService.ToolTip="Más opciones"
+                                                helpers:FluidAnimationHelper.HoverMode="Icon">
+                                            <FontIcon Glyph="&#xE712;" FontSize="13"/>
+                                        </Button>
+                                    </Grid>
                                 </Grid>
                             </DataTemplate>
                         </ListView.ItemTemplate>

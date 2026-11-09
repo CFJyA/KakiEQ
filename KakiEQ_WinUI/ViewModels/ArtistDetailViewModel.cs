@@ -49,6 +49,7 @@ namespace KakiEQ_WinUI.ViewModels
 
         public ObservableCollection<AlbumItem> Albums { get; } = new();
         public ObservableCollection<Track> SelectedAlbumTracks { get; } = new();
+        public ObservableCollection<Track> SelectedAlbumDisplayTracks { get; } = new();
 
         private AlbumItem? _selectedAlbum;
         public AlbumItem? SelectedAlbum
@@ -56,7 +57,19 @@ namespace KakiEQ_WinUI.ViewModels
             get => _selectedAlbum;
             set
             {
-                _selectedAlbum = value;
+                if (!ReferenceEquals(_selectedAlbum, value))
+                {
+                    if (_selectedAlbum != null)
+                        _selectedAlbum.IsSelected = false;
+                    _selectedAlbum = value;
+                    if (_selectedAlbum != null)
+                        _selectedAlbum.IsSelected = true;
+                }
+                else if (_selectedAlbum != null)
+                {
+                    _selectedAlbum.IsSelected = true;
+                }
+
                 OnPropertyChanged();
                 LoadAlbumTracks(value?.Title);
             }
@@ -99,10 +112,17 @@ namespace KakiEQ_WinUI.ViewModels
 
         public async Task LoadArtistDetailsAsync()
         {
+            string? previouslySelectedAlbumTitle = SelectedAlbum?.Title;
+
             var (artistTracks, uniqueAlbums, genreStr, banner, lengthStr) = await Task.Run(async () =>
             {
                 var tracks = await _dbService.GetAllTracksAsync();
                 var aTracks = tracks.Where(t => Helpers.ArtistHelper.TrackHasArtist(t, ArtistName)).ToList();
+
+                if (DiscMetadataHelper.EnsureTracksDiscLoaded(aTracks))
+                {
+                    await _dbService.InsertTracksAsync(tracks);
+                }
 
                 var uAlbums = aTracks.GroupBy(t => t.Album).Select(g => new AlbumItem
                 {
@@ -140,7 +160,10 @@ namespace KakiEQ_WinUI.ViewModels
 
                 if (Albums.Any())
                 {
-                    SelectedAlbum = Albums.First();
+                    var match = !string.IsNullOrEmpty(previouslySelectedAlbumTitle)
+                        ? Albums.FirstOrDefault(a => a.Title.Equals(previouslySelectedAlbumTitle, StringComparison.OrdinalIgnoreCase))
+                        : null;
+                    SelectedAlbum = match ?? Albums.First();
                 }
             });
         }
@@ -150,14 +173,23 @@ namespace KakiEQ_WinUI.ViewModels
             RunOnUIThread(() =>
             {
                 SelectedAlbumTracks.Clear();
+                SelectedAlbumDisplayTracks.Clear();
                 if (string.IsNullOrEmpty(albumTitle) || _allArtistTracks == null) return;
 
-                var tracks = _allArtistTracks.Where(t => t.Album == albumTitle).OrderBy(t => t.TrackNumber).ToList();
-                foreach (var t in tracks)
+                var rawAlbumTracks = _allArtistTracks.Where(t => t.Album == albumTitle).ToList();
+                var (orderedTracks, displayTracks) = DiscMetadataHelper.BuildAlbumTrackLists(rawAlbumTracks);
+
+                foreach (var t in orderedTracks)
                 {
                     SelectedAlbumTracks.Add(t);
                 }
+                foreach (var item in displayTracks)
+                {
+                    SelectedAlbumDisplayTracks.Add(item);
+                }
+
                 OnPropertyChanged(nameof(SelectedAlbumTracks));
+                OnPropertyChanged(nameof(SelectedAlbumDisplayTracks));
             });
         }
 
