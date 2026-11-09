@@ -45,6 +45,8 @@
                     <ComboBoxItem Content="Artista / Álbum"/>
                     <ComboBoxItem Content="Año (Más reciente)"/>
                     <ComboBoxItem Content="Duración"/>
+                    <ComboBoxItem Content="BPM (Progresivo)"/>
+                    <ComboBoxItem Content="Orden Armónico (Camelot)"/>
                 </ComboBox>
             </StackPanel>
 
@@ -76,9 +78,10 @@
                 <Grid Padding="12,8" BorderThickness="0,0,0,1" BorderBrush="{ThemeResource AppBorder}">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="48"/>
-                        <ColumnDefinition Width="2.5*"/>
-                        <ColumnDefinition Width="1.5*"/>
-                        <ColumnDefinition Width="1.5*"/>
+                        <ColumnDefinition Width="2.3*"/>
+                        <ColumnDefinition Width="1.4*"/>
+                        <ColumnDefinition Width="1.4*"/>
+                        <ColumnDefinition Width="124"/>
                         <ColumnDefinition Width="80"/>
                         <ColumnDefinition Width="44"/>
                     </Grid.ColumnDefinitions>
@@ -86,8 +89,9 @@
                     <TextBlock Grid.Column="1" Text="TÍTULO" FontSize="11" FontWeight="Bold" Foreground="{ThemeResource AppTextSubtle}" Margin="8,0,0,0"/>
                     <TextBlock Grid.Column="2" Text="ARTISTA" FontSize="11" FontWeight="Bold" Foreground="{ThemeResource AppTextSubtle}"/>
                     <TextBlock Grid.Column="3" Text="ÁLBUM" FontSize="11" FontWeight="Bold" Foreground="{ThemeResource AppTextSubtle}"/>
-                    <TextBlock Grid.Column="4" Text="DURACIÓN" FontSize="11" FontWeight="Bold" Foreground="{ThemeResource AppTextSubtle}" HorizontalAlignment="Right"/>
-                    <TextBlock Grid.Column="5" Text="" Width="44"/>
+                    <TextBlock Grid.Column="4" Text="CLAVE · BPM" FontSize="11" FontWeight="Bold" Foreground="{ThemeResource AppTextSubtle}" HorizontalAlignment="Right" Margin="0,0,8,0"/>
+                    <TextBlock Grid.Column="5" Text="DURACIÓN" FontSize="11" FontWeight="Bold" Foreground="{ThemeResource AppTextSubtle}" HorizontalAlignment="Right"/>
+                    <TextBlock Grid.Column="6" Text="" Width="44"/>
                 </Grid>
             </ListView.Header>
 
@@ -97,9 +101,10 @@
                           RightTapped="TrackRow_RightTapped" Tag="{x:Bind}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="48"/>
-                            <ColumnDefinition Width="2.5*"/>
-                            <ColumnDefinition Width="1.5*"/>
-                            <ColumnDefinition Width="1.5*"/>
+                            <ColumnDefinition Width="2.3*"/>
+                            <ColumnDefinition Width="1.4*"/>
+                            <ColumnDefinition Width="1.4*"/>
+                            <ColumnDefinition Width="124"/>
                             <ColumnDefinition Width="80"/>
                             <ColumnDefinition Width="44"/>
                         </Grid.ColumnDefinitions>
@@ -125,12 +130,29 @@
                         <TextBlock Grid.Column="3" Text="{x:Bind Album, Mode=OneWay}" FontSize="13" Foreground="{ThemeResource AppTextSubtle}"
                                    VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,8,0"/>
 
+                        <!-- Camelot Pill Badge + Discrete BPM: [ 8A ] 118 BPM -->
+                        <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="6"
+                                    VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,8,0">
+                            <Border Background="{x:Bind CamelotBackgroundBrush, Mode=OneWay}"
+                                    Visibility="{x:Bind HasCamelotVisibility, Mode=OneWay}"
+                                    CornerRadius="8" Padding="7,2" MinWidth="30" VerticalAlignment="Center">
+                                <TextBlock Text="{x:Bind CamelotKeyFormatted, Mode=OneWay}"
+                                           Foreground="{x:Bind CamelotForegroundBrush, Mode=OneWay}"
+                                           FontSize="11" FontWeight="Bold"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Text="{x:Bind BpmFormatted, Mode=OneWay}"
+                                       Visibility="{x:Bind HasBpmVisibility, Mode=OneWay}"
+                                       FontSize="11" Foreground="{ThemeResource AppTextMuted}"
+                                       VerticalAlignment="Center"/>
+                        </StackPanel>
+
                         <!-- Duration -->
-                        <TextBlock Grid.Column="4" Text="{x:Bind DurationFormatted, Mode=OneWay}" FontSize="12" Foreground="{ThemeResource AppTextMuted}"
+                        <TextBlock Grid.Column="5" Text="{x:Bind DurationFormatted, Mode=OneWay}" FontSize="12" Foreground="{ThemeResource AppTextMuted}"
                                    VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,12,0"/>
 
                         <!-- Options Menu (3 dots) -->
-                        <Button Grid.Column="5" Width="36" Height="36" Background="Transparent" BorderThickness="0"
+                        <Button Grid.Column="6" Width="36" Height="36" Background="Transparent" BorderThickness="0"
                                 Foreground="{ThemeResource AppTextSubtle}" CornerRadius="18" Padding="0" Click="MoreButton_Click" Tag="{x:Bind}"
                                 helpers:FluidAnimationHelper.HoverMode="Icon">
                             <FontIcon Glyph="&#xE712;" FontSize="14"/>

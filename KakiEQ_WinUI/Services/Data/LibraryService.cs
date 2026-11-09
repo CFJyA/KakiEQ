@@ -104,6 +104,8 @@ namespace KakiEQ_WinUI.Services.Data
                         int cachedBits = 0;
                         int cachedBitrate = 0;
                         double? cachedBaseDb = null;
+                        double cachedBpm = 0;
+                        string cachedCamelotKey = string.Empty;
 
                         if (existingMap.TryGetValue(file, out var oldTrack))
                         {
@@ -114,7 +116,14 @@ namespace KakiEQ_WinUI.Services.Data
                             cachedBits = oldTrack.BitsPerSample;
                             cachedBitrate = oldTrack.Bitrate;
                             cachedBaseDb = oldTrack.BaseDecibels;
+                            cachedBpm = oldTrack.Bpm;
+                            cachedCamelotKey = oldTrack.CamelotKey;
                         }
+
+                        var (tagBpm, tagCamelot) = Helpers.HarmonicAnalysisHelper.ExtractHarmonicMetadataFromTag(tfile);
+                        double finalBpm = tagBpm > 0 ? tagBpm : cachedBpm;
+                        string finalCamelot = !string.IsNullOrEmpty(tagCamelot) ? tagCamelot : cachedCamelotKey;
+                        bool hasUnembedded = (finalBpm > 0 && tagBpm <= 0) || (!string.IsNullOrEmpty(finalCamelot) && string.IsNullOrEmpty(tagCamelot));
 
                         string ext = string.IsNullOrEmpty(cachedFormat) 
                             ? Path.GetExtension(file).TrimStart('.').ToUpperInvariant() 
@@ -173,7 +182,10 @@ namespace KakiEQ_WinUI.Services.Data
                             AudioFormat = ext,
                             BitsPerSample = bits,
                             Bitrate = bitrate,
-                            BaseDecibels = baseDb
+                            BaseDecibels = baseDb,
+                            Bpm = finalBpm,
+                            CamelotKey = finalCamelot,
+                            HasUnembeddedMetadata = hasUnembedded
                         };
                         tracks.Add(track);
                     }

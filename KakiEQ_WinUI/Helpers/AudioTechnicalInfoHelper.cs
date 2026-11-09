@@ -11,11 +11,15 @@ namespace KakiEQ_WinUI.Helpers
             if (track == null || string.IsNullOrWhiteSpace(track.FilePath) || !File.Exists(track.FilePath))
                 return;
 
+            bool hasTechSpecs = !string.IsNullOrEmpty(track.AudioFormat) &&
+                                track.Bitrate > 0 &&
+                                track.BitsPerSample > 0 &&
+                                track.BaseDecibels.HasValue;
+
+            bool hasHarmonicSpecs = track.Bpm > 0 && !string.IsNullOrEmpty(track.CamelotKey);
+
             // If already fully populated, avoid re-extracting
-            if (!string.IsNullOrEmpty(track.AudioFormat) &&
-                track.Bitrate > 0 &&
-                track.BitsPerSample > 0 &&
-                track.BaseDecibels.HasValue)
+            if (hasTechSpecs && hasHarmonicSpecs)
             {
                 return;
             }
@@ -74,6 +78,10 @@ namespace KakiEQ_WinUI.Helpers
                 track.Bitrate = bitrate;
                 track.BitsPerSample = bits;
                 track.BaseDecibels = baseDb;
+
+                var (tagBpm, tagKey) = HarmonicAnalysisHelper.ExtractHarmonicMetadataFromTag(tfile);
+                if (track.Bpm <= 0 && tagBpm > 0) track.Bpm = tagBpm;
+                if (string.IsNullOrEmpty(track.CamelotKey) && !string.IsNullOrEmpty(tagKey)) track.CamelotKey = tagKey;
             }
             catch
             {
@@ -86,6 +94,14 @@ namespace KakiEQ_WinUI.Helpers
                 if (track.BitsPerSample <= 0) track.BitsPerSample = 16;
                 if (track.Bitrate <= 0) track.Bitrate = 320;
                 if (!track.BaseDecibels.HasValue) track.BaseDecibels = 0.0;
+            }
+
+            // Fallback DSP Offline si el archivo no tenía etiquetas BPM o INITIALKEY
+            if (track.Bpm <= 0 || string.IsNullOrEmpty(track.CamelotKey))
+            {
+                var (dspBpm, dspKey) = HarmonicAnalysisHelper.EnsureTrackHarmonicSync(track);
+                if (track.Bpm <= 0 && dspBpm > 0) track.Bpm = dspBpm;
+                if (string.IsNullOrEmpty(track.CamelotKey) && !string.IsNullOrEmpty(dspKey)) track.CamelotKey = dspKey;
             }
         }
 
@@ -110,6 +126,27 @@ namespace KakiEQ_WinUI.Helpers
             if (!baseDb.HasValue) return "0.0 dB";
             double val = baseDb.Value;
             return val > 0.05 ? $"+{val:0.0} dB" : $"{val:0.0} dB";
+        }
+
+        public static string FormatCamelotKey(string? camelotKey)
+        {
+            return CamelotColorConverter.NormalizeCamelotKey(camelotKey);
+        }
+
+        /// <summary>
+        /// Formato objetivo: "FLAC · 24-bit · 1762 kbps · 0.0 dB · 8A"
+        /// </summary>
+        public static string FormatFullSpecification(Track? track)
+        {
+            if (track == null) return string.Empty;
+            string fmt = FormatFormat(track.AudioFormat);
+            string bits = FormatBits(track.BitsPerSample);
+            string br = FormatBitrate(track.Bitrate);
+            string db = FormatDecibels(track.BaseDecibels);
+            string key = FormatCamelotKey(track.CamelotKey);
+            return string.IsNullOrEmpty(key)
+                ? $"{fmt} · {bits} · {br} · {db}"
+                : $"{fmt} · {bits} · {br} · {db} · {key}";
         }
     }
 }

@@ -814,6 +814,27 @@ namespace KakiEQ_WinUI.ViewModels
             set { _currentTrackBaseDecibels = value; OnPropertyChanged(); }
         }
 
+        private string _currentTrackCamelotKey = string.Empty;
+        public string CurrentTrackCamelotKey
+        {
+            get => _currentTrackCamelotKey;
+            set
+            {
+                if (_currentTrackCamelotKey != value)
+                {
+                    _currentTrackCamelotKey = value;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(CurrentTrackCamelotBrush));
+                    OnPropertyChanged(nameof(CurrentTrackCamelotForegroundBrush));
+                    OnPropertyChanged(nameof(CurrentTrackCamelotVisibility));
+                }
+            }
+        }
+
+        public SolidColorBrush CurrentTrackCamelotBrush => CamelotColorConverter.GetBackgroundBrush(_currentTrackCamelotKey);
+        public SolidColorBrush CurrentTrackCamelotForegroundBrush => CamelotColorConverter.GetForegroundBrush(_currentTrackCamelotKey);
+        public Visibility CurrentTrackCamelotVisibility => !string.IsNullOrEmpty(_currentTrackCamelotKey) ? Visibility.Visible : Visibility.Collapsed;
+
         public Visibility AudioTechInfoVisibility => (ShowAudioTechnicalInfo && CurrentTrack != null && !string.IsNullOrEmpty(CurrentTrackAudioFormat))
             ? Visibility.Visible
             : Visibility.Collapsed;
@@ -827,25 +848,43 @@ namespace KakiEQ_WinUI.ViewModels
                 CurrentTrackBitDepth = string.Empty;
                 CurrentTrackBitrate = string.Empty;
                 CurrentTrackBaseDecibels = string.Empty;
+                CurrentTrackCamelotKey = string.Empty;
                 OnPropertyChanged(nameof(AudioTechInfoVisibility));
                 return;
             }
 
-            // Fast-path if already populated
+            // Fast-path if already populated (including CamelotKey & Bpm)
+            if (!string.IsNullOrWhiteSpace(track.AudioFormat) &&
+                track.Bitrate > 0 &&
+                track.Bpm > 0 &&
+                !string.IsNullOrWhiteSpace(track.CamelotKey))
+            {
+                CurrentTrackAudioFormat = AudioTechnicalInfoHelper.FormatFormat(track.AudioFormat);
+                CurrentTrackBitDepth = AudioTechnicalInfoHelper.FormatBits(track.BitsPerSample);
+                CurrentTrackBitrate = AudioTechnicalInfoHelper.FormatBitrate(track.Bitrate);
+                CurrentTrackBaseDecibels = AudioTechnicalInfoHelper.FormatDecibels(track.BaseDecibels);
+                CurrentTrackCamelotKey = AudioTechnicalInfoHelper.FormatCamelotKey(track.CamelotKey);
+                OnPropertyChanged(nameof(AudioTechInfoVisibility));
+                return;
+            }
+
+            // Show immediate available technical fields if any, while computing DSP/TagLib in background
             if (!string.IsNullOrWhiteSpace(track.AudioFormat) && track.Bitrate > 0)
             {
                 CurrentTrackAudioFormat = AudioTechnicalInfoHelper.FormatFormat(track.AudioFormat);
                 CurrentTrackBitDepth = AudioTechnicalInfoHelper.FormatBits(track.BitsPerSample);
                 CurrentTrackBitrate = AudioTechnicalInfoHelper.FormatBitrate(track.Bitrate);
                 CurrentTrackBaseDecibels = AudioTechnicalInfoHelper.FormatDecibels(track.BaseDecibels);
+                CurrentTrackCamelotKey = AudioTechnicalInfoHelper.FormatCamelotKey(track.CamelotKey);
                 OnPropertyChanged(nameof(AudioTechInfoVisibility));
-                return;
             }
 
-            // Otherwise extract via TagLib on a background thread so playback start never stutters on the UI thread
-            _ = Task.Run(() =>
+            // Extract via TagLib + BASS DSP fallback on a background thread so playback start never stutters on the 120 FPS UI thread
+            _ = Task.Run(async () =>
             {
                 AudioTechnicalInfoHelper.EnsureTrackTechnicalInfo(track);
+                await _dbService.SaveHarmonicDataBatchAsync(new[] { track });
+
                 _dispatcherQueue.TryEnqueue(() =>
                 {
                     if (CurrentTrack == track)
@@ -854,6 +893,7 @@ namespace KakiEQ_WinUI.ViewModels
                         CurrentTrackBitDepth = AudioTechnicalInfoHelper.FormatBits(track.BitsPerSample);
                         CurrentTrackBitrate = AudioTechnicalInfoHelper.FormatBitrate(track.Bitrate);
                         CurrentTrackBaseDecibels = AudioTechnicalInfoHelper.FormatDecibels(track.BaseDecibels);
+                        CurrentTrackCamelotKey = AudioTechnicalInfoHelper.FormatCamelotKey(track.CamelotKey);
                         OnPropertyChanged(nameof(AudioTechInfoVisibility));
                     }
                 });
@@ -1189,6 +1229,7 @@ namespace KakiEQ_WinUI.ViewModels
             _ = Task.Run(async () =>
             {
                 var allTracks = await _dbService.GetAllTracksAsync();
+                HarmonicAnalysisHelper.EnqueueTracksForAnalysis(allTracks, _dbService, _dispatcherQueue);
                 KaraokeService.EnqueueTracksForPreload(allTracks);
             });
         }
@@ -1483,6 +1524,7 @@ namespace KakiEQ_WinUI.ViewModels
             _ = Task.Run(async () =>
             {
                 var allTracks = await _dbService.GetAllTracksAsync();
+                HarmonicAnalysisHelper.EnqueueTracksForAnalysis(allTracks, _dbService, _dispatcherQueue);
                 KaraokeService.EnqueueTracksForPreload(allTracks);
             });
         }
@@ -1525,6 +1567,8 @@ namespace KakiEQ_WinUI.ViewModels
                     CurrentTrack.Year = updatedTrack.Year;
                     CurrentTrack.TrackNumber = updatedTrack.TrackNumber;
                     CurrentTrack.Disc = updatedTrack.Disc;
+                    if (updatedTrack.Bpm > 0) CurrentTrack.Bpm = updatedTrack.Bpm;
+                    if (!string.IsNullOrEmpty(updatedTrack.CamelotKey)) CurrentTrack.CamelotKey = updatedTrack.CamelotKey;
 
                     if (!string.IsNullOrEmpty(updatedTrack.CoverImagePath))
                     {
@@ -1554,6 +1598,8 @@ namespace KakiEQ_WinUI.ViewModels
                         qTrack.Year = updatedTrack.Year;
                         qTrack.TrackNumber = updatedTrack.TrackNumber;
                         qTrack.Disc = updatedTrack.Disc;
+                        if (updatedTrack.Bpm > 0) qTrack.Bpm = updatedTrack.Bpm;
+                        if (!string.IsNullOrEmpty(updatedTrack.CamelotKey)) qTrack.CamelotKey = updatedTrack.CamelotKey;
                         if (!string.IsNullOrEmpty(updatedTrack.CoverImagePath))
                         {
                             qTrack.CoverImagePath = updatedTrack.CoverImagePath;

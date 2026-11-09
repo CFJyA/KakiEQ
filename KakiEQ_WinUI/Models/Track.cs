@@ -237,6 +237,67 @@ namespace KakiEQ_WinUI.Models
             }
         }
 
+        // --- Harmonic Analysis (BPM & Camelot Key) ---
+        private double _bpm;
+        public double Bpm
+        {
+            get => _bpm;
+            set
+            {
+                double rounded = value > 0 ? Math.Round(value) : 0;
+                if (Math.Abs(_bpm - rounded) > 0.01)
+                {
+                    _bpm = rounded;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(BpmFormatted));
+                    OnPropertyChanged(nameof(HasBpmVisibility));
+                }
+            }
+        }
+
+        private string _camelotKey = string.Empty;
+        public string CamelotKey
+        {
+            get => _camelotKey;
+            set
+            {
+                string norm = Helpers.CamelotColorConverter.NormalizeCamelotKey(value);
+                if (_camelotKey != norm)
+                {
+                    _camelotKey = norm;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(CamelotKeyFormatted));
+                    OnPropertyChanged(nameof(HasCamelotVisibility));
+                    OnPropertyChanged(nameof(CamelotBackgroundBrush));
+                    OnPropertyChanged(nameof(CamelotForegroundBrush));
+                }
+            }
+        }
+
+        public bool HasUnembeddedMetadata { get; set; }
+
+        [JsonIgnore]
+        public string BpmFormatted => _bpm > 0 ? $"{_bpm:0} BPM" : string.Empty;
+
+        [JsonIgnore]
+        public string CamelotKeyFormatted => Helpers.CamelotColorConverter.NormalizeCamelotKey(_camelotKey);
+
+        [JsonIgnore]
+        public Microsoft.UI.Xaml.Visibility HasBpmVisibility =>
+            _bpm > 0 ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed;
+
+        [JsonIgnore]
+        public Microsoft.UI.Xaml.Visibility HasCamelotVisibility =>
+            !string.IsNullOrEmpty(CamelotKeyFormatted) ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed;
+
+        [JsonIgnore]
+        public Microsoft.UI.Xaml.Media.SolidColorBrush CamelotBackgroundBrush =>
+            Helpers.CamelotColorConverter.GetBackgroundBrush(_camelotKey);
+
+        [JsonIgnore]
+        public Microsoft.UI.Xaml.Media.SolidColorBrush CamelotForegroundBrush =>
+            Helpers.CamelotColorConverter.GetForegroundBrush(_camelotKey);
+
         private int _displayIndex;
         [JsonIgnore]
         public int DisplayIndex

@@ -491,6 +491,19 @@
                                 <TextBlock Text="{x:Bind ViewModel.CurrentTrackBaseDecibels, Mode=OneWay}"
                                            FontSize="11" FontWeight="Bold" Foreground="#D0BCFF"/>
                             </Border>
+
+                            <TextBlock Text="·" FontSize="12" FontWeight="Bold" Foreground="#555566" VerticalAlignment="Center"
+                                       Visibility="{x:Bind ViewModel.CurrentTrackCamelotVisibility, Mode=OneWay}"/>
+
+                            <!-- Camelot Harmonic Key Badge (e.g. 8A, 12B) -->
+                            <Border Background="{x:Bind ViewModel.CurrentTrackCamelotBrush, Mode=OneWay}"
+                                    CornerRadius="6" Padding="7,2" VerticalAlignment="Center"
+                                    Visibility="{x:Bind ViewModel.CurrentTrackCamelotVisibility, Mode=OneWay}"
+                                    ToolTipService.ToolTip="Clave Armónica (Rueda Camelot)">
+                                <TextBlock Text="{x:Bind ViewModel.CurrentTrackCamelotKey, Mode=OneWay}"
+                                           FontSize="11" FontWeight="Bold"
+                                           Foreground="{x:Bind ViewModel.CurrentTrackCamelotForegroundBrush, Mode=OneWay}"/>
+                            </Border>
                         </StackPanel>
                     </Grid>
 

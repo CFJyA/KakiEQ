@@ -373,6 +373,53 @@ namespace KakiEQ_WinUI.Services.Data
             }
         }
 
+        public async Task SaveHarmonicDataBatchAsync(IEnumerable<Track> updatedTracks)
+        {
+            if (updatedTracks == null) return;
+            var batch = updatedTracks.Where(t => t != null && !string.IsNullOrEmpty(t.FilePath)).ToList();
+            if (batch.Count == 0) return;
+
+            try
+            {
+                var tracks = await GetAllTracksAsync();
+                var map = tracks.Where(t => !string.IsNullOrEmpty(t.FilePath))
+                                .GroupBy(t => t.FilePath, StringComparer.OrdinalIgnoreCase)
+                                .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
+                bool anyChanged = false;
+                foreach (var src in batch)
+                {
+                    if (map.TryGetValue(src.FilePath, out var existing))
+                    {
+                        if (src.Bpm > 0 && Math.Abs(existing.Bpm - src.Bpm) > 0.01)
+                        {
+                            existing.Bpm = src.Bpm;
+                            anyChanged = true;
+                        }
+                        if (!string.IsNullOrEmpty(src.CamelotKey) && existing.CamelotKey != src.CamelotKey)
+                        {
+                            existing.CamelotKey = src.CamelotKey;
+                            anyChanged = true;
+                        }
+                        if (existing.HasUnembeddedMetadata != src.HasUnembeddedMetadata)
+                        {
+                            existing.HasUnembeddedMetadata = src.HasUnembeddedMetadata;
+                            anyChanged = true;
+                        }
+                    }
+                }
+
+                if (anyChanged)
+                {
+                    await InsertTracksAsync(tracks);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Database] Error saving harmonic batch: {ex.Message}");
+            }
+        }
+
         public string? GetArtistPhotoPath(string artistName)
         {
             if (string.IsNullOrWhiteSpace(artistName)) return null;

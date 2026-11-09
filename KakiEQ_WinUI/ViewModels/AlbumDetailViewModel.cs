@@ -147,6 +147,8 @@ namespace KakiEQ_WinUI.ViewModels
                 OnPropertyChanged(nameof(TotalSongs));
                 OnPropertyChanged(nameof(TotalSongsText));
             });
+
+            HarmonicAnalysisHelper.EnqueueTracksForAnalysis(orderedTracks, _dbService, MainWindow.Instance?.DispatcherQueue);
         }
     }
 }

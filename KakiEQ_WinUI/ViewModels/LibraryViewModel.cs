@@ -61,6 +61,7 @@ namespace KakiEQ_WinUI.ViewModels
         {
             _allTracksCache = await _dbService.GetAllTracksAsync();
             ApplyFilterAndSort();
+            HarmonicAnalysisHelper.EnqueueTracksForAnalysis(_allTracksCache, _dbService, MainWindow.Instance?.DispatcherQueue);
         }
 
         private void ApplyFilterAndSort()
@@ -75,17 +76,25 @@ namespace KakiEQ_WinUI.ViewModels
                     t.Album.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase));
             }
 
-            query = _selectedSortIndex switch
+            List<Track> list;
+            if (_selectedSortIndex == 6)
             {
-                0 => query.OrderBy(t => t.Title),
-                1 => query.OrderByDescending(t => t.Title),
-                2 => query.OrderBy(t => t.Artist).ThenBy(t => t.Album).ThenBy(t => t.TrackNumber),
-                3 => query.OrderByDescending(t => t.Year),
-                4 => query.OrderByDescending(t => t.Duration),
-                _ => query.OrderBy(t => t.Title)
-            };
-
-            var list = query.ToList();
+                list = HarmonicAnalysisHelper.SortTracksHarmonically(query);
+            }
+            else
+            {
+                query = _selectedSortIndex switch
+                {
+                    0 => query.OrderBy(t => t.Title),
+                    1 => query.OrderByDescending(t => t.Title),
+                    2 => query.OrderBy(t => t.Artist).ThenBy(t => t.Album).ThenBy(t => t.TrackNumber),
+                    3 => query.OrderByDescending(t => t.Year),
+                    4 => query.OrderByDescending(t => t.Duration),
+                    5 => query.OrderBy(t => t.Bpm > 0 ? 0 : 1).ThenBy(t => t.Bpm).ThenBy(t => t.Title),
+                    _ => query.OrderBy(t => t.Title)
+                };
+                list = query.ToList();
+            }
 
             RunOnUIThread(() =>
             {
