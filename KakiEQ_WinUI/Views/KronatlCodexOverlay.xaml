@@ -70,11 +70,11 @@
 
             <!-- Top Seasonal Particles Banner Overlay -->
             <Image x:Name="CodexParticlesTop" Source="ms-appx:///Assets/kronatl_particles_otono.png"
-                   Stretch="UniformToFill" Height="180" VerticalAlignment="Top" HorizontalAlignment="Stretch" Opacity="0.88"/>
+                   Stretch="UniformToFill" Height="190" VerticalAlignment="Top" HorizontalAlignment="Stretch" Opacity="0.75"/>
 
             <!-- Bottom Seasonal Particles Banner Overlay -->
             <Image x:Name="CodexParticlesBottom" Source="ms-appx:///Assets/kronatl_particles_otono.png"
-                   Stretch="UniformToFill" Height="160" VerticalAlignment="Bottom" HorizontalAlignment="Stretch" Opacity="0.75"/>
+                   Stretch="UniformToFill" Height="170" VerticalAlignment="Bottom" HorizontalAlignment="Stretch" Opacity="0.68"/>
         </Grid>
 
         <!-- 1. Top Navigation & Story Segmented Progress Bars (YouTube Music Recap Style) -->
@@ -123,7 +123,7 @@
                 <StackPanel Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
                     <Border x:Name="HeaderBadgeBorder" Background="#2B1626" BorderBrush="#FF6E1A" BorderThickness="1.2" CornerRadius="12" Padding="12,5">
                         <StackPanel Orientation="Horizontal" Spacing="6">
-                            <Image x:Name="HeaderEmblemImage" Source="ms-appx:///Assets/kronatl_emblem_otono.png" Width="18" Height="18" Stretch="Uniform"/>
+                            <Image x:Name="HeaderEmblemImage" Source="ms-appx:///Assets/kronatl_emblem_otono.png" Width="24" Height="24" Stretch="Uniform"/>
                             <TextBlock x:Name="HeaderBadgeText" Text="KRONATL RECAP" FontSize="11" FontWeight="Bold" Foreground="#FF6E1A"/>
                         </StackPanel>
                     </Border>
@@ -168,10 +168,10 @@
                     </Grid.ColumnDefinitions>
 
                     <!-- Left: Large Uniform Vector Emblem with Pulse Ring -->
-                    <Border Grid.Column="0" Width="200" Height="200" CornerRadius="100" Margin="0,0,48,0" VerticalAlignment="Center">
+                    <Border Grid.Column="0" Width="220" Height="220" CornerRadius="110" Margin="0,0,48,0" VerticalAlignment="Center">
                         <Grid>
-                            <Ellipse x:Name="Card0Ring" Width="190" Height="190" Stroke="#FF6E1A" StrokeThickness="2" Opacity="0.4"/>
-                            <Image x:Name="Card0EmblemImage" Source="ms-appx:///Assets/kronatl_emblem_otono.png" Width="170" Height="170" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            <Ellipse x:Name="Card0Ring" Width="210" Height="210" Stroke="#FF6E1A" StrokeThickness="2.5" Opacity="0.45"/>
+                            <Image x:Name="Card0EmblemImage" Source="ms-appx:///Assets/kronatl_emblem_otono.png" Width="185" Height="185" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Grid>
                     </Border>
 
@@ -643,7 +643,7 @@
                         <!-- Column 0: Hero Stats -->
                         <Border Grid.Column="0" Background="#18FFFFFF" BorderBrush="#35FFFFFF" BorderThickness="1.5" CornerRadius="22" Padding="20,18">
                             <StackPanel VerticalAlignment="Center" Spacing="14">
-                                <Image x:Name="SummaryEmblemImage" Source="ms-appx:///Assets/kronatl_emblem_otono.png" Width="90" Height="90" Stretch="Uniform" HorizontalAlignment="Center"/>
+                                <Image x:Name="SummaryEmblemImage" Source="ms-appx:///Assets/kronatl_emblem_otono.png" Width="110" Height="110" Stretch="Uniform" HorizontalAlignment="Center"/>
                                 <TextBlock x:Name="SummaryTimeText" Text="14h 9m" FontSize="36" FontWeight="ExtraBold" Foreground="#FFFFFF" HorizontalAlignment="Center"/>
                                 <TextBlock Text="Tiempo total vibrando" FontSize="12.5" Foreground="#FFD700" HorizontalAlignment="Center"/>
                                 <Border Background="#2000E676" BorderBrush="#8000E676" BorderThickness="1" CornerRadius="10" Padding="8,4" HorizontalAlignment="Center">

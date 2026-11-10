@@ -75,21 +75,39 @@
                     <DataTemplate x:DataType="models:KronatlSeason">
                         <Border Background="{x:Bind CardBackground}" BorderBrush="{x:Bind CardBorderBrush}" BorderThickness="1.2" CornerRadius="20" Margin="0,0,0,16"
                                 helpers:FluidAnimationHelper.HoverMode="Card">
-                            <Grid>
-                                <!-- Atmospheric Festival Particles Overlay -->
-                                <Image Source="{x:Bind ParticlesImagePath}" Stretch="UniformToFill" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Opacity="0.92" IsHitTestVisible="False"/>
+                            <Grid CornerRadius="20">
+                                <!-- Atmospheric Festival Particles Overlay (Balanced Opacity & Crisp Widescreen Alignment) -->
+                                <Image Source="{x:Bind ParticlesImagePath}" Stretch="UniformToFill" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Opacity="0.52" IsHitTestVisible="False"/>
 
-                                <Grid Padding="20,16">
+                                <!-- Soft Ambient Contrast Shield: Keeps typography 100% crisp and legible while letting particles shine on flanks and rims -->
+                                <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch" IsHitTestVisible="False">
+                                    <Grid.Background>
+                                        <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
+                                            <GradientStop Color="#00000000" Offset="0.0"/>
+                                            <GradientStop Color="#3014101B" Offset="0.10"/>
+                                            <GradientStop Color="#7014101B" Offset="0.22"/>
+                                            <GradientStop Color="#8514101B" Offset="0.50"/>
+                                            <GradientStop Color="#7014101B" Offset="0.78"/>
+                                            <GradientStop Color="#3014101B" Offset="0.90"/>
+                                            <GradientStop Color="#00000000" Offset="1.0"/>
+                                        </LinearGradientBrush>
+                                    </Grid.Background>
+                                </Grid>
+
+                                <Grid Padding="22,18">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
 
-                                    <!-- Column 0: Seasonal Emblem (Skull for Otoño / Bonfire for Anual) -->
-                                    <Border Grid.Column="0" Width="72" Height="72" CornerRadius="36" Margin="0,0,18,0" VerticalAlignment="Center">
-                                        <Image Source="{x:Bind EmblemImagePath}" Width="72" Height="72" Stretch="Uniform"/>
-                                    </Border>
+                                    <!-- Column 0: Seasonal Emblem (Enlarged High-Def Medallion with Ambient Seasonal Glow) -->
+                                    <Grid Grid.Column="0" Width="96" Height="96" Margin="0,0,22,0" VerticalAlignment="Center">
+                                        <!-- Subtle Theme Ambient Glow -->
+                                        <Ellipse Width="96" Height="96" Fill="{x:Bind AccentColor}" Opacity="0.15"/>
+                                        <Image Source="{x:Bind EmblemImagePath}" Width="92" Height="92" Stretch="Uniform"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Grid>
 
                                     <!-- Column 1: Original Informative Data + Rich Seasonal Theme -->
                                     <StackPanel Grid.Column="1" Spacing="7" VerticalAlignment="Center" Margin="0,0,18,0">
