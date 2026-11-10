@@ -29,6 +29,7 @@ namespace KakiEQ_WinUI.ViewModels
         private readonly SettingsService _settingsService;
         private readonly BassAudioEngine _audioEngine;
         private readonly SmtcService _smtcService;
+        private readonly KronatlService _kronatlService;
         private readonly DispatcherQueueTimer _timer;
         private readonly DispatcherQueue _dispatcherQueue;
 
@@ -37,6 +38,7 @@ namespace KakiEQ_WinUI.ViewModels
         public SettingsService SettingsService => _settingsService;
         public BassAudioEngine AudioEngine => _audioEngine;
         public SmtcService SmtcService => _smtcService;
+        public KronatlService KronatlService => _kronatlService;
 
         // --- Current View & Navigation ---
         private object? _currentView;
@@ -101,6 +103,8 @@ namespace KakiEQ_WinUI.ViewModels
             OnPropertyChanged(nameof(NavEqFg));
             OnPropertyChanged(nameof(NavMultiOutputBg));
             OnPropertyChanged(nameof(NavMultiOutputFg));
+            OnPropertyChanged(nameof(NavKronatlBg));
+            OnPropertyChanged(nameof(NavKronatlFg));
         }
 
         public SolidColorBrush NavHomeBg => CurrentSectionTitle == "Inicio" ? NavActiveBg : NavInactiveBg;
@@ -123,6 +127,9 @@ namespace KakiEQ_WinUI.ViewModels
 
         public SolidColorBrush NavMultiOutputBg => CurrentSectionTitle == "Salidas de Audio" ? NavActiveBg : NavInactiveBg;
         public SolidColorBrush NavMultiOutputFg => CurrentSectionTitle == "Salidas de Audio" ? NavActiveFg : NavInactiveFg;
+
+        public SolidColorBrush NavKronatlBg => CurrentSectionTitle == "Kronatl" ? NavActiveBg : NavInactiveBg;
+        public SolidColorBrush NavKronatlFg => CurrentSectionTitle == "Kronatl" ? NavActiveFg : NavInactiveFg;
 
         // --- Sidebar State ---
         private bool _isSidebarExpanded = true;
@@ -937,6 +944,7 @@ namespace KakiEQ_WinUI.ViewModels
         private PlaylistsViewModel? _playlistsVm;
         private EqualizerViewModel? _equalizerVm;
         private MultiOutputViewModel? _multiOutputVm;
+        private KronatlViewModel? _kronatlVm;
 
         public HomeViewModel HomeVm => _homeVm ??= new HomeViewModel(_dbService);
         public LibraryViewModel LibraryVm => _libraryVm ??= new LibraryViewModel(_dbService);
@@ -945,6 +953,7 @@ namespace KakiEQ_WinUI.ViewModels
         public PlaylistsViewModel PlaylistsVm => _playlistsVm ??= new PlaylistsViewModel(_dbService);
         public EqualizerViewModel EqualizerVm => _equalizerVm ??= new EqualizerViewModel(_audioEngine, _settingsService);
         public MultiOutputViewModel MultiOutputVm => _multiOutputVm ??= new MultiOutputViewModel(_audioEngine.MultiOutput, _audioEngine.SystemAudioRouting);
+        public KronatlViewModel KronatlVm => _kronatlVm ??= new KronatlViewModel(_kronatlService, _dbService);
 
         // --- Navigation Commands ---
         public ICommand ToggleSidebarCommand { get; }
@@ -955,6 +964,7 @@ namespace KakiEQ_WinUI.ViewModels
         public ICommand NavigatePlaylistsCommand { get; }
         public ICommand NavigateEqualizerCommand { get; }
         public ICommand NavigateMultiOutputCommand { get; }
+        public ICommand NavigateKronatlCommand { get; }
 
         // --- Player Controls Commands ---
         public ICommand PlayPauseCommand { get; }
@@ -981,6 +991,7 @@ namespace KakiEQ_WinUI.ViewModels
             _audioEngine.MultiOutput.DatabaseService = _dbService;
             _ = _audioEngine.MultiOutput.LoadDeviceEqProfilesAsync();
             _smtcService = new SmtcService();
+            _kronatlService = new KronatlService(_dbService);
 
             var savedSettings = _settingsService.LoadSettings();
             _volume = savedSettings.Volume * 100.0;
@@ -1113,6 +1124,13 @@ namespace KakiEQ_WinUI.ViewModels
                 CurrentView = MultiOutputVm;
             });
 
+            NavigateKronatlCommand = new RelayCommand(() =>
+            {
+                if (IsNowPlayingExpanded) { IsNowPlayingExpanded = false; ExitFullScreenIfActive?.Invoke(); }
+                CurrentSectionTitle = "Kronatl";
+                CurrentView = KronatlVm;
+            });
+
             // Player Commands
             PlayPauseCommand = new RelayCommand(async () =>
             {
@@ -1215,6 +1233,7 @@ namespace KakiEQ_WinUI.ViewModels
                 _ = AlbumsVm;
                 _ = ArtistsVm;
                 _ = PlaylistsVm;
+                _ = KronatlVm;
             });
 
             KaraokeService.TrackKaraokeReady += (s, track) =>
@@ -1348,6 +1367,7 @@ namespace KakiEQ_WinUI.ViewModels
 
             _smtcService?.UpdateMetadata(track, true);
             _ = _dbService.RecordTrackPlayAsync(track);
+            _ = _kronatlService.RecordPlaybackSessionAsync(track, track.Duration.TotalSeconds, true);
             _homeVm?.OnTrackPlayedRealtime(track);
 
             // Proactively prioritize current track & upcoming track for instant Karaoke

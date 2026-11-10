@@ -21,6 +21,11 @@ namespace KakiEQ_WinUI
         public static MainWindow? Instance { get; private set; }
         public MainViewModel ViewModel => MainViewModel.Instance ?? new MainViewModel();
 
+        public void OpenKronatlCodex(KronatlSeason season)
+        {
+            CodexOverlay?.Open(season);
+        }
+
         private Services.SystemIntegration.TrayIconService? _trayService;
         private Views.SettingsWindow? _settingsWindow;
         private Views.MetadataWindow? _metadataWindow;
@@ -179,6 +184,7 @@ namespace KakiEQ_WinUI
                 Type t when t == typeof(Views.PlaylistsView) => new Views.PlaylistsView { DataContext = viewModel },
                 Type t when t == typeof(Views.EqualizerView) => new Views.EqualizerView { DataContext = viewModel },
                 Type t when t == typeof(Views.MultiOutputView) => new Views.MultiOutputView { DataContext = viewModel },
+                Type t when t == typeof(Views.KronatlView) => new Views.KronatlView { DataContext = viewModel },
                 _ => null
             };
 
@@ -204,6 +210,7 @@ namespace KakiEQ_WinUI
                 (typeof(Views.ArtistsView), () => ViewModel.ArtistsVm),
                 (typeof(Views.AlbumsView), () => ViewModel.AlbumsVm),
                 (typeof(Views.PlaylistsView), () => ViewModel.PlaylistsVm),
+                (typeof(Views.KronatlView), () => ViewModel.KronatlVm),
             };
 
             foreach (var (pageType, getVm) in pagesToWarm)
@@ -240,6 +247,7 @@ namespace KakiEQ_WinUI
                     PlaylistsViewModel => typeof(Views.PlaylistsView),
                     EqualizerViewModel => typeof(Views.EqualizerView),
                     MultiOutputViewModel => typeof(Views.MultiOutputView),
+                    KronatlViewModel => typeof(Views.KronatlView),
                     _ => null
                 };
 

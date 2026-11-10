@@ -1,0 +1,23 @@
+[CRASH]: Cannot create instance of type 'KakiEQ_WinUI.Views.KronatlCodexOverlay' [Line: 953 Position: 36]
+Exception: Microsoft.UI.Xaml.Markup.XamlParseException: The text associated with this error code could not be found.
+
+Cannot create instance of type 'KakiEQ_WinUI.Views.KronatlCodexOverlay' [Line: 953 Position: 36]
+   at WinRT.ExceptionHelpers.<ThrowExceptionForHR>g__Throw|38_0(Int32 hr)
+   at WinRT.ExceptionHelpers.ThrowExceptionForHR(Int32 hr)
+   at ABI.Microsoft.UI.Xaml.IApplicationStaticsMethods.LoadComponent(IObjectReference _obj, Object component, Uri resourceLocator, ComponentResourceLocation componentResourceLocation)
+   at Microsoft.UI.Xaml.Application.LoadComponent(Object component, Uri resourceLocator, ComponentResourceLocation componentResourceLocation)
+   at KakiEQ_WinUI.MainWindow.InitializeComponent()
+   at KakiEQ_WinUI.MainWindow..ctor()
+   at KakiEQ_WinUI.App.OnLaunched(LaunchActivatedEventArgs args)
+   at Microsoft.UI.Xaml.Application.Microsoft.UI.Xaml.IApplicationOverrides.OnLaunched(LaunchActivatedEventArgs args)
+   at ABI.Microsoft.UI.Xaml.IApplicationOverrides.Do_Abi_OnLaunched_0(IntPtr thisPtr, IntPtr args)
+StackTrace:    at WinRT.ExceptionHelpers.<ThrowExceptionForHR>g__Throw|38_0(Int32 hr)
+   at WinRT.ExceptionHelpers.ThrowExceptionForHR(Int32 hr)
+   at ABI.Microsoft.UI.Xaml.IApplicationStaticsMethods.LoadComponent(IObjectReference _obj, Object component, Uri resourceLocator, ComponentResourceLocation componentResourceLocation)
+   at Microsoft.UI.Xaml.Application.LoadComponent(Object component, Uri resourceLocator, ComponentResourceLocation componentResourceLocation)
+   at KakiEQ_WinUI.MainWindow.InitializeComponent()
+   at KakiEQ_WinUI.MainWindow..ctor()
+   at KakiEQ_WinUI.App.OnLaunched(LaunchActivatedEventArgs args)
+   at Microsoft.UI.Xaml.Application.Microsoft.UI.Xaml.IApplicationOverrides.OnLaunched(LaunchActivatedEventArgs args)
+   at ABI.Microsoft.UI.Xaml.IApplicationOverrides.Do_Abi_OnLaunched_0(IntPtr thisPtr, IntPtr args)
+Inner: 

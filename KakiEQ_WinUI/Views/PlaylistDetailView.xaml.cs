@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.Linq;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
@@ -142,6 +143,27 @@ namespace KakiEQ_WinUI.Views
                     row,
                     e.GetPosition(row),
                     onRemoveFromPlaylist: () => vm?.RemoveTrackCommand.Execute(track));
+            }
+        }
+
+        private async void OpenKronatlCodex_Click(object sender, RoutedEventArgs e)
+        {
+            var vm = ViewModel;
+            if (vm?.CurrentPlaylist == null) return;
+
+            var kronatlService = MainViewModel.Instance?.KronatlService;
+            var dbService = MainViewModel.Instance?.DbService;
+            if (kronatlService == null || dbService == null) return;
+
+            var allTracks = await dbService.GetAllTracksAsync();
+            var allSeasons = await kronatlService.GetAllSeasonsAsync(allTracks);
+
+            var season = allSeasons.FirstOrDefault(s => s.PlaylistName.Equals(vm.CurrentPlaylist.Name, StringComparison.OrdinalIgnoreCase))
+                         ?? allSeasons.FirstOrDefault(s => vm.CurrentPlaylist.Name.Contains(s.SeasonName, StringComparison.OrdinalIgnoreCase));
+
+            if (season != null)
+            {
+                MainWindow.Instance?.OpenKronatlCodex(season);
             }
         }
     }

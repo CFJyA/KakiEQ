@@ -98,6 +98,20 @@
                         </StackPanel>
                     </Button>
 
+                    <!-- Botón Destacado: Abrir Códice Kronatl (Visible únicamente en playlists Kronatl) -->
+                    <Button Click="OpenKronatlCodex_Click"
+                            Visibility="{x:Bind ViewModel.KronatlCodexButtonVisibility, Mode=OneWay}"
+                            HorizontalAlignment="Stretch" Height="42"
+                            Background="#381E72" Foreground="#D0BCFF"
+                            BorderBrush="#BB86FC" BorderThickness="1.2"
+                            CornerRadius="21" Padding="16,0"
+                            helpers:FluidAnimationHelper.HoverMode="Fab">
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="8">
+                            <FontIcon Glyph="&#xE823;" FontSize="15" Foreground="#BB86FC"/>
+                            <TextBlock Text="🎨 Abrir Códice Kronatl" VerticalAlignment="Center" FontSize="13" FontWeight="Bold" Foreground="#FFFFFF"/>
+                        </StackPanel>
+                    </Button>
+
                     <!-- Editar y Eliminar en fila balanceada de 2 columnas (50% / 50%) -->
                     <Grid ColumnSpacing="10">
                         <Grid.ColumnDefinitions>

@@ -7,6 +7,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:models="using:KakiEQ_WinUI.Models"
     xmlns:vm="using:KakiEQ_WinUI.ViewModels"
+    xmlns:views="using:KakiEQ_WinUI.Views"
     xmlns:helpers="using:KakiEQ_WinUI.Helpers"
     mc:Ignorable="d"
     Title="Kaki EQ">
@@ -204,6 +205,19 @@
                                 <FontIcon Glyph="&#xE95B;" FontSize="16" Foreground="{x:Bind ViewModel.NavMultiOutputFg, Mode=OneWay}"/>
                                 <TextBlock Text="Salidas de Audio" FontSize="13" FontWeight="SemiBold"
                                            Foreground="{x:Bind ViewModel.NavMultiOutputFg, Mode=OneWay}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Kronatl (Xiuhpohualli Sonoro) -->
+                        <Button Command="{x:Bind ViewModel.NavigateKronatlCommand}"
+                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                Background="{x:Bind ViewModel.NavKronatlBg, Mode=OneWay}"
+                                BorderThickness="0" CornerRadius="16" Padding="12,10"
+                                helpers:FluidAnimationHelper.HoverMode="Nav">
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <FontIcon Glyph="&#xE823;" FontSize="16" Foreground="{x:Bind ViewModel.NavKronatlFg, Mode=OneWay}"/>
+                                <TextBlock Text="Kronatl" FontSize="13" FontWeight="SemiBold"
+                                           Foreground="{x:Bind ViewModel.NavKronatlFg, Mode=OneWay}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                     </StackPanel>
@@ -929,5 +943,13 @@
                 </Grid>
             </Grid>
         </Grid>
+
+        <!-- 3. KRONATL CODEX MODAL OVERLAY (120 FPS Horizontal Codex Canvas) -->
+        <views:KronatlCodexOverlay x:Name="CodexOverlay"
+                                   Canvas.ZIndex="120"
+                                   Grid.Row="1"
+                                   HorizontalAlignment="Stretch"
+                                   VerticalAlignment="Stretch"
+                                   Visibility="Collapsed"/>
     </Grid>
 </Window>

@@ -63,6 +63,9 @@ namespace KakiEQ_WinUI.ViewModels
         public bool CanDelete => true;
         public Visibility DeleteVisibility => Visibility.Visible;
 
+        public bool IsKronatlPlaylist => CurrentPlaylist?.Name?.StartsWith("Kronatl:", StringComparison.OrdinalIgnoreCase) == true;
+        public Visibility KronatlCodexButtonVisibility => IsKronatlPlaylist ? Visibility.Visible : Visibility.Collapsed;
+
         public ObservableCollection<Track> Tracks { get; } = new();
 
         public ICommand GoBackCommand { get; }

@@ -18,6 +18,25 @@ namespace KakiEQ_WinUI.ViewModels
         public ObservableCollection<Track> FavoriteTracks { get; } = new();
         public ObservableCollection<Track> RecentlyAddedTracks { get; } = new();
 
+        private KronatlSeason? _activeKronatlSeason;
+        public KronatlSeason? ActiveKronatlSeason
+        {
+            get => _activeKronatlSeason;
+            set
+            {
+                if (_activeKronatlSeason != value)
+                {
+                    _activeKronatlSeason = value;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(IsKronatlNotificationVisible));
+                    OnPropertyChanged(nameof(KronatlNotificationVisibility));
+                }
+            }
+        }
+
+        public bool IsKronatlNotificationVisible => ActiveKronatlSeason != null;
+        public Microsoft.UI.Xaml.Visibility KronatlNotificationVisibility => IsKronatlNotificationVisible ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed;
+
         public ICommand RefreshSuggestionsCommand { get; }
         public ICommand PlayRandomCommand { get; }
 
@@ -100,6 +119,20 @@ namespace KakiEQ_WinUI.ViewModels
                     OnPropertyChanged(nameof(FavoriteTracks));
                     OnPropertyChanged(nameof(RecentlyAddedTracks));
                 });
+
+                try
+                {
+                    var mainVm = MainViewModel.Instance;
+                    if (mainVm != null)
+                    {
+                        var activeSeason = await mainVm.KronatlService.GetActiveNotificationSeasonAsync(allTracks);
+                        RunOnUIThread(() =>
+                        {
+                            ActiveKronatlSeason = activeSeason;
+                        });
+                    }
+                }
+                catch { }
             }
         }
 

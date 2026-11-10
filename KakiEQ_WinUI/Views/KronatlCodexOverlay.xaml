@@ -1,0 +1,772 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="KakiEQ_WinUI.Views.KronatlCodexOverlay"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:helpers="using:KakiEQ_WinUI.Helpers"
+    xmlns:models="using:KakiEQ_WinUI.Models"
+    mc:Ignorable="d"
+    Visibility="Collapsed">
+
+    <!-- Root full-workspace container with vibrant full-bleed seasonal gradient mesh -->
+    <Grid x:Name="RootGrid">
+        <Grid.Background>
+            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                <GradientStop x:Name="BgGradientStop0" Color="#C64A10" Offset="0.0"/>
+                <GradientStop x:Name="BgGradientStop1" Color="#5B147D" Offset="0.38"/>
+                <GradientStop x:Name="BgGradientStop2" Color="#0E5C3D" Offset="0.72"/>
+                <GradientStop x:Name="BgGradientStop3" Color="#7D1B50" Offset="1.0"/>
+            </LinearGradientBrush>
+        </Grid.Background>
+        <Grid.Transitions>
+            <TransitionCollection>
+                <EntranceThemeTransition FromVerticalOffset="40" IsStaggeringEnabled="False"/>
+            </TransitionCollection>
+        </Grid.Transitions>
+
+        <!-- Ambient Multi-Point Radiant Glowing Mesh (Full Bleed across entire canvas) -->
+        <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch" IsHitTestVisible="False">
+            <!-- Top-Left Radial Bloom -->
+            <Ellipse Width="1000" Height="1000" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="-200,-250,0,0" Opacity="0.55">
+                <Ellipse.Fill>
+                    <RadialGradientBrush>
+                        <GradientStop x:Name="AmbientGlowStop1" Color="#FF6E1A" Offset="0"/>
+                        <GradientStop Color="Transparent" Offset="1"/>
+                    </RadialGradientBrush>
+                </Ellipse.Fill>
+            </Ellipse>
+
+            <!-- Center Radiant Color Aura (Fills the entire screen center so it's never gray!) -->
+            <Ellipse Width="1100" Height="900" HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.45">
+                <Ellipse.Fill>
+                    <RadialGradientBrush>
+                        <GradientStop x:Name="AmbientGlowCenter" Color="#8E24AA" Offset="0"/>
+                        <GradientStop Color="Transparent" Offset="1"/>
+                    </RadialGradientBrush>
+                </Ellipse.Fill>
+            </Ellipse>
+
+            <!-- Bottom-Right Radial Bloom -->
+            <Ellipse Width="1100" Height="1100" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-220,-260" Opacity="0.52">
+                <Ellipse.Fill>
+                    <RadialGradientBrush>
+                        <GradientStop x:Name="AmbientGlowStop2" Color="#9C27B0" Offset="0"/>
+                        <GradientStop Color="Transparent" Offset="1"/>
+                    </RadialGradientBrush>
+                </Ellipse.Fill>
+            </Ellipse>
+
+            <!-- Bottom-Left Emerald / Accent Bloom -->
+            <Ellipse Width="950" Height="950" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="-120,0,0,-220" Opacity="0.45">
+                <Ellipse.Fill>
+                    <RadialGradientBrush>
+                        <GradientStop x:Name="AmbientGlowStop3" Color="#00E676" Offset="0"/>
+                        <GradientStop Color="Transparent" Offset="1"/>
+                    </RadialGradientBrush>
+                </Ellipse.Fill>
+            </Ellipse>
+
+            <!-- Top Seasonal Particles Banner Overlay -->
+            <Image x:Name="CodexParticlesTop" Source="ms-appx:///Assets/kronatl_particles_otono.png"
+                   Stretch="UniformToFill" Height="180" VerticalAlignment="Top" HorizontalAlignment="Stretch" Opacity="0.88"/>
+
+            <!-- Bottom Seasonal Particles Banner Overlay -->
+            <Image x:Name="CodexParticlesBottom" Source="ms-appx:///Assets/kronatl_particles_otono.png"
+                   Stretch="UniformToFill" Height="160" VerticalAlignment="Bottom" HorizontalAlignment="Stretch" Opacity="0.75"/>
+        </Grid>
+
+        <!-- 1. Top Navigation & Story Segmented Progress Bars (YouTube Music Recap Style) -->
+        <StackPanel VerticalAlignment="Top" Padding="48,16,48,0" Spacing="12" Canvas.ZIndex="10">
+            <!-- 8 Segmented Progress Story Bars with Real-Time Filling -->
+            <Grid ColumnSpacing="8" HorizontalAlignment="Stretch" Height="4">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <Grid x:Name="StoryTrack0" Grid.Column="0" Height="4" CornerRadius="2" Background="#362C48">
+                    <Border x:Name="StoryFill0" HorizontalAlignment="Left" CornerRadius="2" Background="#FF6E1A" Width="0"/>
+                </Grid>
+                <Grid x:Name="StoryTrack1" Grid.Column="1" Height="4" CornerRadius="2" Background="#362C48">
+                    <Border x:Name="StoryFill1" HorizontalAlignment="Left" CornerRadius="2" Background="#FF6E1A" Width="0"/>
+                </Grid>
+                <Grid x:Name="StoryTrack2" Grid.Column="2" Height="4" CornerRadius="2" Background="#362C48">
+                    <Border x:Name="StoryFill2" HorizontalAlignment="Left" CornerRadius="2" Background="#FF6E1A" Width="0"/>
+                </Grid>
+                <Grid x:Name="StoryTrack3" Grid.Column="3" Height="4" CornerRadius="2" Background="#362C48">
+                    <Border x:Name="StoryFill3" HorizontalAlignment="Left" CornerRadius="2" Background="#FF6E1A" Width="0"/>
+                </Grid>
+                <Grid x:Name="StoryTrack4" Grid.Column="4" Height="4" CornerRadius="2" Background="#362C48">
+                    <Border x:Name="StoryFill4" HorizontalAlignment="Left" CornerRadius="2" Background="#FF6E1A" Width="0"/>
+                </Grid>
+                <Grid x:Name="StoryTrack5" Grid.Column="5" Height="4" CornerRadius="2" Background="#362C48">
+                    <Border x:Name="StoryFill5" HorizontalAlignment="Left" CornerRadius="2" Background="#FF6E1A" Width="0"/>
+                </Grid>
+                <Grid x:Name="StoryTrack6" Grid.Column="6" Height="4" CornerRadius="2" Background="#362C48">
+                    <Border x:Name="StoryFill6" HorizontalAlignment="Left" CornerRadius="2" Background="#FF6E1A" Width="0"/>
+                </Grid>
+                <Grid x:Name="StoryTrack7" Grid.Column="7" Height="4" CornerRadius="2" Background="#362C48">
+                    <Border x:Name="StoryFill7" HorizontalAlignment="Left" CornerRadius="2" Background="#FF6E1A" Width="0"/>
+                </Grid>
+            </Grid>
+
+            <!-- Top Header Bar: Season Badge + Title + Close Button -->
+            <Grid HorizontalAlignment="Stretch">
+                <StackPanel Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
+                    <Border x:Name="HeaderBadgeBorder" Background="#2B1626" BorderBrush="#FF6E1A" BorderThickness="1.2" CornerRadius="12" Padding="12,5">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Image x:Name="HeaderEmblemImage" Source="ms-appx:///Assets/kronatl_emblem_otono.png" Width="18" Height="18" Stretch="Uniform"/>
+                            <TextBlock x:Name="HeaderBadgeText" Text="KRONATL RECAP" FontSize="11" FontWeight="Bold" Foreground="#FF6E1A"/>
+                        </StackPanel>
+                    </Border>
+                    <TextBlock x:Name="SeasonHeaderTitle" Text="Kronatl de Otoño 2026" FontSize="15" FontWeight="SemiBold" Foreground="#E0D6F0" VerticalAlignment="Center"/>
+                    <Border Background="#1C162A" CornerRadius="10" Padding="8,3" VerticalAlignment="Center">
+                        <TextBlock x:Name="SeasonSubtitlePill" Text="Septiembre – Noviembre 2026" FontSize="11" Foreground="#9D93B0"/>
+                    </Border>
+                </StackPanel>
+
+                <!-- Close Button (Esc) -->
+                <Button Click="CloseButton_Click" HorizontalAlignment="Right" VerticalAlignment="Center"
+                        Background="#1E172C" BorderBrush="#3D2E55" BorderThickness="1"
+                        Width="38" Height="38" CornerRadius="19" Padding="0"
+                        ToolTipService.ToolTip="Cerrar El Códice (Esc)"
+                        helpers:FluidAnimationHelper.HoverMode="Icon">
+                    <FontIcon Glyph="&#xE711;" FontSize="13" Foreground="#FFFFFF"/>
+                </Button>
+            </Grid>
+        </StackPanel>
+
+        <!-- 2. Center Stage: Full-Bleed Widescreen FlipView with Gestures -->
+        <FlipView x:Name="CodexFlipView"
+                  SelectionChanged="CodexFlipView_SelectionChanged"
+                  PointerPressed="CodexFlipView_PointerPressed"
+                  PointerReleased="CodexFlipView_PointerReleased"
+                  Background="Transparent"
+                  Margin="0,70,0,65"
+                  HorizontalAlignment="Stretch"
+                  VerticalAlignment="Stretch">
+            <FlipView.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <StackPanel Orientation="Horizontal"/>
+                </ItemsPanelTemplate>
+            </FlipView.ItemsPanel>
+
+            <!-- SLIDE 0: Portada del Códice (Widescreen Hero Intro) -->
+            <FlipViewItem Background="Transparent" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                <Grid Padding="72,20,72,20" HorizontalAlignment="Stretch" VerticalAlignment="Center">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Left: Large Uniform Vector Emblem with Pulse Ring -->
+                    <Border Grid.Column="0" Width="200" Height="200" CornerRadius="100" Margin="0,0,48,0" VerticalAlignment="Center">
+                        <Grid>
+                            <Ellipse x:Name="Card0Ring" Width="190" Height="190" Stroke="#FF6E1A" StrokeThickness="2" Opacity="0.4"/>
+                            <Image x:Name="Card0EmblemImage" Source="ms-appx:///Assets/kronatl_emblem_otono.png" Width="170" Height="170" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Right: Story Narrative, Lore & Badges (Directly on Gradient) -->
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="16">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <Border x:Name="Card0BadgeBorder" Background="#FF6E1A" CornerRadius="10" Padding="12,5">
+                                <TextBlock x:Name="Card0Badge" Text="DÍA DE MUERTOS · OTOÑO" FontSize="11" FontWeight="Bold" Foreground="#000000"/>
+                            </Border>
+                            <Border Background="#20FFFFFF" BorderBrush="#40FFFFFF" BorderThickness="1" CornerRadius="10" Padding="12,5">
+                                <TextBlock x:Name="Card0LoreBadge" Text="Cempasúchil y Ceniza" FontSize="11" FontWeight="SemiBold" Foreground="#FFFFFF"/>
+                            </Border>
+                        </StackPanel>
+
+                        <TextBlock x:Name="Card0Title" Text="KRONATL DE OTOÑO 2026" FontSize="44" FontWeight="ExtraBold" Foreground="#FFFFFF"/>
+                        <TextBlock x:Name="Card0Subtitle" Text="Septiembre – Noviembre 2026" FontSize="18" FontWeight="SemiBold" Foreground="#F0E8FF"/>
+
+                        <TextBlock x:Name="Card0Lore" Text="«Entre frecuencias cálidas de otoño, el aroma del cempasúchil y transiciones armónicas que conectan con el Mictlán...»"
+                                   FontSize="16" FontStyle="Italic" Foreground="#FFFFFF" TextWrapping="Wrap" MaxWidth="820"/>
+
+                        <!-- Stat Preview Pills (Glassmorphism over Gradient) -->
+                        <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,6,0,0">
+                            <Border Background="#1AFFFFFF" BorderBrush="#30FFFFFF" BorderThickness="1" CornerRadius="12" Padding="12,6">
+                                <TextBlock x:Name="Card0StatTime" Text="⏱ 13h 49m" FontSize="12" FontWeight="SemiBold" Foreground="#FFFFFF"/>
+                            </Border>
+                            <Border Background="#1AFFFFFF" BorderBrush="#30FFFFFF" BorderThickness="1" CornerRadius="12" Padding="12,6">
+                                <TextBlock x:Name="Card0StatTrack" Text="★ Pista del Alma: Circo" FontSize="12" FontWeight="SemiBold" Foreground="#FFFFFF"/>
+                            </Border>
+                            <Border Background="#1AFFFFFF" BorderBrush="#30FFFFFF" BorderThickness="1" CornerRadius="12" Padding="12,6">
+                                <TextBlock x:Name="Card0StatArtist" Text="👤 Artista Refugio: Ed Maverick" FontSize="12" FontWeight="SemiBold" Foreground="#FFFFFF"/>
+                            </Border>
+                            <Border Background="#2000E676" BorderBrush="#8000E676" BorderThickness="1" CornerRadius="12" Padding="12,6">
+                                <TextBlock Text="92% Lossless Hi-Res" FontSize="12" FontWeight="Bold" Foreground="#00E676"/>
+                            </Border>
+                        </StackPanel>
+
+                        <Button Click="NextCard_Click" HorizontalAlignment="Left" Margin="0,12,0,0"
+                                Background="#FFFFFF" Foreground="#000000" CornerRadius="24" Padding="32,12" FontWeight="ExtraBold"
+                                helpers:FluidAnimationHelper.HoverMode="Button">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <TextBlock Text="Comenzar el Viaje Sonoro (Espacio / Clic)" FontSize="14" FontWeight="Bold" VerticalAlignment="Center"/>
+                                <FontIcon Glyph="&#xE72A;" FontSize="14" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </FlipViewItem>
+
+            <!-- SLIDE 1: Tiempo Total de Vibración (Widescreen Big Counter Floating Directly on Gradient) -->
+            <FlipViewItem Background="Transparent" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                <Grid Padding="72,20,72,20" HorizontalAlignment="Stretch" VerticalAlignment="Center">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Left: Giant Listening Counter (Directly on Vibrant Gradient) -->
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="18">
+                        <Border Background="#25FFFFFF" BorderBrush="#50FFFFFF" BorderThickness="1" CornerRadius="12" Padding="14,6" HorizontalAlignment="Left">
+                            <TextBlock Text="SLIDE 1 DE 8 · TU TIEMPO VIBRANDO" FontSize="11" FontWeight="Bold" Foreground="#FFFFFF"/>
+                        </Border>
+
+                        <TextBlock Text="Le diste play a tu vida..." FontSize="36" FontWeight="Bold" Foreground="#FFFFFF"/>
+
+                        <StackPanel Spacing="4">
+                            <TextBlock x:Name="Card1Hours" Text="14h 9m" FontSize="108" FontWeight="ExtraBold" Foreground="#FFFFFF"/>
+                            <TextBlock Text="de flujo acústico sin interrupción" FontSize="22" FontWeight="SemiBold" Foreground="#FFD700"/>
+                        </StackPanel>
+
+                        <TextBlock Text="«Tu música no fue solo ruido de fondo: fue la arquitectura acústica que sostuvo cada jornada, tus momentos de introspección y tus noches largas.»"
+                                   FontSize="16" FontStyle="Italic" Foreground="#FFFFFF" TextWrapping="Wrap" MaxWidth="580"/>
+                    </StackPanel>
+
+                    <!-- Right: Clean Translucent Floating Items (Directly Over Gradient) -->
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="16" Margin="32,0,0,0">
+                        <Border Background="#18FFFFFF" BorderBrush="#35FFFFFF" BorderThickness="1.2" CornerRadius="22" Padding="24,18">
+                            <StackPanel Orientation="Horizontal" Spacing="16">
+                                <Border Width="48" Height="48" CornerRadius="24" Background="#3000E676" VerticalAlignment="Center">
+                                    <FontIcon Glyph="&#xE8D6;" FontSize="22" Foreground="#00E676" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="Top Oyente Apasionado" FontSize="16" FontWeight="Bold" Foreground="#FFFFFF"/>
+                                    <TextBlock Text="Tu música nunca se detuvo en este ciclo de alta fidelidad." FontSize="13" Foreground="#E0D8F0"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Background="#18FFFFFF" BorderBrush="#35FFFFFF" BorderThickness="1.2" CornerRadius="22" Padding="24,18">
+                            <StackPanel Orientation="Horizontal" Spacing="16">
+                                <Border Width="48" Height="48" CornerRadius="24" Background="#35FF6E1A" VerticalAlignment="Center">
+                                    <FontIcon Glyph="&#xEC4A;" FontSize="22" Foreground="#FFA726" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="Sesiones Inmersivas Continuas" FontSize="16" FontWeight="Bold" Foreground="#FFFFFF"/>
+                                    <TextBlock Text="Promedio de reproducción constante con procesamiento PCM BASS de 32 bits." FontSize="13" Foreground="#E0D8F0"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Background="#18FFFFFF" BorderBrush="#35FFFFFF" BorderThickness="1.2" CornerRadius="22" Padding="24,18">
+                            <StackPanel Orientation="Horizontal" Spacing="16">
+                                <Border Width="48" Height="48" CornerRadius="24" Background="#35BB86FC" VerticalAlignment="Center">
+                                    <FontIcon Glyph="&#xE774;" FontSize="22" Foreground="#D0BCFF" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="100% Offline &amp; Privado" FontSize="16" FontWeight="Bold" Foreground="#FFFFFF"/>
+                                    <TextBlock Text="Tus estadísticas se calcularon localmente sin enviar datos a la nube." FontSize="13" Foreground="#E0D8F0"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+            </FlipViewItem>
+
+            <!-- SLIDE 2: Pista del Alma (Widescreen Hero Track Directly on Gradient) -->
+            <FlipViewItem Background="Transparent" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                <Grid Padding="72,20,72,20" HorizontalAlignment="Stretch" VerticalAlignment="Center">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Left: Large 320x320 Album Art with Clean Cover -->
+                    <Border Grid.Column="0" Width="320" Height="320" CornerRadius="26" Background="#20FFFFFF" BorderBrush="#60FFFFFF" BorderThickness="2" Margin="0,0,54,0" VerticalAlignment="Center">
+                        <Grid CornerRadius="24">
+                            <FontIcon x:Name="Card2FallbackIcon" Glyph="&#xE8D6;" FontSize="64" Foreground="#FFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed"/>
+                            <Image x:Name="Card2Cover" Stretch="UniformToFill" Width="316" Height="316"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Right: Track Metadata & Story Directly on Gradient -->
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="16">
+                        <Border Background="#25FFFFFF" BorderBrush="#50FFFFFF" BorderThickness="1" CornerRadius="12" Padding="14,6" HorizontalAlignment="Left">
+                            <TextBlock Text="SLIDE 2 DE 8 · TU HIMNO INDISCUTIBLE #1" FontSize="11" FontWeight="Bold" Foreground="#FFFFFF"/>
+                        </Border>
+
+                        <TextBlock Text="Esta canción no salió de tu cabeza:" FontSize="28" FontWeight="Bold" Foreground="#FFFFFF"/>
+
+                        <StackPanel Spacing="4">
+                            <TextBlock x:Name="Card2TrackTitle" Text="Circo" FontSize="48" FontWeight="ExtraBold" Foreground="#FFFFFF" TextTrimming="CharacterEllipsis"/>
+                            <TextBlock x:Name="Card2Artist" Text="NSQK; Kevin Kaarl" FontSize="24" FontWeight="SemiBold" Foreground="#FFD700" TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+
+                        <!-- Badges Row -->
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <Border Background="#25FFFFFF" BorderBrush="#50FFFFFF" BorderThickness="1" CornerRadius="12" Padding="12,6">
+                                <TextBlock x:Name="Card2PlayCount" Text="7 reproducciones en bucle" FontSize="12.5" FontWeight="Bold" Foreground="#FFFFFF"/>
+                            </Border>
+                            <Border Background="#2500E676" BorderBrush="#8000E676" BorderThickness="1" CornerRadius="12" Padding="12,6">
+                                <TextBlock x:Name="Card2Camelot" Text="Clave 12B / 3A" FontSize="12.5" FontWeight="Bold" Foreground="#00E676"/>
+                            </Border>
+                            <Border Background="#25FFFFFF" BorderBrush="#50FFFFFF" BorderThickness="1" CornerRadius="12" Padding="12,6">
+                                <TextBlock Text="133 BPM" FontSize="12.5" FontWeight="Bold" Foreground="#FFFFFF"/>
+                            </Border>
+                        </StackPanel>
+
+                        <TextBlock x:Name="Card2PeakTime" Text="Pico de euforia: Lunes, 8:13 p. m." FontSize="14" Foreground="#E0D8F0"/>
+
+                        <TextBlock Text="«Resonó con más intensidad que cualquier otra obra en tu biblioteca este ciclo. Fue la banda sonora indiscutible de tus mejores momentos.»"
+                                   FontSize="15" FontStyle="Italic" Foreground="#FFFFFF" TextWrapping="Wrap" MaxWidth="680"/>
+                    </StackPanel>
+                </Grid>
+            </FlipViewItem>
+
+            <!-- SLIDE 3: Top Artistas (Estilo YouTube Music Recap Directo en Degradado) -->
+            <FlipViewItem Background="Transparent" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                <Grid Padding="72,20,72,20" HorizontalAlignment="Stretch" VerticalAlignment="Center">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="400"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Left: Hero Artist Refugio Card (Translucent Glass on Gradient) -->
+                    <Border Grid.Column="0" Background="#18FFFFFF" BorderBrush="#35FFFFFF" BorderThickness="1.5" CornerRadius="26" Padding="32,28" Margin="0,0,40,0">
+                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="16">
+                            <Border Background="#25FFFFFF" CornerRadius="12" Padding="12,5" HorizontalAlignment="Center">
+                                <TextBlock Text="TU ARTISTA REFUGIO" FontSize="11" FontWeight="Bold" Foreground="#FFFFFF"/>
+                            </Border>
+
+                            <!-- Circular Avatar with Border -->
+                            <Border Width="140" Height="140" CornerRadius="70" Background="#20FFFFFF" BorderBrush="#FFFFFF" BorderThickness="3" HorizontalAlignment="Center">
+                                <Grid CornerRadius="67">
+                                    <FontIcon x:Name="Card3FallbackIcon" Glyph="&#xE77B;" FontSize="48" Foreground="#FFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    <Image x:Name="Card3ArtistPhoto" Stretch="UniformToFill" Width="134" Height="134"/>
+                                </Grid>
+                            </Border>
+
+                            <TextBlock x:Name="Card3ArtistName" Text="Ed Maverick" FontSize="32" FontWeight="ExtraBold" Foreground="#FFFFFF" HorizontalAlignment="Center" TextAlignment="Center"/>
+                            <TextBlock x:Name="Card3Hours" Text="3h 29m acumuladas en sintonía" FontSize="16" FontWeight="SemiBold" Foreground="#FFD700" HorizontalAlignment="Center"/>
+
+                            <TextBlock Text="«Cuando necesitabas desconectar del mundo exterior, recurriste a sus melodías. Fue tu santuario sonoro personal.»"
+                                       FontSize="13" FontStyle="Italic" Foreground="#E0D8F0" TextWrapping="Wrap" TextAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Right: Top 5 Artists List (Directly on Gradient, No Gray Cards!) -->
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="14">
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <TextBlock Text="Top Artistas" FontSize="28" FontWeight="ExtraBold" Foreground="#FFFFFF"/>
+                            <Border Background="#20FFFFFF" BorderBrush="#40FFFFFF" BorderThickness="1" CornerRadius="10" Padding="10,3" VerticalAlignment="Center">
+                                <TextBlock Text="LOS 5 MÁS ESCUCHADOS" FontSize="11" FontWeight="Bold" Foreground="#FFFFFF"/>
+                            </Border>
+                        </StackPanel>
+
+                        <!-- ItemsControl for Top 5 Artists (Transparent rows over gradient) -->
+                        <ItemsControl x:Name="Top5ArtistsList">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="models:TopArtistItem">
+                                    <Border Background="#14FFFFFF" BorderBrush="#25FFFFFF" BorderThickness="1" CornerRadius="16" Margin="0,0,0,8" Padding="16,10">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="36"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <!-- Rank Number -->
+                                            <TextBlock Grid.Column="0" Text="{x:Bind Rank}" FontSize="20" FontWeight="ExtraBold" Foreground="#FFD700" VerticalAlignment="Center"/>
+
+                                            <!-- Circular Avatar Thumbnail with Real Artist Photo -->
+                                            <Border Grid.Column="1" Width="44" Height="44" CornerRadius="22" Background="#20FFFFFF" BorderBrush="#FFFFFF" BorderThickness="1.5" Margin="0,0,16,0" VerticalAlignment="Center">
+                                                <Grid CornerRadius="21">
+                                                    <FontIcon Glyph="&#xE77B;" FontSize="18" Foreground="#FFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{x:Bind FallbackIconVisibility}"/>
+                                                    <Image Source="{x:Bind PhotoImageSource}" Stretch="UniformToFill" Width="44" Height="44"/>
+                                                </Grid>
+                                            </Border>
+
+                                            <!-- Artist Name -->
+                                            <TextBlock Grid.Column="2" Text="{x:Bind Name}" FontSize="16" FontWeight="Bold" Foreground="#FFFFFF" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+
+                                            <!-- Time Listened -->
+                                            <TextBlock Grid.Column="3" Text="{x:Bind TimeFormatted}" FontSize="13" FontWeight="SemiBold" Foreground="#E0D8F0" VerticalAlignment="Center"/>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Grid>
+            </FlipViewItem>
+
+            <!-- SLIDE 4: Top Canciones & Espectro Armónico (Directo en Degradado) -->
+            <FlipViewItem Background="Transparent" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                <Grid Padding="72,20,72,20" HorizontalAlignment="Stretch" VerticalAlignment="Center">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="400"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Left: Harmonic Identity & Cardinal Pulse (Translucent Glass) -->
+                    <Border Grid.Column="0" Background="#18FFFFFF" BorderBrush="#35FFFFFF" BorderThickness="1.5" CornerRadius="26" Padding="32,28" Margin="0,0,40,0">
+                        <StackPanel VerticalAlignment="Center" Spacing="18">
+                            <Border Background="#25FFFFFF" CornerRadius="12" Padding="12,5" HorizontalAlignment="Left">
+                                <TextBlock Text="ARMONÍA &amp; TEMPO" FontSize="11" FontWeight="Bold" Foreground="#FFFFFF"/>
+                            </Border>
+
+                            <TextBlock Text="Tu Arquitectura Armónica" FontSize="22" FontWeight="Bold" Foreground="#FFFFFF" TextWrapping="Wrap"/>
+
+                            <!-- Camelot Capsule -->
+                            <StackPanel Spacing="6">
+                                <TextBlock Text="ESPECTRO CAMELOT DOMINANTE" FontSize="11" FontWeight="Bold" Foreground="#E0D8F0"/>
+                                <Border x:Name="Card4CamelotPill" CornerRadius="16" Padding="20,10" HorizontalAlignment="Left">
+                                    <TextBlock x:Name="Card4CamelotText" Text="12B / 3A" FontSize="24" FontWeight="ExtraBold" Foreground="#000000"/>
+                                </Border>
+                                <TextBlock Text="Tonalidades introspectivas con transiciones suaves y armónicas." FontSize="12.5" Foreground="#FFFFFF" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                            </StackPanel>
+
+                            <!-- BPM Cardinal Pulse -->
+                            <StackPanel Spacing="6">
+                                <TextBlock Text="PULSO CARDINAL" FontSize="11" FontWeight="Bold" Foreground="#E0D8F0"/>
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <FontIcon Glyph="&#xEB51;" FontSize="26" Foreground="#FFD700" VerticalAlignment="Center"/>
+                                    <TextBlock x:Name="Card4BpmText" Text="133 BPM" FontSize="32" FontWeight="ExtraBold" Foreground="#FFFFFF"/>
+                                </StackPanel>
+                                <TextBlock x:Name="Card4BpmRhythm" Text="Tempo Dinámico y Enérgico" FontSize="13" FontWeight="SemiBold" Foreground="#FFD700"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Right: Top 5 Tracks List (Directly on Gradient, No Gray Cards!) -->
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="14">
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <TextBlock Text="Top Canciones" FontSize="28" FontWeight="ExtraBold" Foreground="#FFFFFF"/>
+                            <Border Background="#20FFFFFF" BorderBrush="#40FFFFFF" BorderThickness="1" CornerRadius="10" Padding="10,3" VerticalAlignment="Center">
+                                <TextBlock Text="TUS 5 HIMNOS DE LA ESTACIÓN" FontSize="11" FontWeight="Bold" Foreground="#FFFFFF"/>
+                            </Border>
+                        </StackPanel>
+
+                        <!-- ItemsControl for Top 5 Tracks -->
+                        <ItemsControl x:Name="Top5TracksList">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="models:TopTrackItem">
+                                    <Border Background="#14FFFFFF" BorderBrush="#25FFFFFF" BorderThickness="1" CornerRadius="16" Margin="0,0,0,8" Padding="16,10">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="36"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <!-- Rank Number -->
+                                            <TextBlock Grid.Column="0" Text="{x:Bind Rank}" FontSize="20" FontWeight="ExtraBold" Foreground="#FFD700" VerticalAlignment="Center"/>
+
+                                            <!-- Square Cover Art Thumbnail with Real Album Cover -->
+                                            <Border Grid.Column="1" Width="44" Height="44" CornerRadius="8" Background="#20FFFFFF" BorderBrush="#FFFFFF" BorderThickness="1.5" Margin="0,0,16,0" VerticalAlignment="Center">
+                                                <Grid CornerRadius="7">
+                                                    <FontIcon Glyph="&#xE8D6;" FontSize="18" Foreground="#FFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{x:Bind FallbackIconVisibility}"/>
+                                                    <Image Source="{x:Bind CoverImageSource}" Stretch="UniformToFill" Width="44" Height="44"/>
+                                                </Grid>
+                                            </Border>
+
+                                            <!-- Track Title & Artist -->
+                                            <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                                                <TextBlock Text="{x:Bind Title}" FontSize="15" FontWeight="Bold" Foreground="#FFFFFF" TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Text="{x:Bind Artist}" FontSize="12.5" Foreground="#E0D8F0" TextTrimming="CharacterEllipsis"/>
+                                            </StackPanel>
+
+                                            <!-- Plays Count -->
+                                            <Border Grid.Column="3" Background="#25FFFFFF" BorderBrush="#40FFFFFF" BorderThickness="1" CornerRadius="10" Padding="10,4" VerticalAlignment="Center">
+                                                <TextBlock Text="{x:Bind PlayCountFormatted}" FontSize="11" FontWeight="Bold" Foreground="#FFFFFF"/>
+                                            </Border>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Grid>
+            </FlipViewItem>
+
+            <!-- SLIDE 5: Pico de Obsidiana & Álbum de Escucha Pura (Directo en Degradado) -->
+            <FlipViewItem Background="Transparent" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                <Grid Padding="72,20,72,20" HorizontalAlignment="Stretch" VerticalAlignment="Center">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Left: Pico de Obsidiana (Translucent Glass) -->
+                    <Border Grid.Column="0" Background="#18FFFFFF" BorderBrush="#35FFFFFF" BorderThickness="1.5" CornerRadius="26" Padding="36,32" Margin="0,0,24,0">
+                        <StackPanel VerticalAlignment="Center" Spacing="18">
+                            <Border Background="#25FFFFFF" CornerRadius="12" Padding="14,6" HorizontalAlignment="Left">
+                                <TextBlock Text="SLIDE 5 DE 8 · TU DÍA CÚSPIDE" FontSize="11" FontWeight="Bold" Foreground="#FFFFFF"/>
+                            </Border>
+
+                            <TextBlock Text="El día en que la música tomó el control total:" FontSize="24" FontWeight="Bold" Foreground="#FFFFFF"/>
+
+                            <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,6">
+                                <Border Width="72" Height="72" CornerRadius="36" Background="#30FFFFFF" BorderBrush="#FFFFFF" BorderThickness="2" VerticalAlignment="Center">
+                                    <FontIcon Glyph="&#xE787;" FontSize="32" Foreground="#FFD700" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock x:Name="Card5PeakDate" Text="5 de septiembre, 2026" FontSize="32" FontWeight="ExtraBold" Foreground="#FFFFFF"/>
+                                    <TextBlock x:Name="Card5PeakHours" Text="1h 4m continuos de flujo sonoro" FontSize="16" FontWeight="SemiBold" Foreground="#FFD700"/>
+                                </StackPanel>
+                            </StackPanel>
+
+                            <TextBlock Text="«Ese día no hubo distracciones ni pausas: conectaste tus audífonos y te sumergiste por completo en un viaje acústico sin cortes.»"
+                                       FontSize="14" FontStyle="Italic" Foreground="#E0D8F0" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Right: Álbum de Escucha Pura (Translucent Glass) -->
+                    <Border Grid.Column="1" Background="#18FFFFFF" BorderBrush="#35FFFFFF" BorderThickness="1.5" CornerRadius="26" Padding="36,32" Margin="24,0,0,0">
+                        <StackPanel VerticalAlignment="Center" Spacing="18">
+                            <Border Background="#25FFFFFF" CornerRadius="12" Padding="14,6" HorizontalAlignment="Left">
+                                <TextBlock Text="ÁLBUM DE ESCUCHA PURA" FontSize="11" FontWeight="Bold" Foreground="#FFFFFF"/>
+                            </Border>
+
+                            <TextBlock Text="Música apreciada como arte completo:" FontSize="24" FontWeight="Bold" Foreground="#FFFFFF"/>
+
+                            <Grid ColumnSpacing="20" Margin="0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <Border Grid.Column="0" Width="100" Height="100" CornerRadius="16" Background="#20FFFFFF" BorderBrush="#FFFFFF" BorderThickness="2">
+                                    <Grid CornerRadius="14">
+                                        <FontIcon Glyph="&#xE8D6;" FontSize="36" Foreground="#FFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        <Image x:Name="Card6AlbumCover" Stretch="UniformToFill" Width="96" Height="96"/>
+                                    </Grid>
+                                </Border>
+
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock x:Name="Card6AlbumTitle" Text="Circo" FontSize="24" FontWeight="Bold" Foreground="#FFFFFF" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock x:Name="Card6AlbumArtist" Text="NSQK; Kevin Kaarl" FontSize="16" Foreground="#FFD700" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Text="Reproducido íntegramente sin saltar canciones." FontSize="12.5" Foreground="#E0D8F0" Margin="0,4,0,0"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <TextBlock Text="«Respetaste la obra completa y la secuencia creada por el artista, sin interrupciones ni reproducciones aleatorias.»"
+                                       FontSize="14" FontStyle="Italic" Foreground="#E0D8F0" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </FlipViewItem>
+
+            <!-- SLIDE 6: Fidelidad Audiófila & Motor BASS (Directo en Degradado) -->
+            <FlipViewItem Background="Transparent" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                <Grid Padding="72,20,72,20" HorizontalAlignment="Stretch" VerticalAlignment="Center">
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="24" MaxWidth="820">
+                        <Border Background="#25FFFFFF" CornerRadius="12" Padding="16,6" HorizontalAlignment="Center">
+                            <TextBlock Text="SLIDE 6 DE 8 · ÍNDICE DE FIDELIDAD AUDITIVA" FontSize="11" FontWeight="Bold" Foreground="#00E676"/>
+                        </Border>
+
+                        <TextBlock Text="Tus oídos exigen máxima resolución acústica:" FontSize="32" FontWeight="Bold" Foreground="#FFFFFF" HorizontalAlignment="Center"/>
+
+                        <!-- Giant Lossless Percentage -->
+                        <StackPanel HorizontalAlignment="Center" Spacing="6">
+                            <TextBlock x:Name="Card6FidelityPercent" Text="92% Hi-Res Audio" FontSize="76" FontWeight="ExtraBold" Foreground="#00E676" HorizontalAlignment="Center"/>
+                            <TextBlock Text="Audio Lossless sin compresión destructiva (FLAC / WAV 24-bit)" FontSize="18" FontWeight="SemiBold" Foreground="#FFFFFF" HorizontalAlignment="Center"/>
+                        </StackPanel>
+
+                        <!-- Wide Progress Meter Bar -->
+                        <Border Background="#30FFFFFF" CornerRadius="8" Height="14" Width="540" HorizontalAlignment="Center">
+                            <Border x:Name="Card6FidelityBar" HorizontalAlignment="Left" CornerRadius="8" Width="490" Background="#00E676"/>
+                        </Border>
+
+                        <!-- Badges Row -->
+                        <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center">
+                            <Border Background="#2000E676" BorderBrush="#8000E676" BorderThickness="1" CornerRadius="12" Padding="14,6">
+                                <TextBlock Text="✓ FLAC 24-bit / 96kHz+" FontSize="12" FontWeight="Bold" Foreground="#00E676"/>
+                            </Border>
+                            <Border Background="#20FFFFFF" BorderBrush="#50FFFFFF" BorderThickness="1" CornerRadius="12" Padding="14,6">
+                                <TextBlock Text="✓ Motor BASS de 32-bit Floating Point" FontSize="12" FontWeight="Bold" Foreground="#FFFFFF"/>
+                            </Border>
+                            <Border Background="#2000E676" BorderBrush="#8000E676" BorderThickness="1" CornerRadius="12" Padding="14,6">
+                                <TextBlock Text="✓ Cero Compresión con Pérdidas" FontSize="12" FontWeight="Bold" Foreground="#00E676"/>
+                            </Border>
+                        </StackPanel>
+
+                        <TextBlock Text="«El 92% de tu tiempo disfrutaste de sonido masterizado en estudio, con la máxima amplitud dinámica y fidelidad pura que Kaki EQ puede entregar.»"
+                                   FontSize="15" FontStyle="Italic" Foreground="#FFFFFF" TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </Grid>
+            </FlipViewItem>
+
+            <!-- SLIDE 7: El Códice Completo (Resumen Definitivo Directo en Degradado) -->
+            <FlipViewItem Background="Transparent" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                <Grid Padding="64,16,64,16" HorizontalAlignment="Stretch" VerticalAlignment="Center">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Top: Recap Season Branding -->
+                    <StackPanel Grid.Row="0" HorizontalAlignment="Center" Spacing="6" Margin="0,0,0,16">
+                        <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center">
+                            <TextBlock x:Name="Card7Headline" Text="Kronatl de Otoño 2026" FontSize="26" FontWeight="ExtraBold" Foreground="#FFFFFF"/>
+                            <Border Background="#FF6E1A" CornerRadius="10" Padding="10,3" VerticalAlignment="Center">
+                                <TextBlock x:Name="Card7Badge" Text="RECAP COMPLETO" FontSize="11" FontWeight="Bold" Foreground="#000000"/>
+                            </Border>
+                        </StackPanel>
+                        <TextBlock Text="Tu resumen musical de la temporada, procesado íntegramente en tu dispositivo." FontSize="13" Foreground="#E0D8F0" HorizontalAlignment="Center"/>
+                    </StackPanel>
+
+                    <!-- Center: 3-Column Summary (Hero + Top Tracks + Top Artists Translucent Glass) -->
+                    <Grid Grid.Row="1" ColumnSpacing="24" HorizontalAlignment="Stretch">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="280"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Column 0: Hero Stats -->
+                        <Border Grid.Column="0" Background="#18FFFFFF" BorderBrush="#35FFFFFF" BorderThickness="1.5" CornerRadius="22" Padding="20,18">
+                            <StackPanel VerticalAlignment="Center" Spacing="14">
+                                <Image x:Name="SummaryEmblemImage" Source="ms-appx:///Assets/kronatl_emblem_otono.png" Width="90" Height="90" Stretch="Uniform" HorizontalAlignment="Center"/>
+                                <TextBlock x:Name="SummaryTimeText" Text="14h 9m" FontSize="36" FontWeight="ExtraBold" Foreground="#FFFFFF" HorizontalAlignment="Center"/>
+                                <TextBlock Text="Tiempo total vibrando" FontSize="12.5" Foreground="#FFD700" HorizontalAlignment="Center"/>
+                                <Border Background="#2000E676" BorderBrush="#8000E676" BorderThickness="1" CornerRadius="10" Padding="8,4" HorizontalAlignment="Center">
+                                    <TextBlock Text="92% Lossless Hi-Res" FontSize="11" FontWeight="Bold" Foreground="#00E676"/>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Column 1: Top Tracks (Top 5 Mini) -->
+                        <Border Grid.Column="1" Background="#18FFFFFF" BorderBrush="#35FFFFFF" BorderThickness="1.5" CornerRadius="22" Padding="20,18">
+                            <StackPanel Spacing="10">
+                                <TextBlock Text="TOP 5 CANCIONES" FontSize="12" FontWeight="Bold" Foreground="#FFFFFF"/>
+                                <ItemsControl x:Name="SummaryTop5TracksList">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="models:TopTrackItem">
+                                            <Grid Margin="0,3" ColumnSpacing="8">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="20"/>
+                                                    <ColumnDefinition Width="28"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="{x:Bind Rank}" FontSize="13" FontWeight="Bold" Foreground="#FFD700" VerticalAlignment="Center"/>
+                                                <Border Grid.Column="1" Width="28" Height="28" CornerRadius="6" Background="#20FFFFFF" VerticalAlignment="Center">
+                                                    <Grid CornerRadius="6">
+                                                        <FontIcon Glyph="&#xE8D6;" FontSize="12" Foreground="#FFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{x:Bind FallbackIconVisibility}"/>
+                                                        <Image Source="{x:Bind CoverImageSource}" Stretch="UniformToFill" Width="28" Height="28"/>
+                                                    </Grid>
+                                                </Border>
+                                                <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                                                    <TextBlock Text="{x:Bind Title}" FontSize="13" FontWeight="SemiBold" Foreground="#FFFFFF" TextTrimming="CharacterEllipsis"/>
+                                                    <TextBlock Text="{x:Bind Artist}" FontSize="11" Foreground="#E0D8F0" TextTrimming="CharacterEllipsis"/>
+                                                </StackPanel>
+                                                <TextBlock Grid.Column="3" Text="{x:Bind PlayCountShort}" FontSize="11" Foreground="#FFD700" VerticalAlignment="Center"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Column 2: Top Artists (Top 5 Mini) -->
+                        <Border Grid.Column="2" Background="#18FFFFFF" BorderBrush="#35FFFFFF" BorderThickness="1.5" CornerRadius="22" Padding="20,18">
+                            <StackPanel Spacing="10">
+                                <TextBlock Text="TOP 5 ARTISTAS" FontSize="12" FontWeight="Bold" Foreground="#FFFFFF"/>
+                                <ItemsControl x:Name="SummaryTop5ArtistsList">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="models:TopArtistItem">
+                                            <Grid Margin="0,3" ColumnSpacing="8">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="20"/>
+                                                    <ColumnDefinition Width="28"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="{x:Bind Rank}" FontSize="13" FontWeight="Bold" Foreground="#FFD700" VerticalAlignment="Center"/>
+                                                <Border Grid.Column="1" Width="28" Height="28" CornerRadius="14" Background="#20FFFFFF" VerticalAlignment="Center">
+                                                    <Grid CornerRadius="14">
+                                                        <FontIcon Glyph="&#xE77B;" FontSize="12" Foreground="#FFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{x:Bind FallbackIconVisibility}"/>
+                                                        <Image Source="{x:Bind PhotoImageSource}" Stretch="UniformToFill" Width="28" Height="28"/>
+                                                    </Grid>
+                                                </Border>
+                                                <TextBlock Grid.Column="2" Text="{x:Bind Name}" FontSize="13" FontWeight="SemiBold" Foreground="#FFFFFF" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                                <TextBlock Grid.Column="3" Text="{x:Bind TimeFormatted}" FontSize="11" Foreground="#E0D8F0" VerticalAlignment="Center"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <!-- Bottom Action Buttons -->
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="14" HorizontalAlignment="Center" Margin="0,20,0,0">
+                        <Button Click="ExportPoster_Click"
+                                Background="#FFFFFF" Foreground="#000000"
+                                CornerRadius="24" Padding="28,12" FontWeight="ExtraBold"
+                                helpers:FluidAnimationHelper.HoverMode="Button">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <FontIcon Glyph="&#xEB9F;" FontSize="15"/>
+                                <TextBlock Text="Exportar Póster Horizontal (1920x1080)" FontSize="13.5" FontWeight="Bold" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+
+                        <Button x:Name="SavePlaylistButton" Click="SavePlaylistButton_Click"
+                                Background="#25FFFFFF" BorderBrush="#50FFFFFF" BorderThickness="1.5"
+                                Foreground="#FFFFFF" CornerRadius="24" Padding="22,12" FontWeight="Bold"
+                                helpers:FluidAnimationHelper.HoverMode="Button">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon Glyph="&#xE8F1;" FontSize="14" Foreground="#FFD700"/>
+                                <TextBlock Text="Guardar Top 30 en Biblioteca" FontSize="13" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </FlipViewItem>
+        </FlipView>
+
+        <!-- 3. Bottom Carousel Navigation Controls (< 1 de 8 >) -->
+        <Grid Height="55" VerticalAlignment="Bottom" Padding="48,0,48,14">
+            <!-- Left Prev Arrow Button -->
+            <Button Click="PrevCard_Click" HorizontalAlignment="Left" VerticalAlignment="Center"
+                    Background="#1E172C" BorderBrush="#3D2E55" BorderThickness="1"
+                    Width="40" Height="40" CornerRadius="20" Padding="0"
+                    ToolTipService.ToolTip="Diapositiva Anterior (←)"
+                    helpers:FluidAnimationHelper.HoverMode="Icon">
+                <FontIcon Glyph="&#xE76B;" FontSize="13" Foreground="#D0BCFF"/>
+            </Button>
+
+            <!-- Center Counter Pill -->
+            <Border HorizontalAlignment="Center" VerticalAlignment="Center"
+                    Background="#1C1528" BorderBrush="#362546" BorderThickness="1" CornerRadius="14" Padding="14,5">
+                <TextBlock x:Name="PageIndicatorText" Text="1 de 8" FontSize="11.5" FontWeight="Bold" Foreground="#D0BCFF"/>
+            </Border>
+
+            <!-- Right Next Arrow Button -->
+            <Button Click="NextCard_Click" HorizontalAlignment="Right" VerticalAlignment="Center"
+                    Background="#1E172C" BorderBrush="#3D2E55" BorderThickness="1"
+                    Width="40" Height="40" CornerRadius="20" Padding="0"
+                    ToolTipService.ToolTip="Siguiente Diapositiva (→)"
+                    helpers:FluidAnimationHelper.HoverMode="Icon">
+                <FontIcon Glyph="&#xE76C;" FontSize="13" Foreground="#D0BCFF"/>
+            </Button>
+        </Grid>
+    </Grid>
+</UserControl>

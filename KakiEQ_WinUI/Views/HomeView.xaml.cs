@@ -96,5 +96,14 @@ namespace KakiEQ_WinUI.Views
         {
             MainViewModel.Instance?.NavigateEqualizerCommand.Execute(null);
         }
+
+        private void OpenKronatlBanner_Click(object sender, RoutedEventArgs e)
+        {
+            var season = ViewModel?.ActiveKronatlSeason;
+            if (season != null)
+            {
+                MainWindow.Instance?.OpenKronatlCodex(season);
+            }
+        }
     }
 }
