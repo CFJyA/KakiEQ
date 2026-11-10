@@ -87,5 +87,51 @@ namespace KakiEQ_WinUI.Views
                 ViewModel.TestDeviceCommand.Execute(device);
             }
         }
+
+        private void AdjustDeviceEq_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.Tag is AudioOutputDevice device && ViewModel != null)
+            {
+                ViewModel.NavigateToDeviceEq(device);
+            }
+        }
+
+        private void DeviceEqBadge_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.Tag is AudioOutputDevice device && ViewModel != null)
+            {
+                var flyout = new MenuFlyout();
+
+                // Option: Master (Global)
+                var masterItem = new MenuFlyoutItem
+                {
+                    Text = "🌐 Master (Global)",
+                    Icon = new FontIcon { Glyph = "\uE767" }
+                };
+                masterItem.Click += (s, args) => ViewModel.SetDeviceMasterEq(device);
+                flyout.Items.Add(masterItem);
+
+                flyout.Items.Add(new MenuFlyoutSeparator());
+
+                // Presets list from EqualizerVm
+                var presets = MainViewModel.Instance?.EqualizerVm?.Presets;
+                if (presets != null)
+                {
+                    foreach (var preset in presets)
+                    {
+                        var presetItem = new MenuFlyoutItem
+                        {
+                            Text = preset.Name,
+                            Icon = new FontIcon { Glyph = preset.IsCustom ? "\uE74E" : "\uE9D9" }
+                        };
+                        var capturedPreset = preset;
+                        presetItem.Click += (s, args) => ViewModel.ApplyPresetToDevice(device, capturedPreset);
+                        flyout.Items.Add(presetItem);
+                    }
+                }
+
+                flyout.ShowAt(btn);
+            }
+        }
     }
 }

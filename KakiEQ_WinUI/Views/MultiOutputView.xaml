@@ -253,6 +253,44 @@
                                             </StackPanel>
                                         </Border>
 
+                                        <!-- Per-Device EQ Controls (Profile Badge Chip & Adjust EQ Button) -->
+                                        <Border Background="{ThemeResource AppSurfaceElevated}" CornerRadius="14" Padding="6,4">
+                                            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                                <!-- EQ Profile Badge Pill (Click opens Flyout menu) -->
+                                                <Button Click="DeviceEqBadge_Click"
+                                                        Tag="{Binding}"
+                                                        Background="{ThemeResource AppAccentSurface}"
+                                                        BorderBrush="{ThemeResource AppBorder}"
+                                                        BorderThickness="1"
+                                                        CornerRadius="10"
+                                                        Padding="8,4"
+                                                        ToolTipService.ToolTip="Seleccionar perfil de ecualización para este dispositivo"
+                                                        helpers:FluidAnimationHelper.HoverMode="Button">
+                                                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                                        <FontIcon Glyph="&#xE995;" FontSize="11" Foreground="{ThemeResource AppAccent}"/>
+                                                        <TextBlock Text="{Binding EqBadgeText}" FontSize="11" FontWeight="Bold" Foreground="{ThemeResource AppAccent}" VerticalAlignment="Center"/>
+                                                        <FontIcon Glyph="&#xE70D;" FontSize="8" Foreground="{ThemeResource AppAccent}" Margin="2,1,0,0"/>
+                                                    </StackPanel>
+                                                </Button>
+
+                                                <!-- Shortcut Button: Ajustar EQ -->
+                                                <Button Click="AdjustDeviceEq_Click"
+                                                        Tag="{Binding}"
+                                                        Background="Transparent"
+                                                        BorderThickness="0"
+                                                        Foreground="{ThemeResource AppTextPrimary}"
+                                                        CornerRadius="10"
+                                                        Padding="8,4"
+                                                        ToolTipService.ToolTip="Abrir ecualizador para este dispositivo"
+                                                        helpers:FluidAnimationHelper.HoverMode="Button">
+                                                    <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                                                        <FontIcon Glyph="&#xE9D9;" FontSize="12" Foreground="{ThemeResource AppTextSecondary}"/>
+                                                        <TextBlock Text="Ajustar EQ" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                    </StackPanel>
+                                                </Button>
+                                            </StackPanel>
+                                        </Border>
+
                                         <!-- Latency / Delay compensation -->
                                         <Border Background="{ThemeResource AppSurfaceElevated}" CornerRadius="14" Padding="10,6">
                                             <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">

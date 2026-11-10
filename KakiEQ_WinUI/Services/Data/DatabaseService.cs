@@ -14,10 +14,12 @@ namespace KakiEQ_WinUI.Services.Data
     {
         private readonly string _dbPath;
         private readonly string _playlistsDbPath;
+        private readonly string _deviceEqProfilesDbPath;
         private readonly SemaphoreSlim _dbLock = new(1, 1);
 
         private List<Track>? _cachedTracks;
         private List<Playlist>? _cachedPlaylists;
+        private List<DeviceEqProfile>? _cachedDeviceEqProfiles;
         private readonly ConcurrentDictionary<string, string?> _artistPhotoCache = new(StringComparer.OrdinalIgnoreCase);
 
         private static readonly JsonSerializerOptions JsonOptions = new()
@@ -30,6 +32,7 @@ namespace KakiEQ_WinUI.Services.Data
             var dataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KakiEQ");
             _dbPath = Path.Combine(dataFolder, "library_data.json");
             _playlistsDbPath = Path.Combine(dataFolder, "playlists_data.json");
+            _deviceEqProfilesDbPath = Path.Combine(dataFolder, "device_eq_profiles.json");
             Directory.CreateDirectory(dataFolder);
         }
 
@@ -465,6 +468,108 @@ namespace KakiEQ_WinUI.Services.Data
 
             _artistPhotoCache[artistName] = targetPath;
             return targetPath;
+        }
+
+        public async Task<List<DeviceEqProfile>> GetAllDeviceEqProfilesAsync()
+        {
+            if (_cachedDeviceEqProfiles != null)
+            {
+                return _cachedDeviceEqProfiles.Select(p => p.Clone()).ToList();
+            }
+
+            await _dbLock.WaitAsync();
+            try
+            {
+                if (_cachedDeviceEqProfiles != null)
+                {
+                    return _cachedDeviceEqProfiles.Select(p => p.Clone()).ToList();
+                }
+
+                if (!File.Exists(_deviceEqProfilesDbPath))
+                {
+                    _cachedDeviceEqProfiles = new List<DeviceEqProfile>();
+                    return new List<DeviceEqProfile>();
+                }
+
+                var json = await Task.Run(() => File.ReadAllText(_deviceEqProfilesDbPath));
+                var profiles = JsonSerializer.Deserialize<List<DeviceEqProfile>>(json) ?? new List<DeviceEqProfile>();
+                _cachedDeviceEqProfiles = profiles;
+                return _cachedDeviceEqProfiles.Select(p => p.Clone()).ToList();
+            }
+            catch
+            {
+                _cachedDeviceEqProfiles = new List<DeviceEqProfile>();
+                return new List<DeviceEqProfile>();
+            }
+            finally
+            {
+                _dbLock.Release();
+            }
+        }
+
+        public async Task<DeviceEqProfile?> GetDeviceEqProfileAsync(string deviceId)
+        {
+            if (string.IsNullOrWhiteSpace(deviceId)) return null;
+            var all = await GetAllDeviceEqProfilesAsync();
+            return all.FirstOrDefault(p => p.DeviceId.Equals(deviceId, StringComparison.OrdinalIgnoreCase));
+        }
+
+        public DeviceEqProfile? GetCachedDeviceEqProfile(string deviceId)
+        {
+            if (string.IsNullOrWhiteSpace(deviceId) || _cachedDeviceEqProfiles == null) return null;
+            return _cachedDeviceEqProfiles.FirstOrDefault(p => p.DeviceId.Equals(deviceId, StringComparison.OrdinalIgnoreCase))?.Clone();
+        }
+
+        public async Task SaveDeviceEqProfileAsync(DeviceEqProfile profile)
+        {
+            if (profile == null || string.IsNullOrWhiteSpace(profile.DeviceId)) return;
+
+            await _dbLock.WaitAsync();
+            try
+            {
+                var list = _cachedDeviceEqProfiles ?? new List<DeviceEqProfile>();
+                if (!File.Exists(_deviceEqProfilesDbPath) && _cachedDeviceEqProfiles == null)
+                {
+                    list = new List<DeviceEqProfile>();
+                }
+                else if (_cachedDeviceEqProfiles == null)
+                {
+                    try
+                    {
+                        var jsonExisting = await Task.Run(() => File.ReadAllText(_deviceEqProfilesDbPath));
+                        list = JsonSerializer.Deserialize<List<DeviceEqProfile>>(jsonExisting) ?? new List<DeviceEqProfile>();
+                    }
+                    catch
+                    {
+                        list = new List<DeviceEqProfile>();
+                    }
+                }
+
+                int index = list.FindIndex(p => p.DeviceId.Equals(profile.DeviceId, StringComparison.OrdinalIgnoreCase));
+                var toSave = profile.Clone();
+                toSave.LastModified = DateTime.UtcNow;
+
+                if (index >= 0)
+                {
+                    list[index] = toSave;
+                }
+                else
+                {
+                    list.Add(toSave);
+                }
+
+                _cachedDeviceEqProfiles = list;
+                var json = JsonSerializer.Serialize(list, JsonOptions);
+                await Task.Run(() => File.WriteAllText(_deviceEqProfilesDbPath, json));
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Database] Error saving device EQ profile: {ex.Message}");
+            }
+            finally
+            {
+                _dbLock.Release();
+            }
         }
     }
 }

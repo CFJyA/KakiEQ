@@ -30,6 +30,20 @@
 
                 <!-- Actions row on the right -->
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12" VerticalAlignment="Center">
+                    <!-- DSP Target Selector -->
+                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,0,6,0">
+                        <TextBlock Text="Destino DSP:" FontSize="13" Foreground="{ThemeResource AppTextSecondary}" VerticalAlignment="Center"/>
+                        <ComboBox ItemsSource="{Binding DspTargets}"
+                                  SelectedItem="{Binding SelectedTarget, Mode=TwoWay}"
+                                  DisplayMemberPath="DisplayName"
+                                  MinWidth="210"
+                                  CornerRadius="14"
+                                  Background="{ThemeResource AppSurfaceElevated}"
+                                  BorderBrush="{ThemeResource AppBorder}"
+                                  BorderThickness="1"
+                                  VerticalAlignment="Center"/>
+                    </StackPanel>
+
                     <!-- Toggle Switch -->
                     <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,0,6,0">
                         <TextBlock Text="EQ Activo" FontSize="13" Foreground="{ThemeResource AppTextSecondary}" VerticalAlignment="Center"/>

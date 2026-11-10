@@ -105,6 +105,59 @@ namespace KakiEQ_WinUI.Models
         public string StatusBadgeText => IsEnabled ? "En reproducción" : "Inactivo";
         public string StatusBadgeColor => IsEnabled ? "#4CAF50" : "#888888";
 
+        // Multi-Device Auto-EQ DSP Profile & Settings
+        private string _eqProfileName = "Master (Global)";
+        public string EqProfileName
+        {
+            get => _eqProfileName;
+            set
+            {
+                if (_eqProfileName != value)
+                {
+                    _eqProfileName = value;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(EqBadgeText));
+                }
+            }
+        }
+
+        public string EqBadgeText => $"EQ: {EqProfileName}";
+
+        private bool _eqIsEnabled = true;
+        public bool EqIsEnabled
+        {
+            get => _eqIsEnabled;
+            set
+            {
+                if (_eqIsEnabled != value)
+                {
+                    _eqIsEnabled = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        private float _eqPreampGain = 0f;
+        public float EqPreampGain
+        {
+            get => _eqPreampGain;
+            set
+            {
+                if (Math.Abs(_eqPreampGain - value) > 0.05f)
+                {
+                    _eqPreampGain = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public float[] EqGains { get; set; } = new float[10];
+        public bool EqIsCustom { get; set; } = false;
+
+        // BASS DXParamEQ handles for this device's push streams (10 bands each)
+        internal readonly int[] PushEqFxHandles = new int[10];
+        internal readonly int[] RoutingEqFxHandles = new int[10];
+
         // Separate stream handles for Local Player vs System-Wide Routing to prevent sample-rate & buffer collisions
         public int PushStreamHandle { get; set; } = 0;
         public int LocalStreamSampleRate { get; set; } = 0;

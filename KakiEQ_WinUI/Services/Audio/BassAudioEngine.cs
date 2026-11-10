@@ -94,7 +94,7 @@ namespace KakiEQ_WinUI.Services.Audio
             }
 
             _equalizer = new BassEqualizer();
-            _multiOutput = new MultiOutputDeviceService();
+            _multiOutput = new MultiOutputDeviceService(_equalizer);
             _systemAudioRouting = new SystemAudioRoutingService(_multiOutput);
 
             _endSyncProc = OnTrackEndSync;
@@ -202,7 +202,8 @@ namespace KakiEQ_WinUI.Services.Audio
                             Bass.ChannelSetAttribute(newStream, ChannelAttribute.Volume, 0f);
                             Bass.ChannelPlay(newStream);
 
-                            Bass.ChannelSlideAttribute(newStream, ChannelAttribute.Volume, _volume, crossfadeMs);
+                            float targetCrossfadeVol = _multiOutput.GetPrimaryDeviceEffectiveVolume();
+                            Bass.ChannelSlideAttribute(newStream, ChannelAttribute.Volume, targetCrossfadeVol, crossfadeMs);
                             Bass.ChannelSlideAttribute(oldStream, ChannelAttribute.Volume, 0f, crossfadeMs);
 
                             _stream = newStream;
@@ -235,7 +236,8 @@ namespace KakiEQ_WinUI.Services.Audio
 
                     if (_stream != 0)
                     {
-                        Bass.ChannelSetAttribute(_stream, ChannelAttribute.Volume, _volume);
+                        float targetVol = _multiOutput.GetPrimaryDeviceEffectiveVolume();
+                        Bass.ChannelSetAttribute(_stream, ChannelAttribute.Volume, targetVol);
                         _equalizer.AttachToStream(_stream);
                         _multiOutput.AttachToStream(_stream);
                         SetupStreamSyncs(_stream);
@@ -268,7 +270,8 @@ namespace KakiEQ_WinUI.Services.Audio
                     long bytes = Bass.ChannelSeconds2Bytes(newStream, currentPos.TotalSeconds);
                     Bass.ChannelSetPosition(newStream, bytes, PositionFlags.Bytes);
 
-                    Bass.ChannelSetAttribute(newStream, ChannelAttribute.Volume, _volume);
+                    float targetMemVol = _multiOutput.GetPrimaryDeviceEffectiveVolume();
+                    Bass.ChannelSetAttribute(newStream, ChannelAttribute.Volume, targetMemVol);
                     _equalizer.AttachToStream(newStream);
                     _multiOutput.AttachToStream(newStream);
                     SetupStreamSyncs(newStream);
@@ -316,7 +319,8 @@ namespace KakiEQ_WinUI.Services.Audio
                     long bytes = Bass.ChannelSeconds2Bytes(newStream, currentPos.TotalSeconds);
                     Bass.ChannelSetPosition(newStream, bytes, PositionFlags.Bytes);
 
-                    Bass.ChannelSetAttribute(newStream, ChannelAttribute.Volume, _volume);
+                    float targetMemVol = _multiOutput.GetPrimaryDeviceEffectiveVolume();
+                    Bass.ChannelSetAttribute(newStream, ChannelAttribute.Volume, targetMemVol);
                     _equalizer.AttachToStream(newStream);
                     _multiOutput.AttachToStream(newStream);
                     SetupStreamSyncs(newStream);
@@ -480,10 +484,6 @@ namespace KakiEQ_WinUI.Services.Audio
         {
             _volume = Math.Clamp(volume, 0f, 1f);
             _multiOutput.MasterVolume = _volume;
-            if (_stream != 0)
-            {
-                Bass.ChannelSetAttribute(_stream, ChannelAttribute.Volume, _volume);
-            }
         }
 
         public void Dispose()

@@ -978,6 +978,8 @@ namespace KakiEQ_WinUI.ViewModels
             _libService = new LibraryService(_dbService);
             _settingsService = new SettingsService();
             _audioEngine = new BassAudioEngine();
+            _audioEngine.MultiOutput.DatabaseService = _dbService;
+            _ = _audioEngine.MultiOutput.LoadDeviceEqProfilesAsync();
             _smtcService = new SmtcService();
 
             var savedSettings = _settingsService.LoadSettings();
@@ -1268,6 +1270,17 @@ namespace KakiEQ_WinUI.ViewModels
         {
             CurrentSectionTitle = "Artistas";
             CurrentView = ArtistsVm;
+        }
+
+        public void NavigateToEqualizer(string? targetDeviceId = null)
+        {
+            if (IsNowPlayingExpanded) { IsNowPlayingExpanded = false; ExitFullScreenIfActive?.Invoke(); }
+            CurrentSectionTitle = "Ecualizador";
+            CurrentView = EqualizerVm;
+            if (!string.IsNullOrEmpty(targetDeviceId))
+            {
+                EqualizerVm.SelectTargetDevice(targetDeviceId);
+            }
         }
 
         public async Task LoadGlobalPlaylistsAsync()

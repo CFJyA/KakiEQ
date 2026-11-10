@@ -230,6 +230,88 @@ namespace KakiEQ_WinUI.ViewModels
             NotifyCountsChanged();
         }
 
+        public void ApplyPresetToDevice(AudioOutputDevice device, EqualizerPreset preset)
+        {
+            if (device == null || preset == null) return;
+
+            device.EqProfileName = preset.Name;
+            device.EqIsCustom = preset.IsCustom;
+            if (device.EqGains == null || device.EqGains.Length < 10)
+            {
+                device.EqGains = new float[10];
+            }
+            Array.Copy(preset.Gains, device.EqGains, Math.Min(preset.Gains.Length, 10));
+
+            _multiOutputService.Equalizer?.ApplyAllDeviceBands(device);
+
+            // Persist profile
+            var profile = new DeviceEqProfile
+            {
+                DeviceId = device.Id,
+                DeviceName = device.Name,
+                ProfileName = device.EqProfileName,
+                IsEnabled = device.EqIsEnabled,
+                PreampGain = device.EqPreampGain,
+                Gains = (float[])device.EqGains.Clone(),
+                LastModified = DateTime.UtcNow
+            };
+
+            System.Threading.Tasks.Task.Run(async () =>
+            {
+                try
+                {
+                    if (_multiOutputService.DatabaseService != null)
+                    {
+                        await _multiOutputService.DatabaseService.SaveDeviceEqProfileAsync(profile);
+                    }
+                }
+                catch { }
+            });
+
+            MainWindow.Instance?.ShowToast($"Perfil \"{preset.Name}\" aplicado a {device.Name}");
+        }
+
+        public void SetDeviceMasterEq(AudioOutputDevice device)
+        {
+            if (device == null) return;
+
+            device.EqProfileName = "Master (Global)";
+            device.EqIsCustom = false;
+
+            _multiOutputService.Equalizer?.ApplyAllDeviceBands(device);
+
+            var profile = new DeviceEqProfile
+            {
+                DeviceId = device.Id,
+                DeviceName = device.Name,
+                ProfileName = "Master (Global)",
+                IsEnabled = device.EqIsEnabled,
+                PreampGain = device.EqPreampGain,
+                Gains = (float[])device.EqGains.Clone(),
+                LastModified = DateTime.UtcNow
+            };
+
+            System.Threading.Tasks.Task.Run(async () =>
+            {
+                try
+                {
+                    if (_multiOutputService.DatabaseService != null)
+                    {
+                        await _multiOutputService.DatabaseService.SaveDeviceEqProfileAsync(profile);
+                    }
+                }
+                catch { }
+            });
+
+            MainWindow.Instance?.ShowToast($"EQ de {device.Name} vinculado a Master");
+        }
+
+        public void NavigateToDeviceEq(AudioOutputDevice device)
+        {
+            if (device == null) return;
+            MainViewModel.Instance?.NavigateToEqualizer(device.Id);
+        }
+
         private void NotifyCountsChanged()
         {
             OnPropertyChanged(nameof(ActiveDevicesCount));
