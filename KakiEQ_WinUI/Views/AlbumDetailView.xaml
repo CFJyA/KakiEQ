@@ -41,7 +41,7 @@
                 <!-- Title, Artist & Pill Badge (Artist placed strictly below Album Title) -->
                 <StackPanel Spacing="4" Margin="0,2,0,0">
                     <Border Background="{ThemeResource AppAccentContainer}" CornerRadius="8" Padding="8,3" HorizontalAlignment="Left" Margin="0,0,0,4">
-                        <TextBlock Text="ÁLBUM" FontSize="10" FontWeight="Bold" Foreground="{ThemeResource AppAccentText}"/>
+                        <TextBlock Text="{Binding ReleaseTypeBadgeText}" FontSize="10" FontWeight="Bold" Foreground="{ThemeResource AppAccentText}"/>
                     </Border>
                     <!-- Album Title -->
                     <TextBlock Text="{Binding AlbumTitle}" FontSize="26" FontWeight="Bold" Foreground="{ThemeResource AppTextPrimary}"

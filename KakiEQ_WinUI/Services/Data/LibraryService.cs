@@ -106,6 +106,7 @@ namespace KakiEQ_WinUI.Services.Data
                         double? cachedBaseDb = null;
                         double cachedBpm = 0;
                         string cachedCamelotKey = string.Empty;
+                        string? cachedReleaseType = null;
 
                         if (existingMap.TryGetValue(file, out var oldTrack))
                         {
@@ -118,12 +119,20 @@ namespace KakiEQ_WinUI.Services.Data
                             cachedBaseDb = oldTrack.BaseDecibels;
                             cachedBpm = oldTrack.Bpm;
                             cachedCamelotKey = oldTrack.CamelotKey;
+                            cachedReleaseType = oldTrack.ReleaseType;
                         }
 
                         var (tagBpm, tagCamelot) = Helpers.HarmonicAnalysisHelper.ExtractHarmonicMetadataFromTag(tfile);
                         double finalBpm = tagBpm > 0 ? tagBpm : cachedBpm;
                         string finalCamelot = !string.IsNullOrEmpty(tagCamelot) ? tagCamelot : cachedCamelotKey;
                         bool hasUnembedded = (finalBpm > 0 && tagBpm <= 0) || (!string.IsNullOrEmpty(finalCamelot) && string.IsNullOrEmpty(tagCamelot));
+
+                        string tagReleaseType = Helpers.ReleaseTypeHelper.GetReleaseTypeFromTag(tfile);
+                        string finalReleaseType = !string.IsNullOrEmpty(tagReleaseType)
+                            ? tagReleaseType
+                            : (!string.IsNullOrEmpty(cachedReleaseType)
+                                ? cachedReleaseType
+                                : Helpers.ReleaseTypeHelper.DetectReleaseType(albumName, 0, null));
 
                         string ext = string.IsNullOrEmpty(cachedFormat) 
                             ? Path.GetExtension(file).TrimStart('.').ToUpperInvariant() 
@@ -185,6 +194,7 @@ namespace KakiEQ_WinUI.Services.Data
                             BaseDecibels = baseDb,
                             Bpm = finalBpm,
                             CamelotKey = finalCamelot,
+                            ReleaseType = finalReleaseType,
                             HasUnembeddedMetadata = hasUnembedded
                         };
                         tracks.Add(track);
@@ -210,6 +220,7 @@ namespace KakiEQ_WinUI.Services.Data
                                 Artist = "Unknown Artist",
                                 Album = "Unknown Album",
                                 Genre = "Unknown Genre",
+                                ReleaseType = Helpers.ReleaseTypeHelper.TypeAlbum,
                                 Duration = TimeSpan.Zero,
                                 DateAdded = DateTime.Now,
                                 CoverImagePath = null,

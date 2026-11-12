@@ -22,6 +22,20 @@ namespace KakiEQ_WinUI.ViewModels
             set { _artistName = value; OnPropertyChanged(); }
         }
 
+        private string _releaseType = "Álbum";
+        public string ReleaseType
+        {
+            get => _releaseType;
+            set
+            {
+                _releaseType = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(ReleaseTypeBadgeText));
+            }
+        }
+
+        public string ReleaseTypeBadgeText => _releaseType.ToUpperInvariant();
+
         private string? _coverImagePath;
         public string? CoverImagePath
         {
@@ -80,7 +94,7 @@ namespace KakiEQ_WinUI.ViewModels
 
         public async Task LoadAlbumDetailsAsync()
         {
-            var (orderedTracks, displayTracks, artist, cover, lengthStr, uniqueAlbums) = await Task.Run(async () =>
+            var (orderedTracks, displayTracks, artist, cover, lengthStr, uniqueAlbums, relType) = await Task.Run(async () =>
             {
                 var allTracks = await _dbService.GetAllTracksAsync();
 
@@ -103,6 +117,8 @@ namespace KakiEQ_WinUI.ViewModels
 
                 string art = firstTrack?.Artist ?? string.Empty;
                 string? cov = firstTrack?.CoverImagePath;
+                string relType = ordTracks.FirstOrDefault(t => !string.IsNullOrEmpty(t.ReleaseType) && t.ReleaseType != ReleaseTypeHelper.TypeAlbum)?.ReleaseType
+                              ?? ReleaseTypeHelper.DetectReleaseType(AlbumTitle, ordTracks.Count, ordTracks.FirstOrDefault()?.ReleaseType);
 
                 TimeSpan totalSpan = TimeSpan.FromSeconds(ordTracks.Sum(t => t.Duration.TotalSeconds));
                 string lStr = $"{(int)totalSpan.TotalMinutes}m {totalSpan.Seconds}s";
@@ -115,7 +131,7 @@ namespace KakiEQ_WinUI.ViewModels
                     CoverImagePath = g.FirstOrDefault(t => !string.IsNullOrEmpty(t.CoverImagePath))?.CoverImagePath
                 }).OrderBy(a => a.Title).ToList();
 
-                return (ordTracks, dispTracks, art, cov, lStr, uAlbums);
+                return (ordTracks, dispTracks, art, cov, lStr, uAlbums, relType);
             });
 
             RunOnUIThread(() =>
@@ -123,6 +139,7 @@ namespace KakiEQ_WinUI.ViewModels
                 ArtistName = artist;
                 CoverImagePath = cover;
                 TotalLength = lengthStr;
+                ReleaseType = uniqueAlbums != null ? relType : ReleaseTypeHelper.TypeAlbum;
 
                 Tracks.Clear();
                 foreach (var t in orderedTracks)
@@ -137,9 +154,12 @@ namespace KakiEQ_WinUI.ViewModels
                 }
 
                 MoreByArtist.Clear();
-                foreach (var a in uniqueAlbums)
+                if (uniqueAlbums != null)
                 {
-                    MoreByArtist.Add(a);
+                    foreach (var a in uniqueAlbums)
+                    {
+                        MoreByArtist.Add(a);
+                    }
                 }
 
                 OnPropertyChanged(nameof(Tracks));

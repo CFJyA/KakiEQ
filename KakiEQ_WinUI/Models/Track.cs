@@ -274,6 +274,25 @@ namespace KakiEQ_WinUI.Models
             }
         }
 
+        private string _releaseType = string.Empty;
+        public string ReleaseType
+        {
+            get => string.IsNullOrEmpty(_releaseType) ? Helpers.ReleaseTypeHelper.TypeAlbum : _releaseType;
+            set
+            {
+                string norm = Helpers.ReleaseTypeHelper.NormalizeReleaseType(value);
+                if (_releaseType != norm)
+                {
+                    _releaseType = norm;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(ReleaseTypeFormatted));
+                }
+            }
+        }
+
+        [JsonIgnore]
+        public string ReleaseTypeFormatted => string.IsNullOrEmpty(_releaseType) ? Helpers.ReleaseTypeHelper.TypeAlbum : _releaseType;
+
         public bool HasUnembeddedMetadata { get; set; }
 
         [JsonIgnore]

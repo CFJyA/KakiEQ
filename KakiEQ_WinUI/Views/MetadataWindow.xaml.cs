@@ -29,6 +29,12 @@ namespace KakiEQ_WinUI.Views
         private AppWindow? _appWindow;
         public bool AllowClose { get; set; } = false;
 
+        // Album mode batch editing fields
+        private bool _isAlbumMode = false;
+        private List<AlbumItem> _allAlbumItems = new();
+        private AlbumItem? _selectedAlbum;
+        private string? _pendingNewAlbumCoverPath;
+
         // LRC Preview playback fields
         private int _lrcStream = 0;
         private DispatcherQueueTimer? _lrcTimer;
@@ -42,6 +48,7 @@ namespace KakiEQ_WinUI.Views
             SetTitleBar(TitleBarBorder);
 
             ConfigureWindow();
+            UpdateModeTabVisuals();
             this.Closed += (s, e) => StopLrcPlayback();
         }
 
@@ -127,30 +134,185 @@ namespace KakiEQ_WinUI.Views
                     }
                 }
 
-                if (!ReferenceEquals(TracksListView.ItemsSource, _allTracks) || !string.IsNullOrEmpty(SearchBox.Text))
+                BuildAlbumItemsList();
+
+                if (_isAlbumMode)
                 {
-                    FilterAndDisplayTracks();
+                    FilterAndDisplayAlbums();
+                    if (_selectedAlbum == null && _allAlbumItems.Count > 0)
+                    {
+                        AlbumsListView.SelectedIndex = 0;
+                    }
                 }
                 else
                 {
-                    FileCountLabel.Text = $"{_allTracks.Count} canciones";
-                }
-
-                if (initialTrack != null)
-                {
-                    var match = _allTracks.FirstOrDefault(t => t.FilePath.Equals(initialTrack.FilePath, StringComparison.OrdinalIgnoreCase));
-                    if (match != null)
+                    if (!ReferenceEquals(TracksListView.ItemsSource, _allTracks) || !string.IsNullOrEmpty(SearchBox.Text))
                     {
-                        TracksListView.SelectedItem = match;
-                        TracksListView.ScrollIntoView(match);
+                        FilterAndDisplayTracks();
                     }
-                }
-                else if (TracksListView.SelectedItem == null && _allTracks.Count > 0)
-                {
-                    TracksListView.SelectedIndex = 0;
+                    else
+                    {
+                        FileCountLabel.Text = $"{_allTracks.Count} canciones";
+                    }
+
+                    if (initialTrack != null)
+                    {
+                        var match = _allTracks.FirstOrDefault(t => t.FilePath.Equals(initialTrack.FilePath, StringComparison.OrdinalIgnoreCase));
+                        if (match != null)
+                        {
+                            TracksListView.SelectedItem = match;
+                            TracksListView.ScrollIntoView(match);
+                        }
+                    }
+                    else if (TracksListView.SelectedItem == null && _allTracks.Count > 0)
+                    {
+                        TracksListView.SelectedIndex = 0;
+                    }
                 }
 
                 _ = RefreshLibraryMissingMetadataStateAsync();
+            }
+        }
+
+        private void BuildAlbumItemsList()
+        {
+            var albumGroups = _allTracks
+                .Where(t => !string.IsNullOrWhiteSpace(t.Album))
+                .GroupBy(t => t.Album.Trim(), StringComparer.OrdinalIgnoreCase);
+
+            var albums = new List<AlbumItem>();
+
+            foreach (var group in albumGroups)
+            {
+                var allArtists = group.SelectMany(t => Helpers.ArtistHelper.SplitArtists(t.Artist)).ToList();
+                string dominantArtist = allArtists
+                    .GroupBy(a => a, StringComparer.OrdinalIgnoreCase)
+                    .OrderByDescending(ag => ag.Count())
+                    .FirstOrDefault()?.Key
+                    ?? group.FirstOrDefault()?.Artist
+                    ?? "Desconocido";
+
+                var trackList = group.ToList();
+                var coverPath = trackList.FirstOrDefault(t => !string.IsNullOrEmpty(t.CoverImagePath))?.CoverImagePath;
+
+                string dominantReleaseType = trackList.FirstOrDefault(t => !string.IsNullOrEmpty(t.ReleaseType) && t.ReleaseType != Helpers.ReleaseTypeHelper.TypeAlbum)?.ReleaseType
+                                          ?? Helpers.ReleaseTypeHelper.DetectReleaseType(group.Key, trackList.Count, trackList.FirstOrDefault()?.ReleaseType);
+
+                albums.Add(new AlbumItem
+                {
+                    Title = group.Key,
+                    Artist = dominantArtist,
+                    CoverImagePath = coverPath,
+                    ReleaseType = dominantReleaseType,
+                    TrackCount = trackList.Count,
+                    Tracks = trackList
+                });
+            }
+
+            _allAlbumItems = albums.OrderBy(a => a.Title).ToList();
+        }
+
+        private void TabSongsMode_Click(object sender, RoutedEventArgs e)
+        {
+            SwitchToMode(false);
+        }
+
+        private void TabAlbumsMode_Click(object sender, RoutedEventArgs e)
+        {
+            SwitchToMode(true);
+        }
+
+        private void SwitchToMode(bool albumMode)
+        {
+            _isAlbumMode = albumMode;
+            CancelEdit();
+            CancelAlbumEdit();
+            UpdateModeTabVisuals();
+
+            if (_isAlbumMode)
+            {
+                TracksContainerGrid.Visibility = Visibility.Collapsed;
+                AlbumsContainerGrid.Visibility = Visibility.Visible;
+                ReadOnlyPanel.Visibility = Visibility.Collapsed;
+                EditModePanel.Visibility = Visibility.Collapsed;
+                AlbumReadOnlyPanel.Visibility = Visibility.Visible;
+
+                FilterAndDisplayAlbums();
+
+                if (_selectedAlbum == null && _allAlbumItems.Count > 0)
+                {
+                    AlbumsListView.SelectedIndex = 0;
+                }
+                else if (_selectedAlbum != null)
+                {
+                    LoadAlbumDetails(_selectedAlbum);
+                }
+            }
+            else
+            {
+                AlbumsContainerGrid.Visibility = Visibility.Collapsed;
+                TracksContainerGrid.Visibility = Visibility.Visible;
+                AlbumReadOnlyPanel.Visibility = Visibility.Collapsed;
+                AlbumEditModePanel.Visibility = Visibility.Collapsed;
+                ReadOnlyPanel.Visibility = Visibility.Visible;
+
+                FilterAndDisplayTracks();
+
+                if (_selectedTrack == null && _allTracks.Count > 0)
+                {
+                    TracksListView.SelectedIndex = 0;
+                }
+                else if (_selectedTrack != null)
+                {
+                    LoadTrackDetails(_selectedTrack);
+                }
+            }
+        }
+
+        private void UpdateModeTabVisuals()
+        {
+            ApplyTabButtonStyle(TabSongsModeBtn, !_isAlbumMode);
+            ApplyTabButtonStyle(TabAlbumsModeBtn, _isAlbumMode);
+        }
+
+        private void ApplyTabButtonStyle(Button? btn, bool isActive)
+        {
+            if (btn == null) return;
+            if (isActive)
+            {
+                if (Application.Current.Resources.TryGetValue("AppAccent", out object? accent) && accent is Microsoft.UI.Xaml.Media.Brush accentBrush)
+                {
+                    btn.Background = accentBrush;
+                }
+                else
+                {
+                    btn.Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 187, 134, 252));
+                }
+
+                var darkBrush = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 18, 18, 18));
+                if (btn.Content is StackPanel sp)
+                {
+                    foreach (var child in sp.Children)
+                    {
+                        if (child is TextBlock tb) tb.Foreground = darkBrush;
+                        if (child is FontIcon fi) fi.Foreground = darkBrush;
+                    }
+                }
+            }
+            else
+            {
+                btn.Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Colors.Transparent);
+                if (Application.Current.Resources.TryGetValue("AppTextSecondary", out object? textSec) && textSec is Microsoft.UI.Xaml.Media.Brush textSecBrush)
+                {
+                    if (btn.Content is StackPanel sp)
+                    {
+                        foreach (var child in sp.Children)
+                        {
+                            if (child is TextBlock tb) tb.Foreground = textSecBrush;
+                            if (child is FontIcon fi) fi.Foreground = textSecBrush;
+                        }
+                    }
+                }
             }
         }
 
@@ -177,9 +339,38 @@ namespace KakiEQ_WinUI.Views
             FileCountLabel.Text = $"{filtered.Count} canciones";
         }
 
+        private void FilterAndDisplayAlbums()
+        {
+            string query = SearchBox.Text?.Trim() ?? string.Empty;
+            List<AlbumItem> filtered;
+
+            if (string.IsNullOrEmpty(query))
+            {
+                filtered = _allAlbumItems;
+            }
+            else
+            {
+                filtered = _allAlbumItems.Where(a =>
+                    a.Title.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                    a.Artist.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                    a.ReleaseType.Contains(query, StringComparison.OrdinalIgnoreCase)
+                ).ToList();
+            }
+
+            AlbumsListView.ItemsSource = filtered;
+            FileCountLabel.Text = $"{filtered.Count} {(filtered.Count == 1 ? "álbum" : "álbumes")}";
+        }
+
         private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
         {
-            FilterAndDisplayTracks();
+            if (_isAlbumMode)
+            {
+                FilterAndDisplayAlbums();
+            }
+            else
+            {
+                FilterAndDisplayTracks();
+            }
         }
 
         private void TracksListView_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -205,6 +396,7 @@ namespace KakiEQ_WinUI.Views
             DisplayYearText.Text = track.Year > 0 ? track.Year.ToString() : "-";
             DisplayTrackNumberText.Text = track.TrackNumber > 0 ? track.TrackNumber.ToString() : "-";
             DisplayDiscText.Text = !string.IsNullOrWhiteSpace(track.Disc) ? track.Disc : "-";
+            DisplayReleaseTypeText.Text = track.ReleaseTypeFormatted;
             DisplayGenreText.Text = (!string.IsNullOrWhiteSpace(track.Genre) && !track.Genre.Equals("Unknown Genre", StringComparison.OrdinalIgnoreCase))
                 ? track.Genre
                 : "-";
@@ -416,6 +608,20 @@ namespace KakiEQ_WinUI.Views
             EditComposerBox.Text = DisplayComposerText.Text != "-" ? DisplayComposerText.Text : string.Empty;
             EditLyricsBox.Text = _loadedLyrics ?? string.Empty;
 
+            string curRel = _selectedTrack.ReleaseTypeFormatted;
+            foreach (ComboBoxItem item in EditReleaseTypeBox.Items)
+            {
+                if (string.Equals(item.Content?.ToString(), curRel, StringComparison.OrdinalIgnoreCase))
+                {
+                    EditReleaseTypeBox.SelectedItem = item;
+                    break;
+                }
+            }
+            if (EditReleaseTypeBox.SelectedItem == null && EditReleaseTypeBox.Items.Count > 0)
+            {
+                EditReleaseTypeBox.SelectedIndex = 0;
+            }
+
             if (string.IsNullOrEmpty(EditDiscBox.Text))
             {
                 try
@@ -462,7 +668,14 @@ namespace KakiEQ_WinUI.Views
             var file = await picker.PickSingleFileAsync();
             if (file != null)
             {
-                _pendingNewCoverPath = file.Path;
+                if (_isAlbumMode)
+                {
+                    _pendingNewAlbumCoverPath = file.Path;
+                }
+                else
+                {
+                    _pendingNewCoverPath = file.Path;
+                }
                 CoverImageDisplay.Source = Helpers.ImageHelper.LoadBitmapSync(file.Path);
             }
         }
@@ -474,6 +687,8 @@ namespace KakiEQ_WinUI.Views
             try
             {
                 string filePath = _selectedTrack.FilePath;
+                string parsedReleaseType = (EditReleaseTypeBox.SelectedItem as ComboBoxItem)?.Content?.ToString()
+                                        ?? Helpers.ReleaseTypeHelper.TypeAlbum;
 
                 using (var tfile = TagLib.File.Create(filePath))
                 {
@@ -489,6 +704,7 @@ namespace KakiEQ_WinUI.Views
                         tfile.Tag.Track = trk;
 
                     Helpers.DiscMetadataHelper.SetDiscInTag(tfile, EditDiscBox.Text);
+                    Helpers.ReleaseTypeHelper.SetReleaseTypeInTag(tfile, parsedReleaseType);
 
                     double parsedBpm = _selectedTrack.Bpm;
                     if (double.TryParse(EditBpmBox.Text.Trim(), out double userBpm) && userBpm > 0)
@@ -553,6 +769,7 @@ namespace KakiEQ_WinUI.Views
                 _selectedTrack.Title = EditTitleBox.Text.Trim();
                 _selectedTrack.Artist = string.Join("; ", finalPerformers);
                 _selectedTrack.Album = EditAlbumBox.Text.Trim();
+                _selectedTrack.ReleaseType = parsedReleaseType;
                 if (int.TryParse(EditTrackBox.Text.Trim(), out int trkNum)) _selectedTrack.TrackNumber = trkNum;
                 _selectedTrack.Disc = Helpers.DiscMetadataHelper.NormalizeSavedDiscValue(EditDiscBox.Text);
                 if (int.TryParse(EditYearBox.Text.Trim(), out int yrNum)) _selectedTrack.Year = yrNum;
@@ -572,6 +789,7 @@ namespace KakiEQ_WinUI.Views
                     vm.NotifyTrackMetadataChanged(_selectedTrack, lyricsUpdated: !string.IsNullOrWhiteSpace(EditLyricsBox.Text));
                 }
 
+                BuildAlbumItemsList();
                 CancelEdit();
                 LoadTrackDetails(_selectedTrack);
                 FilterAndDisplayTracks();
@@ -582,6 +800,212 @@ namespace KakiEQ_WinUI.Views
             catch (Exception ex)
             {
                 ShowInfoDialog("Error al guardar", $"No se pudieron escribir los cambios en el archivo: {ex.Message}");
+            }
+        }
+
+        // ==========================================
+        // ÁLBUMES: SELECCIÓN Y EDICIÓN MASIVA
+        // ==========================================
+
+        private void AlbumsListView_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (AlbumsListView.SelectedItem is AlbumItem album)
+            {
+                LoadAlbumDetails(album);
+            }
+        }
+
+        private void LoadAlbumDetails(AlbumItem album)
+        {
+            _selectedAlbum = album;
+            _pendingNewAlbumCoverPath = null;
+            CancelAlbumEdit();
+
+            AlbumDisplayTitleText.Text = album.Title;
+            AlbumDisplayArtistText.Text = album.Artist;
+            AlbumDisplayReleaseTypeText.Text = album.ReleaseType;
+            AlbumDisplayReleaseTypeBadgeText.Text = album.ReleaseType.ToUpperInvariant();
+            AlbumDisplayTracksCountText.Text = album.TrackCountFormatted;
+            AlbumDisplayTracksCountBadgeText.Text = album.TrackCountFormatted;
+
+            AlbumTracksSummaryListView.ItemsSource = album.Tracks;
+
+            string? coverPath = album.CoverImagePath;
+            if (!string.IsNullOrEmpty(coverPath) && File.Exists(coverPath))
+            {
+                try
+                {
+                    CoverImageDisplay.Source = new BitmapImage(new Uri(coverPath));
+                }
+                catch
+                {
+                    CoverImageDisplay.Source = null;
+                }
+            }
+            else
+            {
+                CoverImageDisplay.Source = null;
+            }
+        }
+
+        private void StartAlbumEditMode_Click(object sender, RoutedEventArgs e)
+        {
+            if (_selectedAlbum == null) return;
+
+            AlbumReadOnlyPanel.Visibility = Visibility.Collapsed;
+            AlbumEditModePanel.Visibility = Visibility.Visible;
+            ChangeCoverButton.Visibility = Visibility.Visible;
+
+            EditAlbumGroupTitleBox.Text = _selectedAlbum.Title;
+            EditAlbumGroupArtistBox.Text = _selectedAlbum.Artist;
+
+            string curType = _selectedAlbum.ReleaseType;
+            foreach (ComboBoxItem item in EditAlbumGroupTypeBox.Items)
+            {
+                if (string.Equals(item.Content?.ToString(), curType, StringComparison.OrdinalIgnoreCase))
+                {
+                    EditAlbumGroupTypeBox.SelectedItem = item;
+                    break;
+                }
+            }
+            if (EditAlbumGroupTypeBox.SelectedItem == null && EditAlbumGroupTypeBox.Items.Count > 0)
+            {
+                EditAlbumGroupTypeBox.SelectedIndex = 0;
+            }
+        }
+
+        private void CancelAlbumEdit_Click(object sender, RoutedEventArgs e)
+        {
+            CancelAlbumEdit();
+        }
+
+        private void CancelAlbumEdit()
+        {
+            _pendingNewAlbumCoverPath = null;
+            ChangeCoverButton.Visibility = Visibility.Collapsed;
+            AlbumEditModePanel.Visibility = Visibility.Collapsed;
+            if (_isAlbumMode)
+            {
+                AlbumReadOnlyPanel.Visibility = Visibility.Visible;
+                if (_selectedAlbum != null)
+                {
+                    string? coverPath = _selectedAlbum.CoverImagePath;
+                    if (!string.IsNullOrEmpty(coverPath) && File.Exists(coverPath))
+                    {
+                        try { CoverImageDisplay.Source = new BitmapImage(new Uri(coverPath)); } catch { }
+                    }
+                    else
+                    {
+                        CoverImageDisplay.Source = null;
+                    }
+                }
+            }
+        }
+
+        private async void SaveAlbumMetadata_Click(object sender, RoutedEventArgs e)
+        {
+            if (_selectedAlbum == null || _selectedAlbum.Tracks.Count == 0) return;
+
+            string newTitle = EditAlbumGroupTitleBox.Text.Trim();
+            string newArtist = EditAlbumGroupArtistBox.Text.Trim();
+            string newType = (EditAlbumGroupTypeBox.SelectedItem as ComboBoxItem)?.Content?.ToString()
+                          ?? Helpers.ReleaseTypeHelper.TypeAlbum;
+
+            if (string.IsNullOrWhiteSpace(newTitle))
+            {
+                ShowInfoDialog("Nombre requerido", "El álbum debe tener un nombre válido.");
+                return;
+            }
+
+            var tracksToUpdate = _selectedAlbum.Tracks.ToList();
+            string? pendingCover = _pendingNewAlbumCoverPath;
+
+            try
+            {
+                string? cachedNewCoverPath = null;
+                if (!string.IsNullOrEmpty(pendingCover) && File.Exists(pendingCover))
+                {
+                    var cacheFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KakiEQ", "Covers");
+                    Directory.CreateDirectory(cacheFolder);
+                    string safeKey = $"{newArtist.ToLowerInvariant()}_{newTitle.ToLowerInvariant()}_{DateTime.Now.Ticks}";
+                    using var md5 = System.Security.Cryptography.MD5.Create();
+                    string hashFileName = Convert.ToHexString(md5.ComputeHash(System.Text.Encoding.UTF8.GetBytes(safeKey))).ToLowerInvariant();
+                    string ext = Path.GetExtension(pendingCover);
+                    if (string.IsNullOrEmpty(ext)) ext = ".jpg";
+                    cachedNewCoverPath = Path.Combine(cacheFolder, $"{hashFileName}{ext}");
+                    File.Copy(pendingCover, cachedNewCoverPath, true);
+                }
+
+                await Task.Run(() =>
+                {
+                    foreach (var track in tracksToUpdate)
+                    {
+                        if (!File.Exists(track.FilePath)) continue;
+
+                        try
+                        {
+                            using var tfile = TagLib.File.Create(track.FilePath);
+                            tfile.Tag.Album = newTitle;
+
+                            if (!string.IsNullOrWhiteSpace(newArtist))
+                            {
+                                var splitArtists = Helpers.ArtistHelper.SplitArtists(newArtist);
+                                tfile.Tag.AlbumArtists = splitArtists.ToArray();
+                            }
+
+                            Helpers.ReleaseTypeHelper.SetReleaseTypeInTag(tfile, newType);
+
+                            if (!string.IsNullOrEmpty(pendingCover) && File.Exists(pendingCover))
+                            {
+                                var pic = new TagLib.Picture(pendingCover);
+                                tfile.Tag.Pictures = new TagLib.IPicture[] { pic };
+                            }
+
+                            tfile.Save();
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"Error updating track {track.FilePath}: {ex.Message}");
+                        }
+
+                        // Update in-memory track
+                        track.Album = newTitle;
+                        track.ReleaseType = newType;
+                        if (cachedNewCoverPath != null)
+                        {
+                            track.CoverImagePath = cachedNewCoverPath;
+                        }
+                    }
+                });
+
+                // Update selected album object
+                _selectedAlbum.Title = newTitle;
+                if (!string.IsNullOrWhiteSpace(newArtist)) _selectedAlbum.Artist = newArtist;
+                _selectedAlbum.ReleaseType = newType;
+                if (cachedNewCoverPath != null) _selectedAlbum.CoverImagePath = cachedNewCoverPath;
+
+                // Save database and notify
+                var vm = MainViewModel.Instance;
+                if (vm != null)
+                {
+                    await vm.DbService.InsertTracksAsync(_allTracks);
+                    foreach (var track in tracksToUpdate)
+                    {
+                        vm.NotifyTrackMetadataChanged(track);
+                    }
+                }
+
+                BuildAlbumItemsList();
+                FilterAndDisplayAlbums();
+                CancelAlbumEdit();
+                LoadAlbumDetails(_selectedAlbum);
+
+                ShowInfoDialog("¡Álbum Actualizado!",
+                    $"Se han guardado e incrustado exitosamente los cambios (carátula, nombre, artista y tipo '{newType}') en las {tracksToUpdate.Count} canciones del álbum.");
+            }
+            catch (Exception ex)
+            {
+                ShowInfoDialog("Error al guardar álbum", $"Ocurrió un error al actualizar los archivos: {ex.Message}");
             }
         }
 

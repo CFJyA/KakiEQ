@@ -91,6 +91,42 @@ namespace KakiEQ_WinUI.Models
         public Brush CardBorderBrush => _isSelected ? SelectedBorderBrush : DefaultBorderBrush;
         public double CardBorderThickness => _isSelected ? 2.0 : 1.15;
 
+        private string _releaseType = "Álbum";
+        public string ReleaseType
+        {
+            get => _releaseType;
+            set
+            {
+                string norm = Helpers.ReleaseTypeHelper.NormalizeReleaseType(value);
+                if (string.IsNullOrEmpty(norm)) norm = Helpers.ReleaseTypeHelper.TypeAlbum;
+                if (_releaseType != norm)
+                {
+                    _releaseType = norm;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(TrackCountFormatted));
+                }
+            }
+        }
+
+        private int _trackCount;
+        public int TrackCount
+        {
+            get => _trackCount;
+            set
+            {
+                if (_trackCount != value)
+                {
+                    _trackCount = value;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(TrackCountFormatted));
+                }
+            }
+        }
+
+        public System.Collections.Generic.List<Track> Tracks { get; set; } = new();
+
+        public string TrackCountFormatted => $"{TrackCount} {(TrackCount == 1 ? "canción" : "canciones")}";
+
         public event PropertyChangedEventHandler? PropertyChanged;
         public void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         {

@@ -1600,6 +1600,7 @@ namespace KakiEQ_WinUI.ViewModels
                     CurrentTrack.Year = updatedTrack.Year;
                     CurrentTrack.TrackNumber = updatedTrack.TrackNumber;
                     CurrentTrack.Disc = updatedTrack.Disc;
+                    CurrentTrack.ReleaseType = updatedTrack.ReleaseType;
                     if (updatedTrack.Bpm > 0) CurrentTrack.Bpm = updatedTrack.Bpm;
                     if (!string.IsNullOrEmpty(updatedTrack.CamelotKey)) CurrentTrack.CamelotKey = updatedTrack.CamelotKey;
 
@@ -1631,6 +1632,7 @@ namespace KakiEQ_WinUI.ViewModels
                         qTrack.Year = updatedTrack.Year;
                         qTrack.TrackNumber = updatedTrack.TrackNumber;
                         qTrack.Disc = updatedTrack.Disc;
+                        qTrack.ReleaseType = updatedTrack.ReleaseType;
                         if (updatedTrack.Bpm > 0) qTrack.Bpm = updatedTrack.Bpm;
                         if (!string.IsNullOrEmpty(updatedTrack.CamelotKey)) qTrack.CamelotKey = updatedTrack.CamelotKey;
                         if (!string.IsNullOrEmpty(updatedTrack.CoverImagePath))
