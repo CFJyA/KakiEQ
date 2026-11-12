@@ -112,33 +112,71 @@ namespace KakiEQ_WinUI.Helpers
                 return;
             }
 
+            bool isFlac = tfile is TagLib.Flac.File ||
+                          (!string.IsNullOrEmpty(tfile.Name) && tfile.Name.EndsWith(".flac", StringComparison.OrdinalIgnoreCase));
+
+            bool isVorbisOrOgg = isFlac || tfile is TagLib.Ogg.File ||
+                                 (!string.IsNullOrEmpty(tfile.Name) && 
+                                  (tfile.Name.EndsWith(".ogg", StringComparison.OrdinalIgnoreCase) || 
+                                   tfile.Name.EndsWith(".opus", StringComparison.OrdinalIgnoreCase)));
+
+            bool isAppleMp4 = tfile is TagLib.Mpeg4.File ||
+                              (!string.IsNullOrEmpty(tfile.Name) && 
+                               (tfile.Name.EndsWith(".m4a", StringComparison.OrdinalIgnoreCase) || 
+                                tfile.Name.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase) || 
+                                tfile.Name.EndsWith(".aac", StringComparison.OrdinalIgnoreCase)));
+
+            bool isAsf = tfile is TagLib.Asf.File ||
+                         (!string.IsNullOrEmpty(tfile.Name) && tfile.Name.EndsWith(".wma", StringComparison.OrdinalIgnoreCase));
+
             // Custom text disc value (e.g. "Agua", "Tierra", "Fuego", "Viento")
             tfile.Tag.Disc = 0;
 
-            if (tfile.GetTag(TagLib.TagTypes.Xiph, true) is TagLib.Ogg.XiphComment xiph)
+            if (isFlac)
             {
-                xiph.SetField("DISCNUMBER", cleaned);
-                xiph.SetField("DISCSUBTITLE", cleaned);
+                // FLAC files must NEVER contain ID3 tags
+                tfile.RemoveTags(TagLib.TagTypes.Id3v1 | TagLib.TagTypes.Id3v2);
+
+                if (tfile.GetTag(TagLib.TagTypes.Xiph, true) is TagLib.Ogg.XiphComment xiph)
+                {
+                    xiph.SetField("DISCNUMBER", cleaned);
+                    xiph.SetField("DISCSUBTITLE", cleaned);
+                }
             }
-
-            if (tfile.GetTag(TagLib.TagTypes.Id3v2, true) is TagLib.Id3v2.Tag id3v2)
+            else if (isVorbisOrOgg)
             {
-                var tpos = TagLib.Id3v2.TextInformationFrame.Get(id3v2, "TPOS", true);
-                if (tpos != null) tpos.Text = new[] { cleaned };
-
-                var tsst = TagLib.Id3v2.TextInformationFrame.Get(id3v2, "TSST", true);
-                if (tsst != null) tsst.Text = new[] { cleaned };
+                if (tfile.GetTag(TagLib.TagTypes.Xiph, true) is TagLib.Ogg.XiphComment xiph)
+                {
+                    xiph.SetField("DISCNUMBER", cleaned);
+                    xiph.SetField("DISCSUBTITLE", cleaned);
+                }
             }
-
-            if (tfile.GetTag(TagLib.TagTypes.Apple, true) is TagLib.Mpeg4.AppleTag apple)
+            else if (isAppleMp4)
             {
-                apple.SetDashBox("com.apple.iTunes", "DISCSUBTITLE", cleaned);
-                apple.SetDashBox("com.apple.iTunes", "DISC", cleaned);
+                if (tfile.GetTag(TagLib.TagTypes.Apple, true) is TagLib.Mpeg4.AppleTag apple)
+                {
+                    apple.SetDashBox("com.apple.iTunes", "DISCSUBTITLE", cleaned);
+                    apple.SetDashBox("com.apple.iTunes", "DISC", cleaned);
+                }
             }
-
-            if (tfile.GetTag(TagLib.TagTypes.Asf, true) is TagLib.Asf.Tag asf)
+            else if (isAsf)
             {
-                asf.SetDescriptorString(cleaned, "WM/PartOfSet");
+                if (tfile.GetTag(TagLib.TagTypes.Asf, true) is TagLib.Asf.Tag asf)
+                {
+                    asf.SetDescriptorString(cleaned, "WM/PartOfSet");
+                }
+            }
+            else
+            {
+                // ID3v2 containers (MP3, WAV, AIFF)
+                if (tfile.GetTag(TagLib.TagTypes.Id3v2, true) is TagLib.Id3v2.Tag id3v2)
+                {
+                    var tpos = TagLib.Id3v2.TextInformationFrame.Get(id3v2, "TPOS", true);
+                    if (tpos != null) tpos.Text = new[] { cleaned };
+
+                    var tsst = TagLib.Id3v2.TextInformationFrame.Get(id3v2, "TSST", true);
+                    if (tsst != null) tsst.Text = new[] { cleaned };
+                }
             }
         }
 
@@ -146,13 +184,21 @@ namespace KakiEQ_WinUI.Helpers
         {
             try
             {
+                bool isFlac = tfile is TagLib.Flac.File ||
+                              (!string.IsNullOrEmpty(tfile.Name) && tfile.Name.EndsWith(".flac", StringComparison.OrdinalIgnoreCase));
+
+                if (isFlac)
+                {
+                    tfile.RemoveTags(TagLib.TagTypes.Id3v1 | TagLib.TagTypes.Id3v2);
+                }
+
                 if (tfile.GetTag(TagLib.TagTypes.Xiph, false) is TagLib.Ogg.XiphComment xiph)
                 {
                     xiph.RemoveField("DISCSUBTITLE");
                     xiph.RemoveField("DISC");
                 }
 
-                if (tfile.GetTag(TagLib.TagTypes.Id3v2, false) is TagLib.Id3v2.Tag id3v2)
+                if (!isFlac && tfile.GetTag(TagLib.TagTypes.Id3v2, false) is TagLib.Id3v2.Tag id3v2)
                 {
                     id3v2.RemoveFrames("TSST");
                     var txxxSub = TagLib.Id3v2.UserTextInformationFrame.Get(id3v2, "DISCSUBTITLE", false);

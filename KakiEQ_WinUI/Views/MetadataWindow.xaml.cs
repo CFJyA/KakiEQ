@@ -184,15 +184,37 @@ namespace KakiEQ_WinUI.Views
 
             foreach (var group in albumGroups)
             {
-                var allArtists = group.SelectMany(t => Helpers.ArtistHelper.SplitArtists(t.Artist)).ToList();
-                string dominantArtist = allArtists
-                    .GroupBy(a => a, StringComparer.OrdinalIgnoreCase)
-                    .OrderByDescending(ag => ag.Count())
-                    .FirstOrDefault()?.Key
-                    ?? group.FirstOrDefault()?.Artist
-                    ?? "Desconocido";
-
                 var trackList = group.ToList();
+
+                string albumArtist = trackList
+                    .Select(t => t.AlbumArtist)
+                    .FirstOrDefault(a => !string.IsNullOrWhiteSpace(a))
+                    ?? string.Empty;
+
+                if (string.IsNullOrWhiteSpace(albumArtist))
+                {
+                    var uniqueArtists = trackList
+                        .Select(t => t.Artist.Trim())
+                        .Where(a => !string.IsNullOrWhiteSpace(a))
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .ToList();
+
+                    if (uniqueArtists.Count == 1)
+                    {
+                        albumArtist = uniqueArtists[0];
+                    }
+                    else
+                    {
+                        var allArtists = trackList.SelectMany(t => Helpers.ArtistHelper.SplitArtists(t.Artist)).ToList();
+                        albumArtist = allArtists
+                            .GroupBy(a => a, StringComparer.OrdinalIgnoreCase)
+                            .OrderByDescending(ag => ag.Count())
+                            .FirstOrDefault()?.Key
+                            ?? trackList.FirstOrDefault()?.Artist
+                            ?? "Desconocido";
+                    }
+                }
+
                 var coverPath = trackList.FirstOrDefault(t => !string.IsNullOrEmpty(t.CoverImagePath))?.CoverImagePath;
 
                 string dominantReleaseType = trackList.FirstOrDefault(t => !string.IsNullOrEmpty(t.ReleaseType) && t.ReleaseType != Helpers.ReleaseTypeHelper.TypeAlbum)?.ReleaseType
@@ -201,7 +223,7 @@ namespace KakiEQ_WinUI.Views
                 albums.Add(new AlbumItem
                 {
                     Title = group.Key,
-                    Artist = dominantArtist,
+                    Artist = albumArtist,
                     CoverImagePath = coverPath,
                     ReleaseType = dominantReleaseType,
                     TrackCount = trackList.Count,
@@ -690,8 +712,33 @@ namespace KakiEQ_WinUI.Views
                 string parsedReleaseType = (EditReleaseTypeBox.SelectedItem as ComboBoxItem)?.Content?.ToString()
                                         ?? Helpers.ReleaseTypeHelper.TypeAlbum;
 
+                string normAlbumArtist = string.Empty;
+                var splitAlbumArtists = Helpers.ArtistHelper.SplitArtists(EditAlbumArtistBox.Text.Trim());
+                if (!string.IsNullOrWhiteSpace(EditAlbumArtistBox.Text))
+                {
+                    normAlbumArtist = string.Join("; ", splitAlbumArtists);
+                }
+
                 using (var tfile = TagLib.File.Create(filePath))
                 {
+                    bool isFlac = filePath.EndsWith(".flac", StringComparison.OrdinalIgnoreCase) || tfile is TagLib.Flac.File;
+
+                    if (isFlac)
+                    {
+                        // Ensure no illegal ID3 tags on FLAC file
+                        tfile.RemoveTags(TagLib.TagTypes.Id3v1 | TagLib.TagTypes.Id3v2);
+
+                        if (tfile.GetTag(TagLib.TagTypes.Xiph, true) is TagLib.Ogg.XiphComment xiph)
+                        {
+                            xiph.SetField("ALBUM", EditAlbumBox.Text.Trim());
+                            if (!string.IsNullOrWhiteSpace(normAlbumArtist))
+                            {
+                                xiph.SetField("ALBUMARTIST", normAlbumArtist);
+                                xiph.SetField("ALBUM ARTIST", normAlbumArtist);
+                            }
+                        }
+                    }
+
                     tfile.Tag.Title = EditTitleBox.Text.Trim();
                     var splitPerformers = Helpers.ArtistHelper.SplitArtists(EditArtistBox.Text.Trim());
                     tfile.Tag.Performers = splitPerformers.ToArray();
@@ -719,9 +766,8 @@ namespace KakiEQ_WinUI.Views
                     if (!string.IsNullOrWhiteSpace(EditGenreBox.Text))
                         tfile.Tag.Genres = new[] { EditGenreBox.Text.Trim() };
 
-                    if (!string.IsNullOrWhiteSpace(EditAlbumArtistBox.Text))
+                    if (!string.IsNullOrWhiteSpace(normAlbumArtist))
                     {
-                        var splitAlbumArtists = Helpers.ArtistHelper.SplitArtists(EditAlbumArtistBox.Text.Trim());
                         tfile.Tag.AlbumArtists = splitAlbumArtists.ToArray();
                     }
 
@@ -754,6 +800,11 @@ namespace KakiEQ_WinUI.Views
                         catch { }
                     }
 
+                    if (isFlac)
+                    {
+                        tfile.RemoveTags(TagLib.TagTypes.Id3v1 | TagLib.TagTypes.Id3v2);
+                    }
+
                     tfile.Save();
                 }
 
@@ -768,6 +819,7 @@ namespace KakiEQ_WinUI.Views
                 var finalPerformers = Helpers.ArtistHelper.SplitArtists(EditArtistBox.Text.Trim());
                 _selectedTrack.Title = EditTitleBox.Text.Trim();
                 _selectedTrack.Artist = string.Join("; ", finalPerformers);
+                _selectedTrack.AlbumArtist = normAlbumArtist;
                 _selectedTrack.Album = EditAlbumBox.Text.Trim();
                 _selectedTrack.ReleaseType = parsedReleaseType;
                 if (int.TryParse(EditTrackBox.Text.Trim(), out int trkNum)) _selectedTrack.TrackNumber = trkNum;
@@ -920,6 +972,9 @@ namespace KakiEQ_WinUI.Views
             var tracksToUpdate = _selectedAlbum.Tracks.ToList();
             string? pendingCover = _pendingNewAlbumCoverPath;
 
+            var splitArtists = Helpers.ArtistHelper.SplitArtists(newArtist);
+            string normalizedArtist = string.Join("; ", splitArtists);
+
             try
             {
                 string? cachedNewCoverPath = null;
@@ -927,7 +982,7 @@ namespace KakiEQ_WinUI.Views
                 {
                     var cacheFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KakiEQ", "Covers");
                     Directory.CreateDirectory(cacheFolder);
-                    string safeKey = $"{newArtist.ToLowerInvariant()}_{newTitle.ToLowerInvariant()}_{DateTime.Now.Ticks}";
+                    string safeKey = $"{normalizedArtist.ToLowerInvariant()}_{newTitle.ToLowerInvariant()}_{DateTime.Now.Ticks}";
                     using var md5 = System.Security.Cryptography.MD5.Create();
                     string hashFileName = Convert.ToHexString(md5.ComputeHash(System.Text.Encoding.UTF8.GetBytes(safeKey))).ToLowerInvariant();
                     string ext = Path.GetExtension(pendingCover);
@@ -945,11 +1000,28 @@ namespace KakiEQ_WinUI.Views
                         try
                         {
                             using var tfile = TagLib.File.Create(track.FilePath);
+                            bool isFlac = track.FilePath.EndsWith(".flac", StringComparison.OrdinalIgnoreCase) || tfile is TagLib.Flac.File;
+
+                            if (isFlac)
+                            {
+                                // Remove any invalid ID3 headers so Windows Explorer reads the fLaC stream correctly
+                                tfile.RemoveTags(TagLib.TagTypes.Id3v1 | TagLib.TagTypes.Id3v2);
+
+                                if (tfile.GetTag(TagLib.TagTypes.Xiph, true) is TagLib.Ogg.XiphComment xiph)
+                                {
+                                    xiph.SetField("ALBUM", newTitle);
+                                    if (!string.IsNullOrWhiteSpace(normalizedArtist))
+                                    {
+                                        xiph.SetField("ALBUMARTIST", normalizedArtist);
+                                        xiph.SetField("ALBUM ARTIST", normalizedArtist);
+                                    }
+                                }
+                            }
+
                             tfile.Tag.Album = newTitle;
 
-                            if (!string.IsNullOrWhiteSpace(newArtist))
+                            if (!string.IsNullOrWhiteSpace(normalizedArtist))
                             {
-                                var splitArtists = Helpers.ArtistHelper.SplitArtists(newArtist);
                                 tfile.Tag.AlbumArtists = splitArtists.ToArray();
                             }
 
@@ -961,6 +1033,11 @@ namespace KakiEQ_WinUI.Views
                                 tfile.Tag.Pictures = new TagLib.IPicture[] { pic };
                             }
 
+                            if (isFlac)
+                            {
+                                tfile.RemoveTags(TagLib.TagTypes.Id3v1 | TagLib.TagTypes.Id3v2);
+                            }
+
                             tfile.Save();
                         }
                         catch (Exception ex)
@@ -970,6 +1047,10 @@ namespace KakiEQ_WinUI.Views
 
                         // Update in-memory track
                         track.Album = newTitle;
+                        if (!string.IsNullOrWhiteSpace(normalizedArtist))
+                        {
+                            track.AlbumArtist = normalizedArtist;
+                        }
                         track.ReleaseType = newType;
                         if (cachedNewCoverPath != null)
                         {
@@ -980,7 +1061,7 @@ namespace KakiEQ_WinUI.Views
 
                 // Update selected album object
                 _selectedAlbum.Title = newTitle;
-                if (!string.IsNullOrWhiteSpace(newArtist)) _selectedAlbum.Artist = newArtist;
+                if (!string.IsNullOrWhiteSpace(normalizedArtist)) _selectedAlbum.Artist = normalizedArtist;
                 _selectedAlbum.ReleaseType = newType;
                 if (cachedNewCoverPath != null) _selectedAlbum.CoverImagePath = cachedNewCoverPath;
 
@@ -1108,6 +1189,24 @@ namespace KakiEQ_WinUI.Views
                 !track.Album.Equals("Unknown Album", StringComparison.OrdinalIgnoreCase))
             {
                 tfile.Tag.Album = track.Album.Trim();
+            }
+
+            bool isFlac = track.FilePath.EndsWith(".flac", StringComparison.OrdinalIgnoreCase) || tfile is TagLib.Flac.File;
+            if (isFlac)
+            {
+                tfile.RemoveTags(TagLib.TagTypes.Id3v1 | TagLib.TagTypes.Id3v2);
+                if (tfile.GetTag(TagLib.TagTypes.Xiph, true) is TagLib.Ogg.XiphComment xiph)
+                {
+                    if (!string.IsNullOrWhiteSpace(track.Album) && !track.Album.Equals("Unknown Album", StringComparison.OrdinalIgnoreCase))
+                    {
+                        xiph.SetField("ALBUM", track.Album.Trim());
+                    }
+                    if (!string.IsNullOrWhiteSpace(track.AlbumArtist))
+                    {
+                        xiph.SetField("ALBUMARTIST", track.AlbumArtist.Trim());
+                        xiph.SetField("ALBUM ARTIST", track.AlbumArtist.Trim());
+                    }
+                }
             }
 
             tfile.Save();

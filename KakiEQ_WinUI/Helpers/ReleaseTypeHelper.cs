@@ -107,28 +107,58 @@ namespace KakiEQ_WinUI.Helpers
 
             try
             {
-                // 1. Vorbis / Xiph comments
-                if (tfile.GetTag(TagLib.TagTypes.Xiph, true) is TagLib.Ogg.XiphComment xiph)
+                bool isFlac = tfile is TagLib.Flac.File || 
+                              (!string.IsNullOrEmpty(tfile.Name) && tfile.Name.EndsWith(".flac", StringComparison.OrdinalIgnoreCase));
+
+                bool isVorbisOrOgg = isFlac || tfile is TagLib.Ogg.File ||
+                                     (!string.IsNullOrEmpty(tfile.Name) && 
+                                      (tfile.Name.EndsWith(".ogg", StringComparison.OrdinalIgnoreCase) || 
+                                       tfile.Name.EndsWith(".opus", StringComparison.OrdinalIgnoreCase)));
+
+                bool isAppleMp4 = tfile is TagLib.Mpeg4.File ||
+                                  (!string.IsNullOrEmpty(tfile.Name) && 
+                                   (tfile.Name.EndsWith(".m4a", StringComparison.OrdinalIgnoreCase) || 
+                                    tfile.Name.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase) || 
+                                    tfile.Name.EndsWith(".aac", StringComparison.OrdinalIgnoreCase)));
+
+                if (isFlac)
                 {
-                    xiph.SetField("RELEASETYPE", tagValue);
-                    xiph.SetField("MUSICBRAINZ_ALBUMTYPE", tagValue);
+                    // FLAC files must NEVER contain ID3 tags; Windows Explorer requires the fLaC stream header at offset 0.
+                    tfile.RemoveTags(TagLib.TagTypes.Id3v1 | TagLib.TagTypes.Id3v2);
+
+                    if (tfile.GetTag(TagLib.TagTypes.Xiph, true) is TagLib.Ogg.XiphComment xiph)
+                    {
+                        xiph.SetField("RELEASETYPE", tagValue);
+                        xiph.SetField("MUSICBRAINZ_ALBUMTYPE", tagValue);
+                    }
                 }
-
-                // 2. ID3v2 User Text frames
-                if (tfile.GetTag(TagLib.TagTypes.Id3v2, true) is TagLib.Id3v2.Tag id3v2)
+                else if (isVorbisOrOgg)
                 {
-                    var txxxRel = TagLib.Id3v2.UserTextInformationFrame.Get(id3v2, "RELEASETYPE", true);
-                    if (txxxRel != null) txxxRel.Text = new[] { tagValue };
-
-                    var txxxMb = TagLib.Id3v2.UserTextInformationFrame.Get(id3v2, "MusicBrainz Album Type", true);
-                    if (txxxMb != null) txxxMb.Text = new[] { tagValue };
+                    if (tfile.GetTag(TagLib.TagTypes.Xiph, true) is TagLib.Ogg.XiphComment xiph)
+                    {
+                        xiph.SetField("RELEASETYPE", tagValue);
+                        xiph.SetField("MUSICBRAINZ_ALBUMTYPE", tagValue);
+                    }
                 }
-
-                // 3. Apple / MP4
-                if (tfile.GetTag(TagLib.TagTypes.Apple, true) is TagLib.Mpeg4.AppleTag apple)
+                else if (isAppleMp4)
                 {
-                    apple.SetDashBox("com.apple.iTunes", "RELEASETYPE", tagValue);
-                    apple.SetDashBox("com.apple.iTunes", "MusicBrainz Album Type", tagValue);
+                    if (tfile.GetTag(TagLib.TagTypes.Apple, true) is TagLib.Mpeg4.AppleTag apple)
+                    {
+                        apple.SetDashBox("com.apple.iTunes", "RELEASETYPE", tagValue);
+                        apple.SetDashBox("com.apple.iTunes", "MusicBrainz Album Type", tagValue);
+                    }
+                }
+                else
+                {
+                    // ID3v2 containers (MP3, WAV, AIFF)
+                    if (tfile.GetTag(TagLib.TagTypes.Id3v2, true) is TagLib.Id3v2.Tag id3v2)
+                    {
+                        var txxxRel = TagLib.Id3v2.UserTextInformationFrame.Get(id3v2, "RELEASETYPE", true);
+                        if (txxxRel != null) txxxRel.Text = new[] { tagValue };
+
+                        var txxxMb = TagLib.Id3v2.UserTextInformationFrame.Get(id3v2, "MusicBrainz Album Type", true);
+                        if (txxxMb != null) txxxMb.Text = new[] { tagValue };
+                    }
                 }
             }
             catch

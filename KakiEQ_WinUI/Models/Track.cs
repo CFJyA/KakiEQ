@@ -52,6 +52,24 @@ namespace KakiEQ_WinUI.Models
             }
         }
 
+        private string _albumArtist = string.Empty;
+        public string AlbumArtist
+        {
+            get => _albumArtist;
+            set
+            {
+                if (_albumArtist != value)
+                {
+                    _albumArtist = value;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(AlbumArtistFormatted));
+                }
+            }
+        }
+
+        [JsonIgnore]
+        public string AlbumArtistFormatted => !string.IsNullOrWhiteSpace(_albumArtist) ? _albumArtist : _artist;
+
         private string _genre = string.Empty;
         public string Genre
         {

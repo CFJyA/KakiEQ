@@ -124,12 +124,29 @@ namespace KakiEQ_WinUI.ViewModels
                     await _dbService.InsertTracksAsync(tracks);
                 }
 
-                var uAlbums = aTracks.GroupBy(t => t.Album).Select(g => new AlbumItem
-                {
-                    Title = g.Key,
-                    Artist = ArtistName,
-                    CoverImagePath = g.FirstOrDefault(t => !string.IsNullOrEmpty(t.CoverImagePath))?.CoverImagePath
-                }).OrderBy(a => a.Title).ToList();
+                var uAlbums = aTracks
+                    .GroupBy(t => t.Album.Trim(), StringComparer.OrdinalIgnoreCase)
+                    .Select(g =>
+                    {
+                        string albArtist = g.Select(t => t.AlbumArtist).FirstOrDefault(a => !string.IsNullOrWhiteSpace(a))
+                                        ?? g.FirstOrDefault()?.Artist
+                                        ?? ArtistName;
+                        string? cover = g.FirstOrDefault(t => !string.IsNullOrEmpty(t.CoverImagePath))?.CoverImagePath;
+                        string relType = g.FirstOrDefault(t => !string.IsNullOrEmpty(t.ReleaseType) && t.ReleaseType != ReleaseTypeHelper.TypeAlbum)?.ReleaseType
+                                      ?? ReleaseTypeHelper.DetectReleaseType(g.Key, g.Count(), g.FirstOrDefault()?.ReleaseType);
+
+                        return new AlbumItem
+                        {
+                            Title = g.Key,
+                            Artist = albArtist,
+                            CoverImagePath = cover,
+                            ReleaseType = relType,
+                            TrackCount = g.Count(),
+                            Tracks = g.ToList()
+                        };
+                    })
+                    .OrderBy(a => a.Title)
+                    .ToList();
 
                 string gStr = aTracks.FirstOrDefault()?.Genre ?? "Unknown Genre";
                 string? customPhoto = _dbService.GetArtistPhotoPath(ArtistName);
@@ -170,13 +187,19 @@ namespace KakiEQ_WinUI.ViewModels
 
         private void LoadAlbumTracks(string? albumTitle)
         {
-            RunOnUIThread(() =>
+            RunOnUIThread(async () =>
             {
                 SelectedAlbumTracks.Clear();
                 SelectedAlbumDisplayTracks.Clear();
-                if (string.IsNullOrEmpty(albumTitle) || _allArtistTracks == null) return;
+                if (string.IsNullOrEmpty(albumTitle)) return;
 
-                var rawAlbumTracks = _allArtistTracks.Where(t => t.Album == albumTitle).ToList();
+                var allTracks = await _dbService.GetAllTracksAsync();
+                var rawAlbumTracks = allTracks.Where(t => t.Album.Equals(albumTitle, StringComparison.OrdinalIgnoreCase)).ToList();
+                if (rawAlbumTracks.Count == 0 && _allArtistTracks != null)
+                {
+                    rawAlbumTracks = _allArtistTracks.Where(t => t.Album.Equals(albumTitle, StringComparison.OrdinalIgnoreCase)).ToList();
+                }
+
                 var (orderedTracks, displayTracks) = DiscMetadataHelper.BuildAlbumTrackLists(rawAlbumTracks);
 
                 foreach (var t in orderedTracks)

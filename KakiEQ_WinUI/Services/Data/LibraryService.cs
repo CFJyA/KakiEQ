@@ -71,9 +71,23 @@ namespace KakiEQ_WinUI.Services.Data
                         using var tfile = TagLib.File.Create(file);
                         string albumName = string.IsNullOrWhiteSpace(tfile.Tag.Album) ? "Unknown Album" : tfile.Tag.Album;
                         string trackArtist = Helpers.ArtistHelper.GetArtistsFromTag(tfile.Tag);
-                        string artistNameForCover = string.IsNullOrWhiteSpace(tfile.Tag.FirstAlbumArtist)
-                            ? trackArtist
-                            : tfile.Tag.FirstAlbumArtist;
+                        string albumArtist = Helpers.ArtistHelper.GetAlbumArtistsFromTag(tfile.Tag);
+
+                        if (string.IsNullOrWhiteSpace(albumArtist))
+                        {
+                            if (tfile.GetTag(TagLib.TagTypes.Xiph, false) is TagLib.Ogg.XiphComment xiph)
+                            {
+                                string? aa = xiph.GetFirstField("ALBUMARTIST") ?? xiph.GetFirstField("ALBUM ARTIST");
+                                if (!string.IsNullOrWhiteSpace(aa))
+                                {
+                                    albumArtist = Helpers.ArtistHelper.NormalizeArtistString(aa);
+                                }
+                            }
+                        }
+
+                        string artistNameForCover = !string.IsNullOrWhiteSpace(albumArtist)
+                            ? albumArtist
+                            : trackArtist;
 
                         // Create unique hash based on artist and album to completely avoid cover collision
                         string safeKey = $"{artistNameForCover.Trim().ToLowerInvariant()}_{albumName.Trim().ToLowerInvariant()}";
@@ -178,6 +192,7 @@ namespace KakiEQ_WinUI.Services.Data
                             FilePath = file,
                             Title = string.IsNullOrWhiteSpace(tfile.Tag.Title) ? Path.GetFileNameWithoutExtension(file) : tfile.Tag.Title,
                             Artist = trackArtist,
+                            AlbumArtist = albumArtist,
                             Album = albumName,
                             Genre = string.IsNullOrWhiteSpace(tfile.Tag.FirstGenre) ? "Unknown Genre" : tfile.Tag.FirstGenre,
                             Duration = tfile.Properties.Duration,

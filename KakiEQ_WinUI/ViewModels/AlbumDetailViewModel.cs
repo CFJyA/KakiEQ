@@ -98,13 +98,12 @@ namespace KakiEQ_WinUI.ViewModels
             {
                 var allTracks = await _dbService.GetAllTracksAsync();
 
-                var aTracks = allTracks.Where(t => t.Album.Equals(AlbumTitle, StringComparison.OrdinalIgnoreCase) &&
-                                                       (string.IsNullOrEmpty(_artistName) || ArtistHelper.TrackHasArtist(t, _artistName)))
-                                           .ToList();
-                if (aTracks.Count == 0)
+                var aTracks = allTracks.Where(t => t.Album.Equals(AlbumTitle, StringComparison.OrdinalIgnoreCase)).ToList();
+                if (aTracks.Count == 0 && !string.IsNullOrEmpty(_artistName))
                 {
-                    aTracks = allTracks.Where(t => t.Album.Equals(AlbumTitle, StringComparison.OrdinalIgnoreCase))
-                                           .ToList();
+                    aTracks = allTracks.Where(t => t.Album.Equals(AlbumTitle, StringComparison.OrdinalIgnoreCase) &&
+                                                   ArtistHelper.TrackHasArtist(t, _artistName))
+                                       .ToList();
                 }
 
                 if (DiscMetadataHelper.EnsureTracksDiscLoaded(aTracks))
@@ -115,21 +114,49 @@ namespace KakiEQ_WinUI.ViewModels
                 var (ordTracks, dispTracks) = DiscMetadataHelper.BuildAlbumTrackLists(aTracks);
                 var firstTrack = ordTracks.FirstOrDefault();
 
-                string art = firstTrack?.Artist ?? string.Empty;
-                string? cov = firstTrack?.CoverImagePath;
+                string art = !string.IsNullOrWhiteSpace(_artistName)
+                    ? _artistName
+                    : (ordTracks.Select(t => t.AlbumArtist).FirstOrDefault(a => !string.IsNullOrWhiteSpace(a))
+                       ?? firstTrack?.Artist
+                       ?? string.Empty);
+
+                string? cov = ordTracks.FirstOrDefault(t => !string.IsNullOrEmpty(t.CoverImagePath))?.CoverImagePath;
                 string relType = ordTracks.FirstOrDefault(t => !string.IsNullOrEmpty(t.ReleaseType) && t.ReleaseType != ReleaseTypeHelper.TypeAlbum)?.ReleaseType
                               ?? ReleaseTypeHelper.DetectReleaseType(AlbumTitle, ordTracks.Count, ordTracks.FirstOrDefault()?.ReleaseType);
 
                 TimeSpan totalSpan = TimeSpan.FromSeconds(ordTracks.Sum(t => t.Duration.TotalSeconds));
                 string lStr = $"{(int)totalSpan.TotalMinutes}m {totalSpan.Seconds}s";
 
-                var artistTracks = allTracks.Where(t => t.Artist == art && t.Album != AlbumTitle);
-                var uAlbums = artistTracks.GroupBy(t => t.Album).Select(g => new AlbumItem
-                {
-                    Title = g.Key,
-                    Artist = art,
-                    CoverImagePath = g.FirstOrDefault(t => !string.IsNullOrEmpty(t.CoverImagePath))?.CoverImagePath
-                }).OrderBy(a => a.Title).ToList();
+                // Collaborating artists support for "Más de este artista"
+                var albumArtists = ArtistHelper.SplitArtists(art);
+                var artistTracks = allTracks.Where(t =>
+                    !t.Album.Equals(AlbumTitle, StringComparison.OrdinalIgnoreCase) &&
+                    albumArtists.Any(singleArt => ArtistHelper.TrackHasArtist(t, singleArt))
+                ).ToList();
+
+                var uAlbums = artistTracks
+                    .GroupBy(t => t.Album.Trim(), StringComparer.OrdinalIgnoreCase)
+                    .Select(g =>
+                    {
+                        string otherAlbArtist = g.Select(t => t.AlbumArtist).FirstOrDefault(a => !string.IsNullOrWhiteSpace(a))
+                                             ?? g.FirstOrDefault()?.Artist
+                                             ?? art;
+                        string? otherCover = g.FirstOrDefault(t => !string.IsNullOrEmpty(t.CoverImagePath))?.CoverImagePath;
+                        string otherRelType = g.FirstOrDefault(t => !string.IsNullOrEmpty(t.ReleaseType) && t.ReleaseType != ReleaseTypeHelper.TypeAlbum)?.ReleaseType
+                                           ?? ReleaseTypeHelper.DetectReleaseType(g.Key, g.Count(), g.FirstOrDefault()?.ReleaseType);
+
+                        return new AlbumItem
+                        {
+                            Title = g.Key,
+                            Artist = otherAlbArtist,
+                            CoverImagePath = otherCover,
+                            ReleaseType = otherRelType,
+                            TrackCount = g.Count(),
+                            Tracks = g.ToList()
+                        };
+                    })
+                    .OrderBy(a => a.Title)
+                    .ToList();
 
                 return (ordTracks, dispTracks, art, cov, lStr, uAlbums, relType);
             });
