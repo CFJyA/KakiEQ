@@ -72,7 +72,11 @@ namespace KakiEQ_WinUI.ViewModels
                         Name = artistName,
                         CoverImagePath = cover,
                         TrackCount = aTracks.Count,
-                        AlbumCount = aTracks.Select(t => t.Album).Distinct(StringComparer.OrdinalIgnoreCase).Count()
+                        AlbumCount = aTracks
+                            .Where(t => !string.IsNullOrWhiteSpace(t.Album))
+                            .Select(t => t.Album.Trim())
+                            .Distinct(StringComparer.Ordinal)
+                            .Count()
                     });
                 }
 

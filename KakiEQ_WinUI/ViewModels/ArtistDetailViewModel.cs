@@ -71,7 +71,7 @@ namespace KakiEQ_WinUI.ViewModels
                 }
 
                 OnPropertyChanged();
-                LoadAlbumTracks(value?.Title);
+                LoadAlbumTracks(value);
             }
         }
 
@@ -112,7 +112,7 @@ namespace KakiEQ_WinUI.ViewModels
 
         public async Task LoadArtistDetailsAsync()
         {
-            string? previouslySelectedAlbumTitle = SelectedAlbum?.Title;
+            var previouslySelectedAlbum = SelectedAlbum;
 
             var (artistTracks, uniqueAlbums, genreStr, banner, lengthStr) = await Task.Run(async () =>
             {
@@ -124,28 +124,8 @@ namespace KakiEQ_WinUI.ViewModels
                     await _dbService.InsertTracksAsync(tracks);
                 }
 
-                var uAlbums = aTracks
-                    .GroupBy(t => t.Album.Trim(), StringComparer.OrdinalIgnoreCase)
-                    .Select(g =>
-                    {
-                        string albArtist = g.Select(t => t.AlbumArtist).FirstOrDefault(a => !string.IsNullOrWhiteSpace(a))
-                                        ?? g.FirstOrDefault()?.Artist
-                                        ?? ArtistName;
-                        string? cover = g.FirstOrDefault(t => !string.IsNullOrEmpty(t.CoverImagePath))?.CoverImagePath;
-                        string relType = g.FirstOrDefault(t => !string.IsNullOrEmpty(t.ReleaseType) && t.ReleaseType != ReleaseTypeHelper.TypeAlbum)?.ReleaseType
-                                      ?? ReleaseTypeHelper.DetectReleaseType(g.Key, g.Count(), g.FirstOrDefault()?.ReleaseType);
-
-                        return new AlbumItem
-                        {
-                            Title = g.Key,
-                            Artist = albArtist,
-                            CoverImagePath = cover,
-                            ReleaseType = relType,
-                            TrackCount = g.Count(),
-                            Tracks = g.ToList()
-                        };
-                    })
-                    .OrderBy(a => a.Title)
+                var uAlbums = AlbumHelper.BuildAlbumItems(tracks)
+                    .Where(a => AlbumHelper.AlbumBelongsToArtist(a, ArtistName))
                     .ToList();
 
                 string gStr = aTracks.FirstOrDefault()?.Genre ?? "Unknown Genre";
@@ -177,28 +157,26 @@ namespace KakiEQ_WinUI.ViewModels
 
                 if (Albums.Any())
                 {
-                    var match = !string.IsNullOrEmpty(previouslySelectedAlbumTitle)
-                        ? Albums.FirstOrDefault(a => a.Title.Equals(previouslySelectedAlbumTitle, StringComparison.OrdinalIgnoreCase))
+                    var match = previouslySelectedAlbum != null
+                        ? Albums.FirstOrDefault(a => AlbumHelper.IsSameAlbum(a, previouslySelectedAlbum))
+                          ?? Albums.FirstOrDefault(a => string.Equals(a.Title, previouslySelectedAlbum.Title, StringComparison.Ordinal))
                         : null;
                     SelectedAlbum = match ?? Albums.First();
                 }
             });
         }
 
-        private void LoadAlbumTracks(string? albumTitle)
+        private void LoadAlbumTracks(AlbumItem? album)
         {
             RunOnUIThread(async () =>
             {
                 SelectedAlbumTracks.Clear();
                 SelectedAlbumDisplayTracks.Clear();
-                if (string.IsNullOrEmpty(albumTitle)) return;
+                if (album == null || string.IsNullOrEmpty(album.Title)) return;
 
                 var allTracks = await _dbService.GetAllTracksAsync();
-                var rawAlbumTracks = allTracks.Where(t => t.Album.Equals(albumTitle, StringComparison.OrdinalIgnoreCase)).ToList();
-                if (rawAlbumTracks.Count == 0 && _allArtistTracks != null)
-                {
-                    rawAlbumTracks = _allArtistTracks.Where(t => t.Album.Equals(albumTitle, StringComparison.OrdinalIgnoreCase)).ToList();
-                }
+                var matchedAlbum = AlbumHelper.FindAlbumItem(allTracks, album.Title, album.Artist);
+                var rawAlbumTracks = matchedAlbum?.Tracks.ToList() ?? album.Tracks.ToList();
 
                 var (orderedTracks, displayTracks) = DiscMetadataHelper.BuildAlbumTrackLists(rawAlbumTracks);
 

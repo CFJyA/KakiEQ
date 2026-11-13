@@ -46,7 +46,7 @@ namespace KakiEQ_WinUI.Views
         {
             if (e.ClickedItem is AlbumItem album)
             {
-                MainViewModel.Instance?.NavigateToAlbum(album.Title);
+                MainViewModel.Instance?.NavigateToAlbum(album.Title, album.Artist);
             }
         }
 

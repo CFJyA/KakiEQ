@@ -69,28 +69,16 @@ namespace KakiEQ_WinUI.Services.Data
                     try
                     {
                         using var tfile = TagLib.File.Create(file);
-                        string albumName = string.IsNullOrWhiteSpace(tfile.Tag.Album) ? "Unknown Album" : tfile.Tag.Album;
+                        string albumName = string.IsNullOrWhiteSpace(tfile.Tag.Album) ? "Unknown Album" : tfile.Tag.Album.Trim();
                         string trackArtist = Helpers.ArtistHelper.GetArtistsFromTag(tfile.Tag);
-                        string albumArtist = Helpers.ArtistHelper.GetAlbumArtistsFromTag(tfile.Tag);
-
-                        if (string.IsNullOrWhiteSpace(albumArtist))
-                        {
-                            if (tfile.GetTag(TagLib.TagTypes.Xiph, false) is TagLib.Ogg.XiphComment xiph)
-                            {
-                                string? aa = xiph.GetFirstField("ALBUMARTIST") ?? xiph.GetFirstField("ALBUM ARTIST");
-                                if (!string.IsNullOrWhiteSpace(aa))
-                                {
-                                    albumArtist = Helpers.ArtistHelper.NormalizeArtistString(aa);
-                                }
-                            }
-                        }
+                        string albumArtist = Helpers.ArtistHelper.GetAlbumArtistsFromFile(tfile);
 
                         string artistNameForCover = !string.IsNullOrWhiteSpace(albumArtist)
                             ? albumArtist
                             : trackArtist;
 
-                        // Create unique hash based on artist and album to completely avoid cover collision
-                        string safeKey = $"{artistNameForCover.Trim().ToLowerInvariant()}_{albumName.Trim().ToLowerInvariant()}";
+                        // Create unique case-sensitive hash based on artist and album to avoid cover collision
+                        string safeKey = $"{artistNameForCover.Trim()}_{albumName}";
                         byte[] hashBytes = md5.ComputeHash(System.Text.Encoding.UTF8.GetBytes(safeKey));
                         string hashFileName = Convert.ToHexString(hashBytes).ToLowerInvariant();
                         string? coverPath = Path.Combine(cacheFolder, $"{hashFileName}.jpg");

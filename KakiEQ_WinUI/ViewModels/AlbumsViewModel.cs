@@ -94,64 +94,7 @@ namespace KakiEQ_WinUI.ViewModels
             var uniqueAlbums = await Task.Run(async () =>
             {
                 var tracks = await _dbService.GetAllTracksAsync();
-
-                var result = new List<AlbumItem>();
-                var albumGroups = tracks
-                    .Where(t => !string.IsNullOrWhiteSpace(t.Album))
-                    .GroupBy(t => t.Album.Trim(), StringComparer.OrdinalIgnoreCase);
-
-                foreach (var group in albumGroups)
-                {
-                    var trackList = group.ToList();
-
-                    // Determine Album Artist:
-                    // 1. Prioritize explicit AlbumArtist set on tracks (e.g., "Natanael Cano; Ovi; Junior H")
-                    string albumArtist = trackList
-                        .Select(t => t.AlbumArtist)
-                        .FirstOrDefault(a => !string.IsNullOrWhiteSpace(a))
-                        ?? string.Empty;
-
-                    if (string.IsNullOrWhiteSpace(albumArtist))
-                    {
-                        var uniqueArtists = trackList
-                            .Select(t => t.Artist.Trim())
-                            .Where(a => !string.IsNullOrWhiteSpace(a))
-                            .Distinct(StringComparer.OrdinalIgnoreCase)
-                            .ToList();
-
-                        if (uniqueArtists.Count == 1)
-                        {
-                            albumArtist = uniqueArtists[0];
-                        }
-                        else
-                        {
-                            var allArtists = trackList.SelectMany(t => ArtistHelper.SplitArtists(t.Artist)).ToList();
-                            albumArtist = allArtists
-                                .GroupBy(a => a, StringComparer.OrdinalIgnoreCase)
-                                .OrderByDescending(ag => ag.Count())
-                                .FirstOrDefault()?.Key
-                                ?? trackList.FirstOrDefault()?.Artist
-                                ?? "Desconocido";
-                        }
-                    }
-
-                    var coverPath = trackList.FirstOrDefault(t => !string.IsNullOrEmpty(t.CoverImagePath))?.CoverImagePath;
-
-                    string dominantReleaseType = trackList.FirstOrDefault(t => !string.IsNullOrEmpty(t.ReleaseType) && t.ReleaseType != ReleaseTypeHelper.TypeAlbum)?.ReleaseType
-                                              ?? ReleaseTypeHelper.DetectReleaseType(group.Key, trackList.Count, trackList.FirstOrDefault()?.ReleaseType);
-
-                    result.Add(new AlbumItem
-                    {
-                        Title = group.Key,
-                        Artist = albumArtist,
-                        CoverImagePath = coverPath,
-                        ReleaseType = dominantReleaseType,
-                        TrackCount = trackList.Count,
-                        Tracks = trackList
-                    });
-                }
-
-                return result.OrderBy(a => a.Title).ToList();
+                return AlbumHelper.BuildAlbumItems(tracks);
             });
 
             RunOnUIThread(() =>

@@ -159,5 +159,30 @@ namespace KakiEQ_WinUI.Helpers
 
             return string.Empty;
         }
+
+        /// <summary>
+        /// Extracts album artist(s) from a TagLib file, including Xiph ALBUMARTIST fields if Tag.AlbumArtists is empty.
+        /// </summary>
+        public static string GetAlbumArtistsFromFile(TagLib.File? tfile)
+        {
+            if (tfile == null) return string.Empty;
+
+            string albumArtist = GetAlbumArtistsFromTag(tfile.Tag);
+            if (!string.IsNullOrWhiteSpace(albumArtist))
+            {
+                return albumArtist;
+            }
+
+            if (tfile.GetTag(TagLib.TagTypes.Xiph, false) is TagLib.Ogg.XiphComment xiph)
+            {
+                string? aa = xiph.GetFirstField("ALBUMARTIST") ?? xiph.GetFirstField("ALBUM ARTIST");
+                if (!string.IsNullOrWhiteSpace(aa))
+                {
+                    return NormalizeArtistString(aa);
+                }
+            }
+
+            return string.Empty;
+        }
     }
 }

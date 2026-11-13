@@ -1586,66 +1586,58 @@ namespace KakiEQ_WinUI.ViewModels
         public void NotifyTrackMetadataChanged(Track updatedTrack, bool lyricsUpdated = false)
         {
             if (updatedTrack == null) return;
-            Helpers.ImageHelper.InvalidateCache(updatedTrack.CoverImagePath);
+            NotifyTracksMetadataChanged(new[] { updatedTrack }, lyricsUpdated);
+        }
+
+        public void NotifyTracksMetadataChanged(IEnumerable<Track> updatedTracks, bool lyricsUpdated = false)
+        {
+            var updates = updatedTracks?.Where(t => t != null).ToList();
+            if (updates == null || updates.Count == 0) return;
+
+            foreach (var track in updates)
+            {
+                Helpers.ImageHelper.InvalidateCache(track.CoverImagePath);
+            }
 
             _dispatcherQueue.TryEnqueue(async () =>
             {
-                // 1. CurrentTrack (Now Playing Bar, Overlay, Background Blur)
-                if (CurrentTrack != null && (CurrentTrack.Id == updatedTrack.Id || (!string.IsNullOrEmpty(CurrentTrack.FilePath) && CurrentTrack.FilePath.Equals(updatedTrack.FilePath, StringComparison.OrdinalIgnoreCase))))
+                foreach (var updatedTrack in updates)
                 {
-                    CurrentTrack.Title = updatedTrack.Title;
-                    CurrentTrack.Artist = updatedTrack.Artist;
-                    CurrentTrack.Album = updatedTrack.Album;
-                    CurrentTrack.Genre = updatedTrack.Genre;
-                    CurrentTrack.Year = updatedTrack.Year;
-                    CurrentTrack.TrackNumber = updatedTrack.TrackNumber;
-                    CurrentTrack.Disc = updatedTrack.Disc;
-                    CurrentTrack.ReleaseType = updatedTrack.ReleaseType;
-                    if (updatedTrack.Bpm > 0) CurrentTrack.Bpm = updatedTrack.Bpm;
-                    if (!string.IsNullOrEmpty(updatedTrack.CamelotKey)) CurrentTrack.CamelotKey = updatedTrack.CamelotKey;
-
-                    if (!string.IsNullOrEmpty(updatedTrack.CoverImagePath))
+                    // 1. CurrentTrack (Now Playing Bar, Overlay, Background Blur)
+                    if (IsSameTrackReference(CurrentTrack, updatedTrack))
                     {
-                        CurrentTrack.CoverImagePath = updatedTrack.CoverImagePath;
-                        await UpdateBlurredCoverAsync(CurrentTrack);
-                    }
+                        bool coverChanged = !string.IsNullOrEmpty(updatedTrack.CoverImagePath);
+                        ApplyTrackMetadata(CurrentTrack!, updatedTrack);
 
-                    OnPropertyChanged(nameof(CurrentTrack));
-                    UpdateCurrentTrackTechnicalInfo();
-                    _smtcService?.UpdateMetadata(CurrentTrack, IsPlaying);
-
-                    if (lyricsUpdated)
-                    {
-                        await LoadLyricsForCurrentTrackAsync();
-                    }
-                }
-
-                // 2. Update in CurrentQueue
-                foreach (var qTrack in CurrentQueue)
-                {
-                    if (qTrack.Id == updatedTrack.Id || (!string.IsNullOrEmpty(qTrack.FilePath) && qTrack.FilePath.Equals(updatedTrack.FilePath, StringComparison.OrdinalIgnoreCase)))
-                    {
-                        qTrack.Title = updatedTrack.Title;
-                        qTrack.Artist = updatedTrack.Artist;
-                        qTrack.Album = updatedTrack.Album;
-                        qTrack.Genre = updatedTrack.Genre;
-                        qTrack.Year = updatedTrack.Year;
-                        qTrack.TrackNumber = updatedTrack.TrackNumber;
-                        qTrack.Disc = updatedTrack.Disc;
-                        qTrack.ReleaseType = updatedTrack.ReleaseType;
-                        if (updatedTrack.Bpm > 0) qTrack.Bpm = updatedTrack.Bpm;
-                        if (!string.IsNullOrEmpty(updatedTrack.CamelotKey)) qTrack.CamelotKey = updatedTrack.CamelotKey;
-                        if (!string.IsNullOrEmpty(updatedTrack.CoverImagePath))
+                        if (coverChanged)
                         {
-                            qTrack.CoverImagePath = updatedTrack.CoverImagePath;
+                            await UpdateBlurredCoverAsync(CurrentTrack!);
+                        }
+
+                        OnPropertyChanged(nameof(CurrentTrack));
+                        UpdateCurrentTrackTechnicalInfo();
+                        _smtcService?.UpdateMetadata(CurrentTrack!, IsPlaying);
+
+                        if (lyricsUpdated)
+                        {
+                            await LoadLyricsForCurrentTrackAsync();
                         }
                     }
+
+                    // 2. Update in CurrentQueue
+                    foreach (var qTrack in CurrentQueue)
+                    {
+                        if (IsSameTrackReference(qTrack, updatedTrack))
+                        {
+                            ApplyTrackMetadata(qTrack, updatedTrack);
+                        }
+                    }
+
+                    // 3. Update Home ViewModel real-time
+                    _homeVm?.NotifyTrackMetadataChanged(updatedTrack);
                 }
 
-                // 3. Update Home ViewModel real-time
-                _homeVm?.NotifyTrackMetadataChanged(updatedTrack);
-
-                // 4. Reload other active/cached views in the background
+                // 4. Reload other active/cached views once after all updates
                 if (_libraryVm != null) await _libraryVm.LoadLibraryAsync();
                 if (_albumsVm != null) await _albumsVm.LoadAlbumsAsync();
                 if (_artistsVm != null) await _artistsVm.LoadArtistsAsync();
@@ -1661,6 +1653,33 @@ namespace KakiEQ_WinUI.ViewModels
                     await artVm.LoadArtistDetailsAsync();
                 }
             });
+        }
+
+        private static bool IsSameTrackReference(Track? target, Track source)
+        {
+            if (target == null) return false;
+            return target.Id == source.Id ||
+                   (!string.IsNullOrEmpty(target.FilePath) &&
+                    target.FilePath.Equals(source.FilePath, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static void ApplyTrackMetadata(Track target, Track source)
+        {
+            target.Title = source.Title;
+            target.Artist = source.Artist;
+            target.AlbumArtist = source.AlbumArtist;
+            target.Album = source.Album;
+            target.Genre = source.Genre;
+            target.Year = source.Year;
+            target.TrackNumber = source.TrackNumber;
+            target.Disc = source.Disc;
+            target.ReleaseType = source.ReleaseType;
+            if (source.Bpm > 0) target.Bpm = source.Bpm;
+            if (!string.IsNullOrEmpty(source.CamelotKey)) target.CamelotKey = source.CamelotKey;
+            if (!string.IsNullOrEmpty(source.CoverImagePath))
+            {
+                target.CoverImagePath = source.CoverImagePath;
+            }
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;

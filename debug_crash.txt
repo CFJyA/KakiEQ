@@ -21,3 +21,37 @@ StackTrace:    at WinRT.ExceptionHelpers.<ThrowExceptionForHR>g__Throw|38_0(Int3
    at Microsoft.UI.Xaml.Application.Microsoft.UI.Xaml.IApplicationOverrides.OnLaunched(LaunchActivatedEventArgs args)
    at ABI.Microsoft.UI.Xaml.IApplicationOverrides.Do_Abi_OnLaunched_0(IntPtr thisPtr, IntPtr args)
 Inner: 
+[CRASH]: Only a single ContentDialog can be open at any time.
+Exception: System.Runtime.InteropServices.COMException (0x80000019): An async operation was not properly started.
+
+Only a single ContentDialog can be open at any time.
+   at WinRT.ExceptionHelpers.<ThrowExceptionForHR>g__Throw|38_0(Int32 hr)
+   at ABI.Microsoft.UI.Xaml.Controls.IContentDialogMethods.ShowAsync(IObjectReference _obj)
+   at Microsoft.UI.Xaml.Controls.ContentDialog.ShowAsync()
+   at KakiEQ_WinUI.Views.MetadataWindow.ShowInfoDialog(String title, String content)
+   at System.Threading.Tasks.Task.<>c.<ThrowAsync>b__128_0(Object state)
+   at Microsoft.UI.Dispatching.DispatcherQueueSynchronizationContext.<>c__DisplayClass2_0.<Post>b__0()
+StackTrace:    at WinRT.ExceptionHelpers.<ThrowExceptionForHR>g__Throw|38_0(Int32 hr)
+   at ABI.Microsoft.UI.Xaml.Controls.IContentDialogMethods.ShowAsync(IObjectReference _obj)
+   at Microsoft.UI.Xaml.Controls.ContentDialog.ShowAsync()
+   at KakiEQ_WinUI.Views.MetadataWindow.ShowInfoDialog(String title, String content)
+   at System.Threading.Tasks.Task.<>c.<ThrowAsync>b__128_0(Object state)
+   at Microsoft.UI.Dispatching.DispatcherQueueSynchronizationContext.<>c__DisplayClass2_0.<Post>b__0()
+Inner: 
+[CRASH]: Only a single ContentDialog can be open at any time.
+Exception: System.Runtime.InteropServices.COMException (0x80000019): An async operation was not properly started.
+
+Only a single ContentDialog can be open at any time.
+   at WinRT.ExceptionHelpers.<ThrowExceptionForHR>g__Throw|38_0(Int32 hr)
+   at ABI.Microsoft.UI.Xaml.Controls.IContentDialogMethods.ShowAsync(IObjectReference _obj)
+   at Microsoft.UI.Xaml.Controls.ContentDialog.ShowAsync()
+   at KakiEQ_WinUI.Views.MetadataWindow.ShowInfoDialog(String title, String content)
+   at System.Threading.Tasks.Task.<>c.<ThrowAsync>b__128_0(Object state)
+   at Microsoft.UI.Dispatching.DispatcherQueueSynchronizationContext.<>c__DisplayClass2_0.<Post>b__0()
+StackTrace:    at WinRT.ExceptionHelpers.<ThrowExceptionForHR>g__Throw|38_0(Int32 hr)
+   at ABI.Microsoft.UI.Xaml.Controls.IContentDialogMethods.ShowAsync(IObjectReference _obj)
+   at Microsoft.UI.Xaml.Controls.ContentDialog.ShowAsync()
+   at KakiEQ_WinUI.Views.MetadataWindow.ShowInfoDialog(String title, String content)
+   at System.Threading.Tasks.Task.<>c.<ThrowAsync>b__128_0(Object state)
+   at Microsoft.UI.Dispatching.DispatcherQueueSynchronizationContext.<>c__DisplayClass2_0.<Post>b__0()
+Inner: 
