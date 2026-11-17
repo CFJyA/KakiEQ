@@ -150,7 +150,7 @@ namespace KakiEQ_WinUI.ViewModels
         public Visibility SidebarVisibility => IsSidebarExpanded ? Visibility.Visible : Visibility.Collapsed;
         public string SidebarToggleIconGlyph => IsSidebarExpanded ? "\uE76B" : "\uE76C"; // < when expanded, > when collapsed
         public string SidebarToggleTooltip => IsSidebarExpanded ? "Ocultar barra lateral" : "Mostrar barra lateral";
-        public Thickness WorkspaceContentMargin => IsSidebarExpanded ? new Thickness(198, 0, 0, 0) : new Thickness(28, 0, 0, 0);
+        public Thickness WorkspaceContentMargin => IsSidebarExpanded ? new Thickness(216, 0, 0, 0) : new Thickness(28, 0, 0, 0);
 
         // --- Scanning / Library state ---
         private bool _isScanning;
@@ -617,6 +617,12 @@ namespace KakiEQ_WinUI.ViewModels
                     CurrentLyricsLines[_activeLyricIndex].IsActive = false;
                 }
                 _activeLyricIndex = newIndex;
+                for (int i = 0; i < CurrentLyricsLines.Count; i++)
+                {
+                    CurrentLyricsLines[i].DistanceFromActive = _activeLyricIndex >= 0
+                        ? Math.Abs(i - _activeLyricIndex)
+                        : 99;
+                }
                 if (_activeLyricIndex >= 0 && _activeLyricIndex < CurrentLyricsLines.Count)
                 {
                     CurrentLyricsLines[_activeLyricIndex].IsActive = true;
@@ -1240,7 +1246,7 @@ namespace KakiEQ_WinUI.ViewModels
             {
                 _dispatcherQueue.TryEnqueue(() =>
                 {
-                    if (CurrentTrack?.Id == track.Id)
+                    if (IsSameTrackReference(CurrentTrack, track))
                     {
                         UpdateKaraokeUiProperties();
                     }
@@ -1315,7 +1321,7 @@ namespace KakiEQ_WinUI.ViewModels
             });
         }
 
-        public async Task PlayTrackAsync(Track track, List<Track>? contextQueue = null, bool isCrossfade = false)
+        public async Task PlayTrackAsync(Track track, List<Track>? contextQueue = null, bool isCrossfade = false, bool recordStats = true)
         {
             if (contextQueue != null)
             {
@@ -1365,10 +1371,20 @@ namespace KakiEQ_WinUI.ViewModels
             IsPlaying = true;
             _timer.Start();
 
+            double effectiveDurationSecs = track.Duration.TotalSeconds > 0
+                ? track.Duration.TotalSeconds
+                : _audioEngine.TotalDuration.TotalSeconds;
+            if (TotalDurationSeconds <= 0 && effectiveDurationSecs > 0)
+            {
+                TotalDurationSeconds = effectiveDurationSecs;
+            }
+
             _smtcService?.UpdateMetadata(track, true);
-            _ = _dbService.RecordTrackPlayAsync(track);
-            _ = _kronatlService.RecordPlaybackSessionAsync(track, track.Duration.TotalSeconds, true);
-            _homeVm?.OnTrackPlayedRealtime(track);
+            if (recordStats)
+            {
+                _ = RecordPlayAndSyncKronatlAsync(track, effectiveDurationSecs);
+                _homeVm?.OnTrackPlayedRealtime(track);
+            }
 
             // Proactively prioritize current track & upcoming track for instant Karaoke
             KaraokeService.PrioritizeTrack(track);
@@ -1377,6 +1393,27 @@ namespace KakiEQ_WinUI.ViewModels
                 var upcoming = CurrentQueue[CurrentQueueIndex + 1];
                 KaraokeService.PrioritizeTrack(upcoming);
             }
+        }
+
+        private async Task RecordPlayAndSyncKronatlAsync(Track track, double listenedSeconds)
+        {
+            try
+            {
+                await _dbService.RecordTrackPlayAsync(track);
+                await _kronatlService.RecordPlaybackSessionAsync(track, listenedSeconds, true);
+
+                var allTracks = await _dbService.GetAllTracksAsync();
+                bool playlistsUpdated = await _kronatlService.SyncSavedKronatlPlaylistsAsync(allTracks);
+                if (playlistsUpdated)
+                {
+                    await LoadGlobalPlaylistsAsync();
+                    if (_playlistsVm != null)
+                    {
+                        await _playlistsVm.LoadPlaylistsAsync();
+                    }
+                }
+            }
+            catch { }
         }
 
         public async Task PlayNextAsync(bool isCrossfade = false)
@@ -1576,7 +1613,7 @@ namespace KakiEQ_WinUI.ViewModels
             if (track == null) return;
             _dispatcherQueue.TryEnqueue(async () =>
             {
-                if (CurrentTrack != null && (CurrentTrack.Id == track.Id || (!string.IsNullOrEmpty(CurrentTrack.FilePath) && CurrentTrack.FilePath.Equals(track.FilePath, StringComparison.OrdinalIgnoreCase))))
+                if (IsSameTrackReference(CurrentTrack, track))
                 {
                     await LoadLyricsForCurrentTrackAsync();
                 }
@@ -1658,9 +1695,11 @@ namespace KakiEQ_WinUI.ViewModels
         private static bool IsSameTrackReference(Track? target, Track source)
         {
             if (target == null) return false;
-            return target.Id == source.Id ||
-                   (!string.IsNullOrEmpty(target.FilePath) &&
-                    target.FilePath.Equals(source.FilePath, StringComparison.OrdinalIgnoreCase));
+            if (!string.IsNullOrEmpty(target.FilePath) && !string.IsNullOrEmpty(source.FilePath))
+            {
+                return target.FilePath.Equals(source.FilePath, StringComparison.OrdinalIgnoreCase);
+            }
+            return target.Id == source.Id;
         }
 
         private static void ApplyTrackMetadata(Track target, Track source)

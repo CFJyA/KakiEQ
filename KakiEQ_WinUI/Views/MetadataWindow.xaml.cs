@@ -1,8 +1,10 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.UI;
 using Microsoft.UI.Dispatching;
@@ -39,6 +41,9 @@ namespace KakiEQ_WinUI.Views
         private int _lrcStream = 0;
         private DispatcherQueueTimer? _lrcTimer;
         private List<LrcLine> _activeLrcLines = new();
+        private ContentDialog? _activeDialog;
+        private CancellationTokenSource? _harmonicBatchCts;
+        private bool _isHarmonicBatchRunning = false;
 
         public MetadataWindow(Track? trackToSelect = null)
         {
@@ -49,7 +54,11 @@ namespace KakiEQ_WinUI.Views
 
             ConfigureWindow();
             UpdateModeTabVisuals();
-            this.Closed += (s, e) => StopLrcPlayback();
+            this.Closed += (s, e) =>
+            {
+                StopLrcPlayback();
+                _harmonicBatchCts?.Cancel();
+            };
         }
 
         public void ShowWindow(Track? trackToSelect = null)
@@ -58,6 +67,15 @@ namespace KakiEQ_WinUI.Views
             if (vm != null && Content is FrameworkElement fe)
             {
                 fe.RequestedTheme = vm.IsLightTheme ? ElementTheme.Light : ElementTheme.Dark;
+            }
+
+            if (trackToSelect != null && _isAlbumMode)
+            {
+                _isAlbumMode = false;
+                UpdateModeTabVisuals();
+                AlbumsContainerGrid.Visibility = Visibility.Collapsed;
+                TracksContainerGrid.Visibility = Visibility.Visible;
+                SyncLeftPanelVisibility();
             }
 
             _appWindow?.Show();
@@ -112,6 +130,20 @@ namespace KakiEQ_WinUI.Views
 
         private async Task LoadTracksAsync(Track? initialTrack = null)
         {
+            if (_isHarmonicBatchRunning && _allTracks.Count > 0)
+            {
+                if (initialTrack != null && !_isAlbumMode)
+                {
+                    var match = _allTracks.FirstOrDefault(t => t.FilePath.Equals(initialTrack.FilePath, StringComparison.OrdinalIgnoreCase));
+                    if (match != null)
+                    {
+                        TracksListView.SelectedItem = match;
+                        TracksListView.ScrollIntoView(match);
+                    }
+                }
+                return;
+            }
+
             var vm = MainViewModel.Instance;
             if (vm != null)
             {
@@ -208,17 +240,15 @@ namespace KakiEQ_WinUI.Views
         private void SwitchToMode(bool albumMode)
         {
             _isAlbumMode = albumMode;
-            CancelEdit();
-            CancelAlbumEdit();
+            _pendingNewCoverPath = null;
+            _pendingNewAlbumCoverPath = null;
             UpdateModeTabVisuals();
+            SyncLeftPanelVisibility();
 
             if (_isAlbumMode)
             {
                 TracksContainerGrid.Visibility = Visibility.Collapsed;
                 AlbumsContainerGrid.Visibility = Visibility.Visible;
-                ReadOnlyPanel.Visibility = Visibility.Collapsed;
-                EditModePanel.Visibility = Visibility.Collapsed;
-                AlbumReadOnlyPanel.Visibility = Visibility.Visible;
 
                 FilterAndDisplayAlbums();
 
@@ -235,9 +265,6 @@ namespace KakiEQ_WinUI.Views
             {
                 AlbumsContainerGrid.Visibility = Visibility.Collapsed;
                 TracksContainerGrid.Visibility = Visibility.Visible;
-                AlbumReadOnlyPanel.Visibility = Visibility.Collapsed;
-                AlbumEditModePanel.Visibility = Visibility.Collapsed;
-                ReadOnlyPanel.Visibility = Visibility.Visible;
 
                 FilterAndDisplayTracks();
 
@@ -249,6 +276,26 @@ namespace KakiEQ_WinUI.Views
                 {
                     LoadTrackDetails(_selectedTrack);
                 }
+            }
+        }
+
+        private void SyncLeftPanelVisibility(bool isEditingTrack = false, bool isEditingAlbum = false)
+        {
+            if (_isAlbumMode)
+            {
+                ReadOnlyPanel.Visibility = Visibility.Collapsed;
+                EditModePanel.Visibility = Visibility.Collapsed;
+                AlbumReadOnlyPanel.Visibility = isEditingAlbum ? Visibility.Collapsed : Visibility.Visible;
+                AlbumEditModePanel.Visibility = isEditingAlbum ? Visibility.Visible : Visibility.Collapsed;
+                ChangeCoverButton.Visibility = isEditingAlbum ? Visibility.Visible : Visibility.Collapsed;
+            }
+            else
+            {
+                AlbumReadOnlyPanel.Visibility = Visibility.Collapsed;
+                AlbumEditModePanel.Visibility = Visibility.Collapsed;
+                ReadOnlyPanel.Visibility = isEditingTrack ? Visibility.Collapsed : Visibility.Visible;
+                EditModePanel.Visibility = isEditingTrack ? Visibility.Visible : Visibility.Collapsed;
+                ChangeCoverButton.Visibility = isEditingTrack ? Visibility.Visible : Visibility.Collapsed;
             }
         }
 
@@ -367,6 +414,8 @@ namespace KakiEQ_WinUI.Views
         private void LoadTrackDetails(Track track)
         {
             _selectedTrack = track;
+            if (_isAlbumMode) return;
+
             _pendingNewCoverPath = null;
             CancelEdit();
 
@@ -456,8 +505,12 @@ namespace KakiEQ_WinUI.Views
                         fileTagBpm = tagBpm;
                         fileTagCamelot = tagKey;
 
-                        if (tagBpm > 0) detectedBpm = tagBpm;
-                        if (!string.IsNullOrEmpty(tagKey)) detectedCamelot = tagKey;
+                        bool preferDbHarmonic = track.HasUnembeddedMetadata && (track.Bpm > 0 || !string.IsNullOrEmpty(track.CamelotKey));
+                        if (!preferDbHarmonic)
+                        {
+                            if (tagBpm > 0) detectedBpm = tagBpm;
+                            if (!string.IsNullOrEmpty(tagKey)) detectedCamelot = tagKey;
+                        }
 
                         hasMissingInFile = HasDatabaseMetadataMissingInFile(track, tfile);
                         track.HasUnembeddedMetadata = hasMissingInFile;
@@ -478,7 +531,7 @@ namespace KakiEQ_WinUI.Views
                 // Actualizar inmediatamente la interfaz con las etiquetas leídas (sin esperar DSP)
                 DispatcherQueue.TryEnqueue(() =>
                 {
-                    if (_selectedTrack != track) return;
+                    if (_isAlbumMode || _selectedTrack != track) return;
 
                     if (detectedBpm > 0) track.Bpm = detectedBpm;
                     if (!string.IsNullOrEmpty(detectedCamelot)) track.CamelotKey = detectedCamelot;
@@ -492,7 +545,8 @@ namespace KakiEQ_WinUI.Views
                     TagTypeText.Text = tagTypesText;
 
                     string normKey = Helpers.CamelotColorConverter.NormalizeCamelotKey(detectedCamelot);
-                    bool harmonicOnlyInDb = (detectedBpm > 0 && fileTagBpm <= 0) || (!string.IsNullOrEmpty(normKey) && string.IsNullOrEmpty(fileTagCamelot));
+                    bool harmonicOnlyInDb = (detectedBpm > 0 && (fileTagBpm <= 0 || Math.Abs(detectedBpm - fileTagBpm) >= 1.0))
+                                         || (!string.IsNullOrEmpty(normKey) && (string.IsNullOrEmpty(fileTagCamelot) || !string.Equals(normKey, fileTagCamelot, StringComparison.OrdinalIgnoreCase)));
                     UpdateHarmonicUiDisplay(detectedBpm, normKey, harmonicOnlyInDb);
                     EmbedMissingMetadataButton.Visibility = hasMissingInFile ? Visibility.Visible : Visibility.Collapsed;
                     _ = RefreshLibraryMissingMetadataStateAsync();
@@ -522,24 +576,27 @@ namespace KakiEQ_WinUI.Views
                     }
                 });
 
-                // Si aún faltan BPM o Clave Camelot, calcularlos con DSP de forma diferida sin bloquear la vista
+                // Si aún faltan BPM o Clave Camelot, calcularlos con DSP de forma diferida sin bloquear la vista ni mutar Track fuera del hilo UI
                 if (detectedBpm <= 0 || string.IsNullOrEmpty(detectedCamelot))
                 {
-                    var (dspBpm, dspKey) = Helpers.HarmonicAnalysisHelper.EnsureTrackHarmonicSync(track);
+                    var (dspBpm, dspKey, hasUnembeddedDiff) = Helpers.HarmonicAnalysisHelper.ComputeTrackHarmonicSync(track);
                     if (detectedBpm <= 0 && dspBpm > 0) detectedBpm = dspBpm;
                     if (string.IsNullOrEmpty(detectedCamelot) && !string.IsNullOrEmpty(dspKey)) detectedCamelot = dspKey;
-                    track.HasUnembeddedMetadata = true;
 
                     DispatcherQueue.TryEnqueue(() =>
                     {
                         if (detectedBpm > 0) track.Bpm = detectedBpm;
                         if (!string.IsNullOrEmpty(detectedCamelot)) track.CamelotKey = detectedCamelot;
+                        if (hasUnembeddedDiff || detectedBpm > 0 || !string.IsNullOrEmpty(detectedCamelot))
+                        {
+                            track.HasUnembeddedMetadata = true;
+                        }
 
-                        if (_selectedTrack == track)
+                        if (!_isAlbumMode && _selectedTrack == track)
                         {
                             string normKey = Helpers.CamelotColorConverter.NormalizeCamelotKey(detectedCamelot);
-                            UpdateHarmonicUiDisplay(detectedBpm, normKey, true);
-                            EmbedMissingMetadataButton.Visibility = Visibility.Visible;
+                            UpdateHarmonicUiDisplay(detectedBpm, normKey, track.HasUnembeddedMetadata);
+                            EmbedMissingMetadataButton.Visibility = track.HasUnembeddedMetadata ? Visibility.Visible : Visibility.Collapsed;
                         }
                         _ = RefreshLibraryMissingMetadataStateAsync();
                     });
@@ -576,10 +633,8 @@ namespace KakiEQ_WinUI.Views
         private void StartEditMode_Click(object sender, RoutedEventArgs e)
         {
             if (_selectedTrack == null) return;
-
-            ReadOnlyPanel.Visibility = Visibility.Collapsed;
-            EditModePanel.Visibility = Visibility.Visible;
-            ChangeCoverButton.Visibility = Visibility.Visible;
+            _isAlbumMode = false;
+            SyncLeftPanelVisibility(isEditingTrack: true);
 
             EditTitleBox.Text = _selectedTrack.Title;
             EditArtistBox.Text = _selectedTrack.Artist;
@@ -632,9 +687,7 @@ namespace KakiEQ_WinUI.Views
         private void CancelEdit()
         {
             _pendingNewCoverPath = null;
-            ReadOnlyPanel.Visibility = Visibility.Visible;
-            EditModePanel.Visibility = Visibility.Collapsed;
-            ChangeCoverButton.Visibility = Visibility.Collapsed;
+            SyncLeftPanelVisibility(isEditingTrack: false, isEditingAlbum: false);
         }
 
         private async void ChangeCover_Click(object sender, RoutedEventArgs e)
@@ -692,8 +745,23 @@ namespace KakiEQ_WinUI.Views
                     !string.Equals(_selectedTrack.AlbumArtist?.Trim() ?? string.Empty, normAlbumArtist, StringComparison.Ordinal) ||
                     !string.Equals(_selectedTrack.Artist?.Trim() ?? string.Empty, normalizedPerformers, StringComparison.Ordinal);
 
-                using (var tfile = TagLib.File.Create(filePath))
+                string editTitle = EditTitleBox.Text.Trim();
+                string editYearText = EditYearBox.Text.Trim();
+                string editTrackText = EditTrackBox.Text.Trim();
+                string editDiscText = EditDiscBox.Text;
+                string editBpmText = EditBpmBox.Text.Trim();
+                string editCamelotText = EditCamelotBox.Text.Trim();
+                string editGenreText = EditGenreBox.Text.Trim();
+                string editComposerText = EditComposerBox.Text.Trim();
+                string editLyricsText = EditLyricsBox.Text;
+                string? pendingCover = _pendingNewCoverPath;
+                var trackRef = _selectedTrack;
+
+                StopLrcPlayback();
+
+                await ExecuteWithPlaybackFileUnlockedAsync(new[] { filePath }, () =>
                 {
+                    using var tfile = TagLib.File.Create(filePath);
                     bool isFlac = filePath.EndsWith(".flac", StringComparison.OrdinalIgnoreCase) || tfile is TagLib.Flac.File;
 
                     if (isFlac)
@@ -717,31 +785,31 @@ namespace KakiEQ_WinUI.Views
                         }
                     }
 
-                    tfile.Tag.Title = EditTitleBox.Text.Trim();
+                    tfile.Tag.Title = editTitle;
                     tfile.Tag.Performers = splitPerformers.ToArray();
                     tfile.Tag.Album = editAlbumTitle;
 
-                    if (uint.TryParse(EditYearBox.Text.Trim(), out uint year))
+                    if (uint.TryParse(editYearText, out uint year))
                         tfile.Tag.Year = year;
 
-                    if (uint.TryParse(EditTrackBox.Text.Trim(), out uint trk))
+                    if (uint.TryParse(editTrackText, out uint trk))
                         tfile.Tag.Track = trk;
 
-                    Helpers.DiscMetadataHelper.SetDiscInTag(tfile, EditDiscBox.Text);
+                    Helpers.DiscMetadataHelper.SetDiscInTag(tfile, editDiscText);
                     Helpers.ReleaseTypeHelper.SetReleaseTypeInTag(tfile, parsedReleaseType);
 
-                    double parsedBpm = _selectedTrack.Bpm;
-                    if (double.TryParse(EditBpmBox.Text.Trim(), out double userBpm) && userBpm > 0)
+                    double parsedBpm = trackRef.Bpm;
+                    if (double.TryParse(editBpmText, out double userBpm) && userBpm > 0)
                         parsedBpm = Math.Round(userBpm);
 
-                    string parsedCamelot = Helpers.HarmonicAnalysisHelper.MapKeyToCamelot(EditCamelotBox.Text.Trim());
+                    string parsedCamelot = Helpers.HarmonicAnalysisHelper.MapKeyToCamelot(editCamelotText);
                     if (string.IsNullOrEmpty(parsedCamelot))
-                        parsedCamelot = _selectedTrack.CamelotKey;
+                        parsedCamelot = trackRef.CamelotKey;
 
                     Helpers.HarmonicAnalysisHelper.WriteHarmonicMetadataToTag(tfile, parsedBpm, parsedCamelot);
 
-                    if (!string.IsNullOrWhiteSpace(EditGenreBox.Text))
-                        tfile.Tag.Genres = new[] { EditGenreBox.Text.Trim() };
+                    if (!string.IsNullOrWhiteSpace(editGenreText))
+                        tfile.Tag.Genres = new[] { editGenreText };
 
                     if (!string.IsNullOrWhiteSpace(normAlbumArtist))
                     {
@@ -752,28 +820,28 @@ namespace KakiEQ_WinUI.Views
                         tfile.Tag.AlbumArtists = Array.Empty<string>();
                     }
 
-                    if (!string.IsNullOrWhiteSpace(EditComposerBox.Text))
-                        tfile.Tag.Composers = new[] { EditComposerBox.Text.Trim() };
+                    if (!string.IsNullOrWhiteSpace(editComposerText))
+                        tfile.Tag.Composers = new[] { editComposerText };
 
-                    if (!string.IsNullOrWhiteSpace(EditLyricsBox.Text))
+                    if (!string.IsNullOrWhiteSpace(editLyricsText))
                     {
-                        tfile.Tag.Lyrics = EditLyricsBox.Text.Trim();
+                        tfile.Tag.Lyrics = editLyricsText.Trim();
                     }
 
                     string effectiveCoverArtist = !string.IsNullOrWhiteSpace(normAlbumArtist) ? normAlbumArtist : normalizedPerformers;
 
                     // Embed new picture if picked
-                    if (!string.IsNullOrEmpty(_pendingNewCoverPath) && File.Exists(_pendingNewCoverPath))
+                    if (!string.IsNullOrEmpty(pendingCover) && File.Exists(pendingCover))
                     {
-                        var pic = new TagLib.Picture(_pendingNewCoverPath);
+                        var pic = new TagLib.Picture(pendingCover);
                         tfile.Tag.Pictures = new TagLib.IPicture[] { pic };
 
                         // Also save cached cover file for UI with unique timestamped case-sensitive hash
-                        string cachedPath = BuildTimestampedCoverCachePath(effectiveCoverArtist, editAlbumTitle, _pendingNewCoverPath);
+                        string cachedPath = BuildTimestampedCoverCachePath(effectiveCoverArtist, editAlbumTitle, pendingCover);
                         try
                         {
-                            File.Copy(_pendingNewCoverPath, cachedPath, true);
-                            _selectedTrack.CoverImagePath = cachedPath;
+                            File.Copy(pendingCover, cachedPath, true);
+                            trackRef.CoverImagePath = cachedPath;
                         }
                         catch { }
                     }
@@ -787,7 +855,7 @@ namespace KakiEQ_WinUI.Views
                             if (picBytes != null && picBytes.Length > 0)
                             {
                                 File.WriteAllBytes(cachedPath, picBytes);
-                                _selectedTrack.CoverImagePath = cachedPath;
+                                trackRef.CoverImagePath = cachedPath;
                             }
                         }
                         catch { }
@@ -799,7 +867,8 @@ namespace KakiEQ_WinUI.Views
                     }
 
                     tfile.Save();
-                }
+                    return true;
+                });
 
                 // Save lyrics to local cache and .lrc if provided
                 if (!string.IsNullOrWhiteSpace(EditLyricsBox.Text))
@@ -837,10 +906,17 @@ namespace KakiEQ_WinUI.Views
                 if (_isAlbumMode)
                 {
                     FilterAndDisplayAlbums();
+                    if (_selectedAlbum != null)
+                    {
+                        LoadAlbumDetails(_selectedAlbum);
+                    }
                 }
-                CancelEdit();
-                LoadTrackDetails(_selectedTrack);
-                FilterAndDisplayTracks();
+                else
+                {
+                    CancelEdit();
+                    LoadTrackDetails(_selectedTrack);
+                    FilterAndDisplayTracks();
+                }
                 _ = RefreshLibraryMissingMetadataStateAsync();
 
                 ShowInfoDialog("¡Metadatos Guardados!", "Los metadatos y la portada han sido incrustados exitosamente dentro del archivo.");
@@ -866,6 +942,8 @@ namespace KakiEQ_WinUI.Views
         private void LoadAlbumDetails(AlbumItem album)
         {
             _selectedAlbum = album;
+            if (!_isAlbumMode) return;
+
             _pendingNewAlbumCoverPath = null;
             CancelAlbumEdit();
 
@@ -899,10 +977,8 @@ namespace KakiEQ_WinUI.Views
         private void StartAlbumEditMode_Click(object sender, RoutedEventArgs e)
         {
             if (_selectedAlbum == null) return;
-
-            AlbumReadOnlyPanel.Visibility = Visibility.Collapsed;
-            AlbumEditModePanel.Visibility = Visibility.Visible;
-            ChangeCoverButton.Visibility = Visibility.Visible;
+            _isAlbumMode = true;
+            SyncLeftPanelVisibility(isEditingAlbum: true);
 
             EditAlbumGroupTitleBox.Text = _selectedAlbum.Title;
             EditAlbumGroupArtistBox.Text = _selectedAlbum.Artist;
@@ -930,22 +1006,17 @@ namespace KakiEQ_WinUI.Views
         private void CancelAlbumEdit()
         {
             _pendingNewAlbumCoverPath = null;
-            ChangeCoverButton.Visibility = Visibility.Collapsed;
-            AlbumEditModePanel.Visibility = Visibility.Collapsed;
-            if (_isAlbumMode)
+            SyncLeftPanelVisibility(isEditingTrack: false, isEditingAlbum: false);
+            if (_isAlbumMode && _selectedAlbum != null)
             {
-                AlbumReadOnlyPanel.Visibility = Visibility.Visible;
-                if (_selectedAlbum != null)
+                string? coverPath = _selectedAlbum.CoverImagePath;
+                if (!string.IsNullOrEmpty(coverPath) && File.Exists(coverPath))
                 {
-                    string? coverPath = _selectedAlbum.CoverImagePath;
-                    if (!string.IsNullOrEmpty(coverPath) && File.Exists(coverPath))
-                    {
-                        try { CoverImageDisplay.Source = new BitmapImage(new Uri(coverPath)); } catch { }
-                    }
-                    else
-                    {
-                        CoverImageDisplay.Source = null;
-                    }
+                    try { CoverImageDisplay.Source = new BitmapImage(new Uri(coverPath)); } catch { }
+                }
+                else
+                {
+                    CoverImageDisplay.Source = null;
                 }
             }
         }
@@ -983,7 +1054,9 @@ namespace KakiEQ_WinUI.Views
                     File.Copy(pendingCover, cachedNewCoverPath, true);
                 }
 
-                await Task.Run(() =>
+                StopLrcPlayback();
+
+                await ExecuteWithPlaybackFileUnlockedAsync(tracksToUpdate.Select(t => t.FilePath), () =>
                 {
                     foreach (var track in tracksToUpdate)
                     {
@@ -1049,6 +1122,7 @@ namespace KakiEQ_WinUI.Views
                             track.CoverImagePath = cachedNewCoverPath;
                         }
                     }
+                    return true;
                 });
 
                 // Update selected album object
@@ -1108,12 +1182,12 @@ namespace KakiEQ_WinUI.Views
             var (tagBpm, tagKey) = Helpers.HarmonicAnalysisHelper.ExtractHarmonicMetadataFromTag(tfile);
             string dbKey = Helpers.CamelotColorConverter.NormalizeCamelotKey(track.CamelotKey);
 
-            // 1. BPM presente en BD pero ausente en el archivo
-            if (track.Bpm > 0 && tagBpm <= 0)
+            // 1. BPM presente en BD pero ausente en el archivo (o actualizado por re-análisis pendiente de incrustar)
+            if (track.Bpm > 0 && (tagBpm <= 0 || (track.HasUnembeddedMetadata && Math.Abs(tagBpm - track.Bpm) >= 1.0)))
                 return true;
 
-            // 2. Clave Camelot presente en BD pero ausente en el archivo
-            if (!string.IsNullOrEmpty(dbKey) && string.IsNullOrEmpty(tagKey))
+            // 2. Clave Camelot presente en BD pero ausente en el archivo (o actualizada por re-análisis pendiente de incrustar)
+            if (!string.IsNullOrEmpty(dbKey) && (string.IsNullOrEmpty(tagKey) || (track.HasUnembeddedMetadata && !string.Equals(tagKey, dbKey, StringComparison.OrdinalIgnoreCase))))
                 return true;
 
             // 3. Disco presente en BD pero ausente en el archivo
@@ -1149,10 +1223,14 @@ namespace KakiEQ_WinUI.Views
                 return false;
 
             var (tagBpm, tagKey) = Helpers.HarmonicAnalysisHelper.ExtractHarmonicMetadataFromTag(tfile);
-            double bpmToWrite = tagBpm > 0 ? tagBpm : track.Bpm;
-            string keyToWrite = !string.IsNullOrEmpty(tagKey) ? tagKey : Helpers.CamelotColorConverter.NormalizeCamelotKey(track.CamelotKey);
+            string dbKey = Helpers.CamelotColorConverter.NormalizeCamelotKey(track.CamelotKey);
+            bool needWriteBpm = track.Bpm > 0 && (tagBpm <= 0 || (track.HasUnembeddedMetadata && Math.Abs(tagBpm - track.Bpm) >= 1.0));
+            bool needWriteKey = !string.IsNullOrEmpty(dbKey) && (string.IsNullOrEmpty(tagKey) || (track.HasUnembeddedMetadata && !string.Equals(tagKey, dbKey, StringComparison.OrdinalIgnoreCase)));
 
-            if ((track.Bpm > 0 && tagBpm <= 0) || (!string.IsNullOrEmpty(keyToWrite) && string.IsNullOrEmpty(tagKey)))
+            double bpmToWrite = needWriteBpm ? track.Bpm : tagBpm;
+            string keyToWrite = needWriteKey ? dbKey : tagKey;
+
+            if (needWriteBpm || needWriteKey)
             {
                 Helpers.HarmonicAnalysisHelper.WriteHarmonicMetadataToTag(tfile, bpmToWrite, keyToWrite);
             }
@@ -1252,16 +1330,62 @@ namespace KakiEQ_WinUI.Views
             return Task.CompletedTask;
         }
 
+        /// <summary>
+        /// Si el archivo de audio que se va a modificar está actualmente abierto en BassAudioEngine,
+        /// transfiere temporalmente la reproducción a memoria RAM (sin pausar ni cortar el audio),
+        /// escribe las etiquetas en el disco y vuelve a vincular el stream físico.
+        /// </summary>
+        private static async Task<T> ExecuteWithPlaybackFileUnlockedAsync<T>(IEnumerable<string> targetPaths, Func<T> writeAction)
+        {
+            var vm = MainViewModel.Instance;
+            string? activePath = vm?.CurrentTrack?.FilePath;
+            bool switchedToMemory = false;
+
+            if (vm != null && !vm.IsKaraokeActive && !string.IsNullOrWhiteSpace(activePath) && File.Exists(activePath))
+            {
+                bool matchesActive = targetPaths.Any(p => !string.IsNullOrWhiteSpace(p) && p.Equals(activePath, StringComparison.OrdinalIgnoreCase));
+                if (matchesActive)
+                {
+                    try
+                    {
+                        byte[] ramBuffer = await Task.Run(() => File.ReadAllBytes(activePath));
+                        switchedToMemory = await vm.AudioEngine.SwitchStreamFromMemoryAsync(ramBuffer);
+                    }
+                    catch { }
+                }
+            }
+
+            try
+            {
+                return await Task.Run(writeAction);
+            }
+            finally
+            {
+                if (switchedToMemory && vm != null && !string.IsNullOrWhiteSpace(activePath) && File.Exists(activePath))
+                {
+                    try
+                    {
+                        await vm.AudioEngine.SwitchStreamPreservingPositionAsync(activePath);
+                    }
+                    catch { }
+                }
+            }
+        }
+
         private async void EmbedMissingMetadata_Click(object sender, RoutedEventArgs e)
         {
             if (_selectedTrack == null || !File.Exists(_selectedTrack.FilePath)) return;
 
             var track = _selectedTrack;
             EmbedMissingMetadataButton.IsEnabled = false;
+            StopLrcPlayback();
 
             try
             {
-                bool embedded = await Task.Run(() => TryEmbedMissingMetadataIntoFile(track));
+                bool embedded = await ExecuteWithPlaybackFileUnlockedAsync(
+                    new[] { track.FilePath },
+                    () => TryEmbedMissingMetadataIntoFile(track));
+
                 if (embedded)
                 {
                     var vm = MainViewModel.Instance;
@@ -1272,7 +1396,14 @@ namespace KakiEQ_WinUI.Views
                     }
 
                     EmbedMissingMetadataButton.Visibility = Visibility.Collapsed;
-                    LoadTrackDetails(track);
+                    if (_isAlbumMode)
+                    {
+                        if (_selectedAlbum != null) LoadAlbumDetails(_selectedAlbum);
+                    }
+                    else
+                    {
+                        LoadTrackDetails(track);
+                    }
                     _ = RefreshLibraryMissingMetadataStateAsync();
 
                     ShowInfoDialog("¡Metadatos Incrustados!",
@@ -1296,45 +1427,72 @@ namespace KakiEQ_WinUI.Views
 
         private async void EmbedAllMissingMetadata_Click(object sender, RoutedEventArgs e)
         {
-            var snapshot = _allTracks.ToList();
+            var snapshot = _allTracks.Where(t => t.HasUnembeddedMetadata).ToList();
+            if (snapshot.Count == 0)
+            {
+                snapshot = _allTracks.ToList();
+            }
             if (snapshot.Count == 0) return;
 
             EmbedAllMissingToolbarButton.IsEnabled = false;
+            ReanalyzeAllHarmonicButton.IsEnabled = false;
             EmbedAllMissingToolbarText.Text = "Incrustando metadatos...";
+            StopLrcPlayback();
 
             try
             {
-                var (embeddedCount, failedCount) = await Task.Run(() =>
-                {
-                    int ok = 0;
-                    int fail = 0;
-                    foreach (var t in snapshot)
+                var modifiedTracks = new List<Track>();
+                var (embeddedCount, failedCount) = await ExecuteWithPlaybackFileUnlockedAsync(
+                    snapshot.Select(t => t.FilePath),
+                    () =>
                     {
-                        try
+                        int ok = 0;
+                        int fail = 0;
+                        foreach (var t in snapshot)
                         {
-                            if (!string.IsNullOrWhiteSpace(t.FilePath) && File.Exists(t.FilePath))
+                            try
                             {
-                                if (TryEmbedMissingMetadataIntoFile(t))
+                                if (!string.IsNullOrWhiteSpace(t.FilePath) && File.Exists(t.FilePath))
                                 {
-                                    ok++;
+                                    if (TryEmbedMissingMetadataIntoFile(t))
+                                    {
+                                        ok++;
+                                        modifiedTracks.Add(t);
+                                    }
                                 }
                             }
+                            catch
+                            {
+                                fail++;
+                            }
                         }
-                        catch
-                        {
-                            fail++;
-                        }
-                    }
-                    return (ok, fail);
-                });
+                        return (ok, fail);
+                    });
 
                 var vm = MainViewModel.Instance;
                 if (vm != null)
                 {
                     await vm.DbService.InsertTracksAsync(_allTracks);
+                    if (modifiedTracks.Count > 0)
+                    {
+                        vm.NotifyTracksMetadataChanged(modifiedTracks);
+                    }
                 }
 
-                if (_selectedTrack != null)
+                BuildAlbumItemsList();
+                if (_isAlbumMode)
+                {
+                    FilterAndDisplayAlbums();
+                    if (_selectedAlbum != null)
+                    {
+                        LoadAlbumDetails(_selectedAlbum);
+                    }
+                    else
+                    {
+                        SyncLeftPanelVisibility();
+                    }
+                }
+                else if (_selectedTrack != null)
                 {
                     LoadTrackDetails(_selectedTrack);
                 }
@@ -1342,7 +1500,7 @@ namespace KakiEQ_WinUI.Views
                 await RefreshLibraryMissingMetadataStateAsync();
 
                 string msg = failedCount > 0
-                    ? $"Se incrustaron exitosamente los metadatos faltantes (BPM, Clave Camelot, etc.) en {embeddedCount} archivo(s). ({failedCount} archivo(s) omitidos por estar en reproducción o bloqueados)."
+                    ? $"Se incrustaron exitosamente los metadatos faltantes (BPM, Clave Camelot, etc.) en {embeddedCount} archivo(s). ({failedCount} archivo(s) omitidos por estar bloqueados)."
                     : $"Se incrustaron exitosamente los metadatos faltantes (BPM, Clave Camelot, etc.) en {embeddedCount} archivo(s) de audio.";
 
                 ShowInfoDialog("¡Metadatos Faltantes Incrustados!", msg);
@@ -1350,6 +1508,257 @@ namespace KakiEQ_WinUI.Views
             finally
             {
                 EmbedAllMissingToolbarButton.IsEnabled = true;
+                ReanalyzeAllHarmonicButton.IsEnabled = true;
+            }
+        }
+
+        private async void ReanalyzeSingleHarmonic_Click(object sender, RoutedEventArgs e)
+        {
+            if (_selectedTrack == null || string.IsNullOrWhiteSpace(_selectedTrack.FilePath) || !File.Exists(_selectedTrack.FilePath))
+                return;
+
+            var track = _selectedTrack;
+            double oldBpm = track.Bpm;
+            string oldKey = Helpers.CamelotColorConverter.NormalizeCamelotKey(track.CamelotKey);
+
+            ReanalyzeSingleHarmonicButton.IsEnabled = false;
+            ReanalyzeSingleHarmonicText.Text = "Analizando audio (DSP)...";
+
+            try
+            {
+                var (newBpm, newKey, hasUnembeddedDiff) = await Task.Run(() =>
+                    Helpers.HarmonicAnalysisHelper.ComputeTrackHarmonicSync(track, forceDsp: true));
+
+                // Mutar Track estrictamente en el hilo UI para no disparar INotifyPropertyChanged desde otro hilo
+                if (newBpm > 0) track.Bpm = newBpm;
+                if (!string.IsNullOrEmpty(newKey)) track.CamelotKey = newKey;
+                if (hasUnembeddedDiff) track.HasUnembeddedMetadata = true;
+
+                var vm = MainViewModel.Instance;
+                if (vm != null)
+                {
+                    await vm.DbService.InsertTracksAsync(_allTracks);
+                    vm.NotifyTrackMetadataChanged(track);
+                    if (vm.CurrentTrack == track)
+                    {
+                        vm.UpdateCurrentTrackTechnicalInfo();
+                    }
+                }
+
+                LoadTrackDetails(track);
+                await RefreshLibraryMissingMetadataStateAsync();
+
+                string oldKeyStr = string.IsNullOrEmpty(oldKey) ? "-" : oldKey;
+                string newKeyStr = string.IsNullOrEmpty(newKey) ? "-" : newKey;
+                string pendingNote = track.HasUnembeddedMetadata
+                    ? "\n\nPulsa 'Incrustar Metadatos Faltantes' para escribir estos valores corregidos directamente en el archivo físico."
+                    : "\n\nLas etiquetas del archivo físico ya coinciden con este análisis.";
+
+                ShowInfoDialog("¡Re-análisis DSP Completado!",
+                    $"Anterior: {oldBpm:0} BPM | Clave {oldKeyStr}\nNuevo (Offline DSP): {newBpm:0} BPM | Clave {newKeyStr}{pendingNote}");
+            }
+            catch (Exception ex)
+            {
+                ShowInfoDialog("Error en análisis DSP", $"No se pudo analizar el audio: {ex.Message}");
+            }
+            finally
+            {
+                ReanalyzeSingleHarmonicText.Text = "Reanalizar BPM / Clave (DSP)";
+                ReanalyzeSingleHarmonicButton.IsEnabled = true;
+            }
+        }
+
+        private async void ReanalyzeAllHarmonic_Click(object sender, RoutedEventArgs e)
+        {
+            if (_isHarmonicBatchRunning)
+            {
+                _harmonicBatchCts?.Cancel();
+                ReanalyzeAllHarmonicButton.IsEnabled = false;
+                ReanalyzeAllHarmonicText.Text = "Deteniendo...";
+                return;
+            }
+
+            var targets = _allTracks
+                .Where(t => t != null && !t.IsDiscHeader && !string.IsNullOrWhiteSpace(t.FilePath) && File.Exists(t.FilePath))
+                .ToList();
+
+            if (targets.Count == 0) return;
+
+            _isHarmonicBatchRunning = true;
+            _harmonicBatchCts?.Dispose();
+            _harmonicBatchCts = new CancellationTokenSource();
+            var ct = _harmonicBatchCts.Token;
+
+            ReanalyzeSingleHarmonicButton.IsEnabled = false;
+            EmbedAllMissingToolbarButton.IsEnabled = false;
+            ReanalyzeAllHarmonicText.Text = $"Detener (0/{targets.Count})";
+
+            int processed = 0;
+            int changedCount = 0;
+            int failedCount = 0;
+            var changedTracks = new ConcurrentBag<Track>();
+            var uiQueue = new ConcurrentQueue<(Track track, double bpm, string key, bool hasUnembedded)>();
+            var vm = MainViewModel.Instance;
+            int parallelism = Math.Clamp(Environment.ProcessorCount / 2, 2, 4);
+
+            int lastSavedCount = 0;
+            Task activeDbSaveTask = Task.CompletedTask;
+            Exception? unexpectedError = null;
+
+            void DrainUiUpdates(bool allowDbCheckpoint)
+            {
+                while (uiQueue.TryDequeue(out var item))
+                {
+                    if (item.bpm > 0) item.track.Bpm = item.bpm;
+                    if (!string.IsNullOrEmpty(item.key)) item.track.CamelotKey = item.key;
+                    if (item.hasUnembedded) item.track.HasUnembeddedMetadata = true;
+                }
+
+                int done = Volatile.Read(ref processed);
+                if (_isHarmonicBatchRunning && !ct.IsCancellationRequested)
+                {
+                    ReanalyzeAllHarmonicText.Text = $"Detener ({done}/{targets.Count})";
+                }
+
+                if (allowDbCheckpoint && vm != null && done - lastSavedCount >= 100 && activeDbSaveTask.IsCompleted)
+                {
+                    lastSavedCount = done;
+                    var snapshot = _allTracks.ToList();
+                    activeDbSaveTask = Task.Run(async () =>
+                    {
+                        try { await vm.DbService.InsertTracksAsync(snapshot); } catch { }
+                    });
+                }
+            }
+
+            var uiTimer = DispatcherQueue.CreateTimer();
+            uiTimer.Interval = TimeSpan.FromMilliseconds(180);
+            uiTimer.Tick += (_, _) => DrainUiUpdates(allowDbCheckpoint: true);
+            uiTimer.Start();
+
+            try
+            {
+                await Task.Run(async () =>
+                {
+                    await Parallel.ForEachAsync(
+                        targets,
+                        new ParallelOptions { MaxDegreeOfParallelism = parallelism, CancellationToken = ct },
+                        (track, token) =>
+                        {
+                            try
+                            {
+                                token.ThrowIfCancellationRequested();
+
+                                double prevBpm = track.Bpm;
+                                string prevKey = Helpers.CamelotColorConverter.NormalizeCamelotKey(track.CamelotKey);
+
+                                var (newBpm, newKey, hasUnembeddedDiff) =
+                                    Helpers.HarmonicAnalysisHelper.ComputeTrackHarmonicSync(track, forceDsp: true);
+
+                                bool changed = Math.Abs(prevBpm - newBpm) >= 0.5
+                                            || !string.Equals(prevKey, newKey, StringComparison.OrdinalIgnoreCase)
+                                            || hasUnembeddedDiff;
+
+                                if (changed)
+                                {
+                                    Interlocked.Increment(ref changedCount);
+                                    changedTracks.Add(track);
+                                }
+
+                                uiQueue.Enqueue((track, newBpm, newKey, hasUnembeddedDiff));
+                            }
+                            catch (OperationCanceledException)
+                            {
+                                throw;
+                            }
+                            catch
+                            {
+                                Interlocked.Increment(ref failedCount);
+                            }
+                            finally
+                            {
+                                Interlocked.Increment(ref processed);
+                            }
+
+                            return ValueTask.CompletedTask;
+                        });
+                });
+            }
+            catch (OperationCanceledException)
+            {
+                // Cancelación limpia solicitada por el usuario o cierre de ventana
+            }
+            catch (Exception ex)
+            {
+                unexpectedError = ex;
+            }
+            finally
+            {
+                uiTimer.Stop();
+                try { await activeDbSaveTask; } catch { }
+
+                // Aplicar el lote final estrictamente en el hilo UI antes de persistir
+                DrainUiUpdates(allowDbCheckpoint: false);
+
+                if (vm != null)
+                {
+                    try { await vm.DbService.InsertTracksAsync(_allTracks); } catch { }
+                    var modifiedList = changedTracks.ToList();
+                    if (modifiedList.Count > 0)
+                    {
+                        vm.NotifyTracksMetadataChanged(modifiedList);
+                        if (vm.CurrentTrack != null && modifiedList.Contains(vm.CurrentTrack))
+                        {
+                            vm.UpdateCurrentTrackTechnicalInfo();
+                        }
+                    }
+                }
+
+                _isHarmonicBatchRunning = false;
+                ReanalyzeAllHarmonicText.Text = "Reanalizar BPM / Clave";
+                ReanalyzeAllHarmonicButton.IsEnabled = true;
+                ReanalyzeSingleHarmonicButton.IsEnabled = true;
+                EmbedAllMissingToolbarButton.IsEnabled = true;
+
+                if (_isAlbumMode && _selectedAlbum != null)
+                {
+                    LoadAlbumDetails(_selectedAlbum);
+                }
+                else if (!_isAlbumMode && _selectedTrack != null)
+                {
+                    LoadTrackDetails(_selectedTrack);
+                }
+
+                await RefreshLibraryMissingMetadataStateAsync();
+
+                int pendingEmbeds = _allTracks.Count(t => t.HasUnembeddedMetadata);
+                bool wasCancelled = ct.IsCancellationRequested;
+                string title = unexpectedError != null
+                    ? "Re-análisis DSP Interrumpido"
+                    : (wasCancelled ? "Re-análisis DSP Detenido" : "¡Re-análisis DSP Completado!");
+
+                string summary = $"Se analizaron {processed} de {targets.Count} pistas con el motor DSP offline ({changedCount} actualizadas).";
+                if (failedCount > 0)
+                {
+                    summary += $"\n({failedCount} archivo(s) omitidos por no poder decodificarse).";
+                }
+                if (unexpectedError != null)
+                {
+                    summary += $"\nDetalle: {unexpectedError.Message}";
+                }
+                summary += "\n\n";
+                summary += pendingEmbeds > 0
+                    ? $"Hay {pendingEmbeds} archivo(s) con datos nuevos o corregidos listos para guardarse en disco. Pulsa 'Incrustar Metadatos Faltantes ({pendingEmbeds})' en la barra superior cuando quieras escribirlos en tus archivos."
+                    : "Todos los archivos físicos ya coinciden con el análisis DSP.";
+
+                try
+                {
+                    if (Content?.XamlRoot != null)
+                    {
+                        ShowInfoDialog(title, summary);
+                    }
+                }
+                catch { }
             }
         }
 
@@ -1371,6 +1780,11 @@ namespace KakiEQ_WinUI.Views
             var file = await picker.PickSingleFileAsync();
             if (file != null)
             {
+                if (_isAlbumMode)
+                {
+                    SwitchToMode(false);
+                }
+
                 var existing = _allTracks.FirstOrDefault(t => t.FilePath.Equals(file.Path, StringComparison.OrdinalIgnoreCase));
                 if (existing != null)
                 {
@@ -1410,14 +1824,34 @@ namespace KakiEQ_WinUI.Views
 
         private async void ShowInfoDialog(string title, string content)
         {
-            var dialog = new ContentDialog
+            try
             {
-                Title = title,
-                Content = content,
-                CloseButtonText = "Entendido",
-                XamlRoot = this.Content.XamlRoot
-            };
-            await dialog.ShowAsync();
+                if (this.Content?.XamlRoot == null) return;
+
+                try
+                {
+                    _activeDialog?.Hide();
+                }
+                catch { }
+
+                var dialog = new ContentDialog
+                {
+                    Title = title,
+                    Content = content,
+                    CloseButtonText = "Entendido",
+                    XamlRoot = this.Content.XamlRoot
+                };
+                _activeDialog = dialog;
+                await dialog.ShowAsync();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[MetadataWindow] ShowInfoDialog skipped: {ex.Message}");
+            }
+            finally
+            {
+                _activeDialog = null;
+            }
         }
 
         private async void OpenLrcEditor_Click(object sender, RoutedEventArgs e)

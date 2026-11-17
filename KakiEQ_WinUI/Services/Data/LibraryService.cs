@@ -46,16 +46,18 @@ namespace KakiEQ_WinUI.Services.Data
                 return 0;
             }
 
+            int total = files.Count;
             var tracks = new List<Track>();
             var cacheFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KakiEQ", "Covers");
             Directory.CreateDirectory(cacheFolder);
 
-            int trackIdCounter = 1;
-            int total = files.Count;
-
             var existingTracks = await _dbService.GetAllTracksAsync();
             var existingMap = existingTracks.Where(t => !string.IsNullOrEmpty(t.FilePath))
-                                           .ToDictionary(t => t.FilePath, t => t, StringComparer.OrdinalIgnoreCase);
+                                           .GroupBy(t => t.FilePath, StringComparer.OrdinalIgnoreCase)
+                                           .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
+            int nextAvailableId = existingTracks.Count > 0 ? existingTracks.Max(t => t.Id) + 1 : 1;
+            var usedTrackIds = new HashSet<int>();
 
             await Task.Run(() =>
             {
@@ -65,6 +67,22 @@ namespace KakiEQ_WinUI.Services.Data
                 {
                     var file = files[i];
                     progress?.Report((i + 1, total, Path.GetFileName(file)));
+
+                    int stableTrackId;
+                    if (existingMap.TryGetValue(file, out var existingForId) &&
+                        existingForId.Id > 0 &&
+                        usedTrackIds.Add(existingForId.Id))
+                    {
+                        stableTrackId = existingForId.Id;
+                    }
+                    else
+                    {
+                        while (!usedTrackIds.Add(nextAvailableId))
+                        {
+                            nextAvailableId++;
+                        }
+                        stableTrackId = nextAvailableId++;
+                    }
 
                     try
                     {
@@ -176,7 +194,7 @@ namespace KakiEQ_WinUI.Services.Data
 
                         var track = new Track
                         {
-                            Id = trackIdCounter++,
+                            Id = stableTrackId,
                             FilePath = file,
                             Title = string.IsNullOrWhiteSpace(tfile.Tag.Title) ? Path.GetFileNameWithoutExtension(file) : tfile.Tag.Title,
                             Artist = trackArtist,
@@ -217,7 +235,7 @@ namespace KakiEQ_WinUI.Services.Data
 
                             tracks.Add(new Track
                             {
-                                Id = trackIdCounter++,
+                                Id = stableTrackId,
                                 FilePath = file,
                                 Title = Path.GetFileNameWithoutExtension(file),
                                 Artist = "Unknown Artist",
@@ -236,7 +254,6 @@ namespace KakiEQ_WinUI.Services.Data
                 }
             });
 
-            await _dbService.ClearLibraryAsync();
             await _dbService.InsertTracksAsync(tracks);
             return tracks.Count;
         }

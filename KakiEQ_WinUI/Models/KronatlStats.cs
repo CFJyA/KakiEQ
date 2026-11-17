@@ -17,11 +17,17 @@ namespace KakiEQ_WinUI.Models
 
         // 2. Pista del Alma (Top 1 Track)
         public Track? TopTrack { get; set; }
-        public string TopTrackTitle => TopTrack?.Title ?? "Música del Alma";
-        public string TopTrackArtist => TopTrack?.Artist ?? "Desconocido";
+        public string TopTrackTitle => TopTrack?.Title ?? "Sin reproducciones";
+        public string TopTrackArtist => TopTrack?.Artist ?? "—";
         public string? TopTrackCoverPath => TopTrack?.CoverImagePath;
         public int TopTrackPlayCount { get; set; }
-        public string TopTrackPeakTime { get; set; } = "Viernes, 11:42 PM";
+        public string TopTrackPeakTime { get; set; } = "—";
+        public string TopTrackCamelotKey => TopTrack != null
+            ? KakiEQ_WinUI.Helpers.CamelotColorConverter.NormalizeCamelotKey(TopTrack.CamelotKey)
+            : string.Empty;
+        public int TopTrackBpm => TopTrack != null && TopTrack.Bpm > 0
+            ? (int)Math.Round(TopTrack.Bpm)
+            : AverageBpm;
 
         // 3. Artista Refugio (Top Artist)
         public string TopArtist { get; set; } = "Artista";

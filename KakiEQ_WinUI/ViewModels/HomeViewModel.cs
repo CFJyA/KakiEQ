@@ -152,12 +152,22 @@ namespace KakiEQ_WinUI.ViewModels
             if (track == null) return;
             RunOnUIThread(() =>
             {
-                var match = HistoryTracks.FirstOrDefault(t => t.Id == track.Id || (!string.IsNullOrEmpty(t.FilePath) && t.FilePath.Equals(track.FilePath, StringComparison.OrdinalIgnoreCase)));
+                static bool IsMatch(Track a, Track b)
+                {
+                    if (!string.IsNullOrEmpty(a.FilePath) && !string.IsNullOrEmpty(b.FilePath))
+                        return a.FilePath.Equals(b.FilePath, StringComparison.OrdinalIgnoreCase);
+                    return a.Id == b.Id;
+                }
+
+                var match = HistoryTracks.FirstOrDefault(t => IsMatch(t, track));
                 if (match != null)
                 {
                     HistoryTracks.Remove(match);
                     match.LastPlayed = DateTime.Now;
-                    match.PlayCount++;
+                    if (!ReferenceEquals(match, track))
+                    {
+                        match.PlayCount = track.PlayCount;
+                    }
                     HistoryTracks.Insert(0, match);
                 }
                 else
@@ -180,7 +190,10 @@ namespace KakiEQ_WinUI.ViewModels
             {
                 void UpdateTrackInCollection(ObservableCollection<Track> col)
                 {
-                    var match = col.FirstOrDefault(t => t.Id == updatedTrack.Id || (!string.IsNullOrEmpty(t.FilePath) && t.FilePath.Equals(updatedTrack.FilePath, StringComparison.OrdinalIgnoreCase)));
+                    var match = col.FirstOrDefault(t =>
+                        (!string.IsNullOrEmpty(t.FilePath) && !string.IsNullOrEmpty(updatedTrack.FilePath))
+                            ? t.FilePath.Equals(updatedTrack.FilePath, StringComparison.OrdinalIgnoreCase)
+                            : t.Id == updatedTrack.Id);
                     if (match != null)
                     {
                         match.Title = updatedTrack.Title;

@@ -44,6 +44,20 @@ namespace KakiEQ_WinUI.ViewModels
             }
         }
 
+        private string _activeBannerTitle = "Temporada en Curso: Otoño 2026";
+        public string ActiveBannerTitle
+        {
+            get => _activeBannerTitle;
+            set { if (_activeBannerTitle != value) { _activeBannerTitle = value; OnPropertyChanged(); } }
+        }
+
+        private string _activeBannerDescription = "Estadísticas locales en tiempo real sincronizadas con tu biblioteca y tu historial de reproducción.";
+        public string ActiveBannerDescription
+        {
+            get => _activeBannerDescription;
+            set { if (_activeBannerDescription != value) { _activeBannerDescription = value; OnPropertyChanged(); } }
+        }
+
         public ICommand OpenCodexCommand { get; }
         public ICommand PlaySeasonTop30Command { get; }
         public ICommand ViewPlaylistCommand { get; }
@@ -85,25 +99,40 @@ namespace KakiEQ_WinUI.ViewModels
             _ = LoadSeasonsAsync();
         }
 
-        public async Task LoadSeasonsAsync()
+        public async Task LoadSeasonsAsync(bool silent = false)
         {
-            IsLoading = true;
+            if (!silent || Seasons.Count == 0)
+            {
+                IsLoading = true;
+            }
+
             try
             {
                 var libraryTracks = await _databaseService.GetAllTracksAsync();
                 await _kronatlService.EnsureHistorySeededAsync(libraryTracks);
 
-                var seasonList = _kronatlService.GetDefinedSeasons();
-                Seasons.Clear();
+                var seasonList = await _kronatlService.GetAllSeasonsAsync(libraryTracks);
+                var now = DateTime.Now;
+                var currentSeasonal = seasonList.FirstOrDefault(s => s.Type != KronatlSeasonType.Anual && now >= s.PeriodStart && now <= s.PeriodEnd)
+                                   ?? seasonList.FirstOrDefault(s => s.Type != KronatlSeasonType.Anual)
+                                   ?? seasonList.FirstOrDefault();
 
-                foreach (var s in seasonList)
+                RunOnUIThread(() =>
                 {
-                    await _kronatlService.CalculateSeasonStatsAsync(s, libraryTracks);
-                    await _kronatlService.GenerateOrGetTop30PlaylistAsync(s, libraryTracks);
-                    Seasons.Add(s);
-                }
+                    if (currentSeasonal != null)
+                    {
+                        ActiveBannerTitle = $"Temporada en Curso: {currentSeasonal.SeasonName} {currentSeasonal.Year}";
+                        ActiveBannerDescription = $"{currentSeasonal.Subtitle}. Tus estadísticas y la playlist Top 30 se mantienen sincronizadas en tiempo real con tu biblioteca y reproducciones.";
+                    }
 
-                SelectedSeason = Seasons.FirstOrDefault();
+                    Seasons.Clear();
+                    foreach (var s in seasonList)
+                    {
+                        Seasons.Add(s);
+                    }
+
+                    SelectedSeason = Seasons.FirstOrDefault();
+                });
             }
             catch (Exception ex)
             {

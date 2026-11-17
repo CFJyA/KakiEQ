@@ -152,7 +152,10 @@ namespace KakiEQ_WinUI.ViewModels
                 if (trackObj is Track track)
                 {
                     await _dbService.RemoveTrackFromPlaylistAsync(CurrentPlaylist.Name, track);
-                    _originalCustomTracks.RemoveAll(t => t.Id == track.Id || (!string.IsNullOrEmpty(t.FilePath) && t.FilePath.Equals(track.FilePath, StringComparison.OrdinalIgnoreCase)));
+                    _originalCustomTracks.RemoveAll(t =>
+                        (!string.IsNullOrEmpty(t.FilePath) && !string.IsNullOrEmpty(track.FilePath))
+                            ? t.FilePath.Equals(track.FilePath, StringComparison.OrdinalIgnoreCase)
+                            : t.Id == track.Id);
                     await LoadPlaylistDetailsAsync();
                     if (MainViewModel.Instance != null)
                     {
@@ -366,6 +369,28 @@ namespace KakiEQ_WinUI.ViewModels
 
         private async Task LoadPlaylistDetailsAsync()
         {
+            if (IsKronatlPlaylist && MainViewModel.Instance?.KronatlService != null)
+            {
+                try
+                {
+                    var allTracks = await _dbService.GetAllTracksAsync();
+                    bool updated = await MainViewModel.Instance.KronatlService.SyncSavedKronatlPlaylistsAsync(allTracks, CurrentPlaylist.Name);
+                    if (updated)
+                    {
+                        var playlists = await _dbService.GetAllPlaylistsAsync();
+                        var refreshed = playlists.FirstOrDefault(p => p.Name.Equals(CurrentPlaylist.Name, StringComparison.OrdinalIgnoreCase));
+                        if (refreshed != null)
+                        {
+                            CurrentPlaylist.TrackIds = refreshed.TrackIds;
+                            CurrentPlaylist.TrackFilePaths = refreshed.TrackFilePaths;
+                            CurrentPlaylist.TrackCount = refreshed.TrackCount;
+                            CurrentPlaylist.CoverImagePath = refreshed.CoverImagePath;
+                        }
+                    }
+                }
+                catch { }
+            }
+
             var playlistTracks = await _dbService.GetTracksForPlaylistAsync(CurrentPlaylist.Name);
 
             RunOnUIThread(() =>

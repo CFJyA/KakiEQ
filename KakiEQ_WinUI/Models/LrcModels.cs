@@ -43,8 +43,23 @@ namespace KakiEQ_WinUI.Models
             }
         }
 
+        private int _distanceFromActive = 99;
+        public int DistanceFromActive
+        {
+            get => _distanceFromActive;
+            set
+            {
+                if (_distanceFromActive != value)
+                {
+                    _distanceFromActive = value;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(OpacityFormatted));
+                }
+            }
+        }
+
         public string FontWeightFormatted => IsActive ? "Bold" : "SemiBold";
-        public double OpacityFormatted => IsActive ? 1.0 : 0.40;
+        public double OpacityFormatted => IsActive ? 1.0 : (_distanceFromActive == 1 ? 0.65 : (_distanceFromActive == 2 ? 0.44 : 0.28));
         public double FontSizeFormatted => IsActive ? 28 : 20;
         public string ActiveForeground => IsActive ? "#FFFFFF" : "#CCCCCC";
         public Visibility ActiveIndicatorVisibility => IsActive ? Visibility.Visible : Visibility.Collapsed;

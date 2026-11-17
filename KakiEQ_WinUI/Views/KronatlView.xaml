@@ -42,9 +42,9 @@
                         <StackPanel Grid.Column="0" Spacing="6">
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <FontIcon Glyph="&#xE7C0;" FontSize="16" Foreground="#FF7043"/>
-                                <TextBlock Text="Temporada en Curso: Otoño 2026" FontSize="14" FontWeight="Bold" Foreground="{ThemeResource AppTextPrimary}"/>
+                                <TextBlock Text="{x:Bind ViewModel.ActiveBannerTitle, Mode=OneWay}" FontSize="14" FontWeight="Bold" Foreground="{ThemeResource AppTextPrimary}"/>
                             </StackPanel>
-                            <TextBlock Text="Septiembre – Noviembre 2026. Esta es la primera temporada en la historia de Kaki EQ. Se liberará oficialmente en 3 semanas (1 de Diciembre), pero ya puedes abrir El Códice en tiempo real para ver tus estadísticas y escuchar tu música favorita."
+                            <TextBlock Text="{x:Bind ViewModel.ActiveBannerDescription, Mode=OneWay}"
                                        FontSize="12" Foreground="{ThemeResource AppTextSecondary}" TextWrapping="Wrap"/>
                         </StackPanel>
 

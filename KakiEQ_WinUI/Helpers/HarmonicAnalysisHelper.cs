@@ -180,16 +180,102 @@ namespace KakiEQ_WinUI.Helpers
             "10A"  // Bm
         };
 
-        // Perfiles tonales de Krumhansl-Kessler para detección de clave armónica por Cromagrama (PCP)
-        private static readonly double[] KrumhanslMajorProfile =
+        // Perfiles tonales CBMS de Temperley (2007) para Cromagrama Armónico de Alta Precisión (HPCP-36)
+        private static readonly double[] TemperleyMajorProfile =
         {
-            6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88
+            5.0, 2.0, 3.5, 2.0, 4.5, 4.0, 2.0, 4.5, 2.0, 3.5, 1.5, 4.0
         };
 
-        private static readonly double[] KrumhanslMinorProfile =
+        private static readonly double[] TemperleyMinorProfile =
         {
-            6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17
+            5.0, 2.0, 3.5, 4.5, 2.0, 4.0, 2.0, 4.5, 3.5, 2.0, 1.5, 4.0
         };
+
+        private sealed class FftPlan
+        {
+            public readonly int Size;
+            public readonly int[] BitRev;
+            public readonly double[] Hann;
+            public readonly float[] CosTable;
+            public readonly float[] SinTable;
+
+            public FftPlan(int size)
+            {
+                Size = size;
+                BitRev = new int[size];
+                int bits = (int)Math.Log2(size);
+                for (int i = 0; i < size; i++)
+                {
+                    int r = 0, x = i;
+                    for (int b = 0; b < bits; b++)
+                    {
+                        r = (r << 1) | (x & 1);
+                        x >>= 1;
+                    }
+                    BitRev[i] = r;
+                }
+
+                Hann = new double[size];
+                for (int i = 0; i < size; i++)
+                {
+                    Hann[i] = 0.5 * (1.0 - Math.Cos((2.0 * Math.PI * i) / (size - 1)));
+                }
+
+                CosTable = new float[size / 2];
+                SinTable = new float[size / 2];
+                for (int k = 0; k < size / 2; k++)
+                {
+                    double ang = -2.0 * Math.PI * k / size;
+                    CosTable[k] = (float)Math.Cos(ang);
+                    SinTable[k] = (float)Math.Sin(ang);
+                }
+            }
+
+            public void Forward(float[] real, float[] imag)
+            {
+                int n = Size;
+                for (int i = 0; i < n; i++)
+                {
+                    int j = BitRev[i];
+                    if (i < j)
+                    {
+                        (real[i], real[j]) = (real[j], real[i]);
+                        (imag[i], imag[j]) = (imag[j], imag[i]);
+                    }
+                }
+
+                for (int len = 2; len <= n; len <<= 1)
+                {
+                    int half = len >> 1;
+                    int step = n / len;
+                    for (int i = 0; i < n; i += len)
+                    {
+                        int tblIdx = 0;
+                        for (int k = 0; k < half; k++)
+                        {
+                            float wRe = CosTable[tblIdx];
+                            float wIm = SinTable[tblIdx];
+                            tblIdx += step;
+
+                            int even = i + k;
+                            int odd = even + half;
+                            float oRe = real[odd];
+                            float oIm = imag[odd];
+                            float tRe = wRe * oRe - wIm * oIm;
+                            float tIm = wRe * oIm + wIm * oRe;
+                            real[odd] = real[even] - tRe;
+                            imag[odd] = imag[even] - tIm;
+                            real[even] += tRe;
+                            imag[even] += tIm;
+                        }
+                    }
+                }
+            }
+        }
+
+        private static readonly FftPlan Plan1024 = new(1024);
+        private static readonly FftPlan Plan4096 = new(4096);
+        private static readonly object _bassInitLock = new();
 
         private static readonly ConcurrentQueue<Track> AnalysisQueue = new();
         private static readonly ConcurrentDictionary<string, byte> QueuedPaths = new(StringComparer.OrdinalIgnoreCase);
@@ -402,56 +488,105 @@ namespace KakiEQ_WinUI.Helpers
         /// <summary>
         /// Garantiza que la pista tenga BPM y Clave Camelot calculados (primero lee etiquetas locales y si faltan ejecuta DSP).
         /// </summary>
-        public static (double bpm, string camelotKey) EnsureTrackHarmonicSync(Track track)
+        /// <summary>
+        /// Calcula de forma pura (thread-safe, sin mutar propiedades INotifyPropertyChanged de UI)
+        /// el BPM, la Clave Camelot y si difieren de las etiquetas físicas incrustadas en el archivo.
+        /// </summary>
+        public static (double bpm, string camelotKey, bool hasUnembeddedDiff) ComputeTrackHarmonicSync(Track track, bool forceDsp = false)
         {
             if (track == null || string.IsNullOrWhiteSpace(track.FilePath) || !File.Exists(track.FilePath))
-                return (0, string.Empty);
+                return (0, string.Empty, false);
 
-            double bpm = track.Bpm;
-            string camelot = CamelotColorConverter.NormalizeCamelotKey(track.CamelotKey);
-
-            if (bpm > 0 && !string.IsNullOrEmpty(camelot))
-            {
-                if (track.CamelotKey != camelot) track.CamelotKey = camelot;
-                return (bpm, camelot);
-            }
-
-            // Paso 1: Intentar leer de etiquetas locales (TagLib)
             double tagBpm = 0;
             string tagKey = string.Empty;
             try
             {
                 using var tfile = TagLib.File.Create(track.FilePath);
                 (tagBpm, tagKey) = ExtractHarmonicMetadataFromTag(tfile);
-                if (bpm <= 0 && tagBpm > 0) bpm = tagBpm;
-                if (string.IsNullOrEmpty(camelot) && !string.IsNullOrEmpty(tagKey)) camelot = tagKey;
             }
             catch { }
+
+            if (forceDsp)
+            {
+                var (dspBpm, dspKey) = AnalyzeFileDsp(track.FilePath, needBpm: true, needKey: true);
+                string normDspKey = CamelotColorConverter.NormalizeCamelotKey(dspKey);
+
+                double resultBpm = dspBpm > 0 ? Math.Round(dspBpm) : track.Bpm;
+                string resultKey = !string.IsNullOrEmpty(normDspKey)
+                    ? normDspKey
+                    : CamelotColorConverter.NormalizeCamelotKey(track.CamelotKey);
+
+                bool bpmDiffers = resultBpm > 0 && (tagBpm <= 0 || Math.Abs(tagBpm - resultBpm) >= 1.0);
+                bool keyDiffers = !string.IsNullOrEmpty(resultKey) &&
+                                  (string.IsNullOrEmpty(tagKey) || !string.Equals(tagKey, resultKey, StringComparison.OrdinalIgnoreCase));
+
+                return (resultBpm, resultKey, bpmDiffers || keyDiffers);
+            }
+
+            double bpm = track.Bpm;
+            string camelot = CamelotColorConverter.NormalizeCamelotKey(track.CamelotKey);
+
+            if (bpm > 0 && !string.IsNullOrEmpty(camelot))
+            {
+                bool alreadyDiffers = (tagBpm <= 0 || Math.Abs(tagBpm - bpm) >= 1.0)
+                                   || (string.IsNullOrEmpty(tagKey) || !string.Equals(tagKey, camelot, StringComparison.OrdinalIgnoreCase));
+                return (bpm, camelot, track.HasUnembeddedMetadata || alreadyDiffers);
+            }
+
+            // Paso 1: Intentar leer de etiquetas locales (TagLib)
+            if (bpm <= 0 && tagBpm > 0) bpm = tagBpm;
+            if (string.IsNullOrEmpty(camelot) && !string.IsNullOrEmpty(tagKey)) camelot = tagKey;
 
             // Paso 2: Fallback DSP Offline con BASS si falta BPM o Clave Camelot
             if (bpm <= 0 || string.IsNullOrEmpty(camelot))
             {
                 var (dspBpm, dspKey) = AnalyzeFileDsp(track.FilePath, needBpm: bpm <= 0, needKey: string.IsNullOrEmpty(camelot));
                 if (bpm <= 0 && dspBpm > 0) bpm = dspBpm;
-                if (string.IsNullOrEmpty(camelot) && !string.IsNullOrEmpty(dspKey)) camelot = dspKey;
+                if (string.IsNullOrEmpty(camelot) && !string.IsNullOrEmpty(dspKey)) camelot = CamelotColorConverter.NormalizeCamelotKey(dspKey);
             }
 
-            if ((bpm > 0 && tagBpm <= 0) || (!string.IsNullOrEmpty(camelot) && string.IsNullOrEmpty(tagKey)))
+            bool missingInTag = (bpm > 0 && tagBpm <= 0) || (!string.IsNullOrEmpty(camelot) && string.IsNullOrEmpty(tagKey));
+            return (bpm, camelot, missingInTag);
+        }
+
+        public static (double bpm, string camelotKey) EnsureTrackHarmonicSync(Track track, bool forceDsp = false)
+        {
+            if (track == null || string.IsNullOrWhiteSpace(track.FilePath) || !File.Exists(track.FilePath))
+                return (0, string.Empty);
+
+            var (bpm, camelot, hasUnembeddedDiff) = ComputeTrackHarmonicSync(track, forceDsp);
+            bool canMutateDirectly = _uiDispatcher == null || _uiDispatcher.HasThreadAccess;
+
+            if (canMutateDirectly)
             {
-                track.HasUnembeddedMetadata = true;
+                if (bpm > 0) track.Bpm = bpm;
+                if (!string.IsNullOrEmpty(camelot)) track.CamelotKey = camelot;
+                if (hasUnembeddedDiff) track.HasUnembeddedMetadata = true;
+            }
+            else if (_uiDispatcher != null)
+            {
+                _uiDispatcher.TryEnqueue(DispatcherQueuePriority.Low, () =>
+                {
+                    if (bpm > 0) track.Bpm = bpm;
+                    if (!string.IsNullOrEmpty(camelot)) track.CamelotKey = camelot;
+                    if (hasUnembeddedDiff) track.HasUnembeddedMetadata = true;
+                });
             }
 
             return (bpm, camelot);
         }
 
         /// <summary>
-        /// Ejecuta análisis DSP offline en segundo plano usando decodificación flotante y FFT de BASS:
-        /// a) BPM mediante detección de envolvente de picos de energía (onset flux) y autocorrelación.
-        /// b) Clave Armónica mediante Cromagrama (Pitch Class Profile de 12 semitonos) correlacionado con perfiles Krumhansl-Kessler.
+        /// Ejecuta análisis DSP 100% offline con decodificación flotante multi-sección BASS y Radix-2 FFT:
+        /// a) BPM mediante flujo espectral multibanda (log-magnitud), autocorrelación normalizada y peine armónico de compás 4/4.
+        /// b) Clave Armónica mediante HPCP de 36 bins con calibración de afinación + capa grave + perfiles CBMS de Temperley (2007).
         /// </summary>
         public static (double bpm, string camelotKey) AnalyzeFileDsp(string filePath, bool needBpm = true, bool needKey = true)
         {
             if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
+                return (120, "8A");
+
+            if (!needBpm && !needKey)
                 return (120, "8A");
 
             int stream = 0;
@@ -460,98 +595,57 @@ namespace KakiEQ_WinUI.Helpers
                 stream = Bass.CreateStream(filePath, 0, 0, BassFlags.Decode | BassFlags.Float);
                 if (stream == 0)
                 {
-                    // Asegurar que BASS esté inicializado (dispositivo 0 = No Sound) si aún no lo estaba
-                    Bass.Init(0, 44100, DeviceInitFlags.Default);
-                    stream = Bass.CreateStream(filePath, 0, 0, BassFlags.Decode | BassFlags.Float);
+                    lock (_bassInitLock)
+                    {
+                        stream = Bass.CreateStream(filePath, 0, 0, BassFlags.Decode | BassFlags.Float);
+                        if (stream == 0)
+                        {
+                            Bass.Init(0, 44100, DeviceInitFlags.Default);
+                            stream = Bass.CreateStream(filePath, 0, 0, BassFlags.Decode | BassFlags.Float);
+                        }
+                    }
                 }
 
                 if (stream == 0)
                     return FallbackDeterministicEstimate(filePath);
 
                 Bass.ChannelGetInfo(stream, out var info);
-                int sampleRate = info.Frequency > 0 ? info.Frequency : 44100;
-                int channels = Math.Max(1, info.Channels);
+                int origSr = info.Frequency > 0 ? info.Frequency : 44100;
+                int ch = Math.Max(1, info.Channels);
 
                 long totalBytes = Bass.ChannelGetLength(stream, PositionFlags.Bytes);
                 double totalSeconds = totalBytes > 0 ? Bass.ChannelBytes2Seconds(stream, totalBytes) : 0;
 
-                // Posicionar en la sección central representativa de la canción (ej. desde el 22% de la duración)
-                double startSec = totalSeconds > 40 ? totalSeconds * 0.22 : (totalSeconds > 12 ? 3.0 : 0.0);
-                double analyzeDurationSec = Math.Min(28.0, Math.Max(8.0, totalSeconds - startSec - 1.0));
+                // Submuestreo entero a ~22.05 / 24 kHz: 3x más rápido manteniendo intacto el rango útil (30 Hz - 10 kHz)
+                int decim = origSr >= 80000 ? 4 : (origSr >= 36000 ? 2 : 1);
+                double effSr = (double)origSr / decim;
 
-                if (startSec > 0)
+                var sections = new List<float[]>(4);
+                if (totalSeconds <= 64.0)
                 {
-                    long startBytes = Bass.ChannelSeconds2Bytes(stream, startSec);
-                    Bass.ChannelSetPosition(stream, startBytes, PositionFlags.Bytes);
+                    sections.Add(DecodeMonoDecimated(stream, 0.0, Math.Max(8.0, totalSeconds), origSr, ch, decim));
                 }
-
-                double detectedBpm = 120;
-                string detectedKey = "8A";
-
-                // Hop de ~512 muestras por cuadro de energía (~86.13 Hz a 44.1 kHz)
-                int hopSamples = Math.Max(256, sampleRate / 86);
-                double envelopeRate = (double)sampleRate / hopSamples;
-                int totalHops = (int)Math.Clamp(analyzeDurationSec * envelopeRate, 256, 2600);
-
-                float[] pcmBuffer = new float[hopSamples * channels];
-                float[] onsetFlux = new float[totalHops];
-                float[] fftBuffer = new float[2048]; // DataFlags.FFT4096 devuelve 2048 floats
-                double[] chromagram = new double[12];
-
-                float prevEnergy = 0f;
-                int actualHops = 0;
-
-                for (int h = 0; h < totalHops; h++)
+                else
                 {
-                    // Cada 32 hops (~0.37s), capturar FFT4096 para acumular el Cromagrama (Pitch Class Profile)
-                    if (needKey && (h % 32 == 0))
+                    double[] anchors = { 0.16, 0.36, 0.56, 0.76 };
+                    foreach (double a in anchors)
                     {
-                        int fftRead = Bass.ChannelGetData(stream, fftBuffer, (int)DataFlags.FFT4096);
-                        if (fftRead > 0)
+                        double start = Math.Max(0.0, totalSeconds * a - 8.0);
+                        double len = Math.Min(16.0, totalSeconds - start - 0.5);
+                        if (len >= 6.0)
                         {
-                            AccumulateChromagramFromFft(fftBuffer, sampleRate, 4096, chromagram);
+                            sections.Add(DecodeMonoDecimated(stream, start, len, origSr, ch, decim));
                         }
                     }
 
-                    int bytesToRead = pcmBuffer.Length * sizeof(float);
-                    int bytesRead = Bass.ChannelGetData(stream, pcmBuffer, bytesToRead);
-                    if (bytesRead <= 0)
-                        break;
-
-                    int floatsRead = bytesRead / sizeof(float);
-                    int framesRead = floatsRead / channels;
-                    if (framesRead <= 0)
-                        break;
-
-                    // Calcular energía RMS enfatizando transientes rítmicos
-                    double sumSq = 0;
-                    for (int i = 0; i < floatsRead; i += channels)
+                    if (sections.Count == 0)
                     {
-                        float sample = pcmBuffer[i];
-                        if (channels > 1 && i + 1 < floatsRead)
-                        {
-                            sample = 0.5f * (sample + pcmBuffer[i + 1]);
-                        }
-                        sumSq += sample * sample;
+                        sections.Add(DecodeMonoDecimated(stream, 0.0, Math.Min(16.0, Math.Max(6.0, totalSeconds)), origSr, ch, decim));
                     }
-
-                    float energy = (float)Math.Sqrt(sumSq / framesRead);
-                    float logEnergy = (float)Math.Log10(1.0 + 100.0 * energy);
-                    float diff = logEnergy - prevEnergy;
-                    onsetFlux[actualHops] = diff > 0f ? diff : 0f;
-                    prevEnergy = logEnergy;
-                    actualHops++;
                 }
 
-                if (needBpm && actualHops > 120)
-                {
-                    detectedBpm = EstimateBpmFromOnsetFlux(onsetFlux, actualHops, envelopeRate);
-                }
-
-                if (needKey)
-                {
-                    detectedKey = EstimateCamelotKeyFromChromagram(chromagram);
-                }
+                double detectedBpm = needBpm ? EstimateBpmMultiSection(sections, effSr) : 120.0;
+                string detectedKey = needKey ? EstimateKeyMultiSection(sections, effSr) : "8A";
 
                 return (detectedBpm, detectedKey);
             }
@@ -568,68 +662,345 @@ namespace KakiEQ_WinUI.Helpers
             }
         }
 
-        private static void AccumulateChromagramFromFft(float[] fftMagnitudes, int sampleRate, int fftSize, double[] chromagram)
+        private static float[] DecodeMonoDecimated(int stream, double startSec, double durationSec, int origSr, int ch, int decim)
         {
-            double binFreqStep = (double)sampleRate / fftSize;
-            int minBin = Math.Max(1, (int)Math.Ceiling(65.0 / binFreqStep));     // C2 (~65.4 Hz)
-            int maxBin = Math.Min(fftMagnitudes.Length - 1, (int)(1980.0 / binFreqStep)); // B6 (~1975 Hz)
+            long startByte = Bass.ChannelSeconds2Bytes(stream, startSec);
+            Bass.ChannelSetPosition(stream, startByte, PositionFlags.Bytes);
 
-            for (int bin = minBin; bin <= maxBin; bin++)
+            int origTargetFrames = (int)Math.Round(durationSec * origSr);
+            int outCap = (origTargetFrames + decim - 1) / decim;
+            float[] outMono = new float[outCap];
+            float[] ioBuf = new float[4096 * ch];
+            int filledOrig = 0;
+            int outIdx = 0;
+            float acc = 0f;
+            int accCount = 0;
+
+            while (filledOrig < origTargetFrames)
             {
-                float mag = fftMagnitudes[bin];
-                if (mag <= 1e-6f) continue;
+                int framesLeft = origTargetFrames - filledOrig;
+                int framesToRead = Math.Min(4096, framesLeft);
+                int bytesRead = Bass.ChannelGetData(stream, ioBuf, framesToRead * ch * sizeof(float));
+                if (bytesRead <= 0) break;
 
-                double freq = bin * binFreqStep;
-                // Número de nota MIDI: 69 = A4 (440 Hz)
-                double midi = 69.0 + 12.0 * Math.Log2(freq / 440.0);
-                double nearestNote = Math.Round(midi);
-                double deviation = Math.Abs(midi - nearestNote);
+                int framesRead = (bytesRead / sizeof(float)) / ch;
+                if (framesRead <= 0) break;
 
-                // Ventana gaussiana estrecha alrededor del centro de cada semitono para filtrar ruido percusivo
-                if (deviation <= 0.38)
+                for (int f = 0; f < framesRead; f++)
                 {
-                    int pitchClass = ((int)nearestNote % 12 + 12) % 12;
-                    double weight = Math.Exp(-0.5 * (deviation / 0.18) * (deviation / 0.18));
-                    // Compresión logarítmica para equilibrar armónicos
-                    chromagram[pitchClass] += Math.Sqrt(mag) * weight;
+                    float sum = 0f;
+                    int baseIdx = f * ch;
+                    for (int c = 0; c < ch; c++) sum += ioBuf[baseIdx + c];
+                    acc += sum / ch;
+                    accCount++;
+                    filledOrig++;
+
+                    if (accCount == decim)
+                    {
+                        if (outIdx < outMono.Length) outMono[outIdx++] = acc / decim;
+                        acc = 0f;
+                        accCount = 0;
+                    }
                 }
             }
+
+            if (outIdx < outMono.Length) Array.Resize(ref outMono, outIdx);
+            return outMono;
         }
 
-        private static string EstimateCamelotKeyFromChromagram(double[] chromagram)
+        private static double EstimateBpmMultiSection(List<float[]> sections, double sr)
         {
-            double totalEnergy = 0;
-            for (int i = 0; i < 12; i++) totalEnergy += chromagram[i];
-            if (totalEnergy <= 1e-9)
-                return "8A";
+            const int fftSize = 1024;
+            int hopSize = Math.Max(128, (int)Math.Round(sr / 86.1328125));
+            double envRate = sr / hopSize;
+            double binHz = sr / fftSize;
 
-            // Normalizar cromagrama (media 0)
-            double meanPcp = totalEnergy / 12.0;
-            double[] normPcp = new double[12];
-            double normPcpSq = 0;
-            for (int i = 0; i < 12; i++)
+            int lowMinBin = Math.Max(1, (int)Math.Floor(30.0 / binHz));
+            int lowMaxBin = Math.Min(fftSize / 2 - 1, (int)Math.Ceiling(160.0 / binHz));
+            int midMinBin = lowMaxBin + 1;
+            int midMaxBin = Math.Min(fftSize / 2 - 1, (int)Math.Ceiling(1800.0 / binHz));
+            int highMinBin = midMaxBin + 1;
+            int highMaxBin = Math.Min(fftSize / 2 - 1, (int)Math.Ceiling(8000.0 / binHz));
+
+            var plan = Plan1024;
+            float[] real = new float[fftSize];
+            float[] imag = new float[fftSize];
+            float[] prevLogMag = new float[fftSize / 2];
+
+            int minLag = Math.Max(4, (int)Math.Floor(envRate * 60.0 / 220.0));
+            int maxLag = (int)Math.Ceiling(envRate * 60.0 / 13.5);
+
+            double[] globalAcf = new double[maxLag + 4];
+            int acfWeightCount = 0;
+
+            foreach (var mono in sections)
             {
-                normPcp[i] = chromagram[i] - meanPcp;
-                normPcpSq += normPcp[i] * normPcp[i];
+                if (mono.Length < fftSize + hopSize * 40) continue;
+                int frames = (mono.Length - fftSize) / hopSize + 1;
+
+                float[] flux = new float[frames];
+                Array.Clear(prevLogMag, 0, prevLogMag.Length);
+
+                for (int t = 0; t < frames; t++)
+                {
+                    int offset = t * hopSize;
+                    for (int i = 0; i < fftSize; i++)
+                    {
+                        real[i] = (float)(mono[offset + i] * plan.Hann[i]);
+                        imag[i] = 0f;
+                    }
+                    plan.Forward(real, imag);
+
+                    double lowDiff = 0, midDiff = 0, highDiff = 0;
+                    for (int k = lowMinBin; k <= highMaxBin; k++)
+                    {
+                        float mag = MathF.Sqrt(real[k] * real[k] + imag[k] * imag[k]) / fftSize;
+                        float logM = MathF.Log(1f + 100f * mag);
+                        float d = logM - prevLogMag[k];
+                        prevLogMag[k] = logM;
+                        if (d > 0f)
+                        {
+                            if (k <= lowMaxBin) lowDiff += d;
+                            else if (k <= midMaxBin) midDiff += d;
+                            else highDiff += d;
+                        }
+                    }
+
+                    lowDiff /= Math.Max(1, lowMaxBin - lowMinBin + 1);
+                    midDiff /= Math.Max(1, midMaxBin - midMinBin + 1);
+                    highDiff /= Math.Max(1, highMaxBin - highMinBin + 1);
+
+                    flux[t] = (float)(0.48 * lowDiff + 0.34 * midDiff + 0.18 * highDiff);
+                }
+
+                SubtractLocalMeanAndRectify(flux, (int)Math.Round(envRate * 0.45));
+
+                double secZero = SelfDot(flux);
+                if (secZero <= 1e-9) continue;
+
+                int localMaxLag = Math.Min(maxLag, (int)(frames * 0.65));
+                for (int lag = minLag; lag <= localMaxLag; lag++)
+                {
+                    double acc = 0;
+                    int limit = frames - lag;
+                    for (int i = 0; i < limit; i++)
+                    {
+                        acc += flux[i] * flux[i + lag];
+                    }
+                    double norm = (double)frames / limit;
+                    globalAcf[lag] += (acc * norm) / secZero;
+                }
+                acfWeightCount++;
             }
 
-            if (normPcpSq <= 1e-12)
+            if (acfWeightCount == 0) return 120.0;
+            for (int i = 0; i < globalAcf.Length; i++) globalAcf[i] /= acfWeightCount;
+
+            var cands = new List<(double bpm, double score)>(520);
+            double bestScore = double.NegativeInfinity;
+            double bestBpm = 120.0;
+
+            for (double bpm = 58.0; bpm <= 184.0; bpm += 0.25)
+            {
+                double lag1 = (60.0 * envRate) / bpm;
+                double comb = EvaluateBeatComb(globalAcf, lag1);
+
+                double logDiff = Math.Log2(bpm / 118.0);
+                double prior = Math.Exp(-0.5 * (logDiff / 0.52) * (logDiff / 0.52));
+                double score = comb * (0.76 + 0.24 * prior);
+                cands.Add((bpm, score));
+
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    bestBpm = bpm;
+                }
+            }
+
+            // Resolver ambigüedad de medio tempo (< 72 BPM) cuando la octava 2x tiene soporte fuerte del compás
+            if (bestBpm < 72.0 && bestBpm * 2.0 <= 168.0)
+            {
+                double targetDouble = bestBpm * 2.0;
+                double bestDoubleScore = double.NegativeInfinity;
+                double bestDoubleBpm = targetDouble;
+                foreach (var c in cands)
+                {
+                    if (Math.Abs(c.bpm - targetDouble) <= 1.5 && c.score > bestDoubleScore)
+                    {
+                        bestDoubleScore = c.score;
+                        bestDoubleBpm = c.bpm;
+                    }
+                }
+                if (bestDoubleScore >= bestScore * 0.78)
+                {
+                    bestBpm = bestDoubleBpm;
+                }
+            }
+
+            // Búsqueda fina +/- 2.0 BPM con paso de 0.05 BPM
+            double center = bestBpm;
+            double bestFineScore = double.NegativeInfinity;
+            for (double b = center - 2.0; b <= center + 2.0; b += 0.05)
+            {
+                if (b < 55.0 || b > 190.0) continue;
+                double lag1 = (60.0 * envRate) / b;
+                double s = EvaluateBeatComb(globalAcf, lag1);
+                if (s > bestFineScore)
+                {
+                    bestFineScore = s;
+                    bestBpm = b;
+                }
+            }
+
+            return Math.Clamp(Math.Round(bestBpm), 58.0, 184.0);
+        }
+
+        private static double EvaluateBeatComb(double[] acf, double lag1)
+        {
+            double f1 = SampleAcf(acf, lag1);
+            double f2 = SampleAcf(acf, lag1 * 2.0);
+            double f4 = SampleAcf(acf, lag1 * 4.0);
+            double fHalf = SampleAcf(acf, lag1 * 0.5);
+
+            return Math.Max(0.0, f1) * 1.00
+                 + Math.Max(0.0, f2) * 0.62
+                 + Math.Max(0.0, f4) * 0.34
+                 + Math.Max(0.0, fHalf) * 0.28;
+        }
+
+        private static string EstimateKeyMultiSection(List<float[]> sections, double sr)
+        {
+            const int fftSize = 4096;
+            const int hopSize = fftSize;
+            double binHz = sr / fftSize;
+
+            var plan = Plan4096;
+            float[] real = new float[fftSize];
+            float[] imag = new float[fftSize];
+            int half = fftSize / 2;
+            double[] magSpec = new double[half];
+
+            double[] hpcp36 = new double[36];
+            double[] bassHpcp36 = new double[36];
+
+            int minBin = Math.Max(2, (int)Math.Floor(52.0 / binHz));
+            int bassMaxBin = Math.Min(half - 2, (int)Math.Ceiling(260.0 / binHz));
+            int maxBin = Math.Min(half - 2, (int)Math.Ceiling(2200.0 / binHz));
+
+            foreach (var mono in sections)
+            {
+                if (mono.Length < fftSize) continue;
+                int frames = (mono.Length - fftSize) / hopSize + 1;
+
+                for (int t = 0; t < frames; t++)
+                {
+                    int offset = t * hopSize;
+                    for (int i = 0; i < fftSize; i++)
+                    {
+                        real[i] = (float)(mono[offset + i] * plan.Hann[i]);
+                        imag[i] = 0f;
+                    }
+                    plan.Forward(real, imag);
+
+                    for (int k = 0; k < half; k++)
+                    {
+                        magSpec[k] = Math.Sqrt(real[k] * real[k] + imag[k] * imag[k]) / fftSize;
+                    }
+
+                    for (int k = minBin; k <= maxBin; k++)
+                    {
+                        double c = magSpec[k];
+                        double l = magSpec[k - 1];
+                        double r = magSpec[k + 1];
+                        if (c <= 1e-5 || c <= l || c < r) continue;
+
+                        double localSum = 0;
+                        int lo = Math.Max(1, k - 6);
+                        int hi = Math.Min(half - 1, k + 6);
+                        for (int j = lo; j <= hi; j++) localSum += magSpec[j];
+                        if (c < (localSum / (hi - lo + 1)) * 1.45) continue;
+
+                        // Interpolación espectral parabólica logarítmica para resolver frecuencia exacta del parcial
+                        double logL = Math.Log(l + 1e-9);
+                        double logC = Math.Log(c + 1e-9);
+                        double logR = Math.Log(r + 1e-9);
+                        double denom = logL - 2.0 * logC + logR;
+                        double delta = Math.Abs(denom) > 1e-9 ? 0.5 * (logL - logR) / denom : 0.0;
+                        delta = Math.Clamp(delta, -0.5, 0.5);
+
+                        double exactFreq = (k + delta) * binHz;
+                        double midi = 69.0 + 12.0 * Math.Log2(exactFreq / 440.0);
+                        double bin36 = ((midi % 12.0 + 12.0) % 12.0) * 3.0;
+
+                        int baseB = (int)Math.Floor(bin36);
+                        for (int d = -1; d <= 2; d++)
+                        {
+                            double dist = Math.Abs(bin36 - (baseB + d));
+                            if (dist < 1.2)
+                            {
+                                double w = Math.Cos((dist / 1.2) * (Math.PI * 0.5));
+                                int idx = ((baseB + d) % 36 + 36) % 36;
+                                double contrib = c * w * w;
+                                hpcp36[idx] += contrib;
+                                if (k <= bassMaxBin) bassHpcp36[idx] += contrib;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Autocalibración de afinación respecto a la fase tercio-de-semitono dominante
+            double[] phaseEnergy = new double[3];
+            for (int i = 0; i < 36; i++) phaseEnergy[i % 3] += hpcp36[i];
+            int bestPhase = 0;
+            if (phaseEnergy[1] > phaseEnergy[bestPhase]) bestPhase = 1;
+            if (phaseEnergy[2] > phaseEnergy[bestPhase]) bestPhase = 2;
+
+            double[] pcpMid = new double[12];
+            double[] pcpBass = new double[12];
+            for (int pc = 0; pc < 12; pc++)
+            {
+                int center36 = pc * 3 + bestPhase;
+                int prev36 = (center36 + 35) % 36;
+                int next36 = (center36 + 1) % 36;
+                pcpMid[pc] = hpcp36[center36] + 0.5 * (hpcp36[prev36] + hpcp36[next36]);
+                pcpBass[pc] = bassHpcp36[center36] + 0.5 * (bassHpcp36[prev36] + bassHpcp36[next36]);
+            }
+
+            NormalizeL2(pcpMid);
+            NormalizeL2(pcpBass);
+
+            double[] pcp = new double[12];
+            for (int i = 0; i < 12; i++) pcp[i] = 0.68 * pcpMid[i] + 0.32 * pcpBass[i];
+
+            double meanP = 0;
+            for (int i = 0; i < 12; i++) meanP += pcp[i];
+            meanP /= 12.0;
+
+            double[] centeredPcp = new double[12];
+            double pcpSqSum = 0;
+            for (int i = 0; i < 12; i++)
+            {
+                centeredPcp[i] = pcp[i] - meanP;
+                pcpSqSum += centeredPcp[i] * centeredPcp[i];
+            }
+
+            if (pcpSqSum <= 1e-12)
                 return "8A";
 
             double bestCorrelation = double.NegativeInfinity;
             string bestCamelot = "8A";
 
-            // Probar las 12 tonalidades mayores y 12 menores
             for (int tonic = 0; tonic < 12; tonic++)
             {
-                double corrMajor = CorrelateProfile(normPcp, normPcpSq, KrumhanslMajorProfile, tonic);
+                double corrMajor = CorrelateProfile(centeredPcp, pcpSqSum, TemperleyMajorProfile, tonic);
                 if (corrMajor > bestCorrelation)
                 {
                     bestCorrelation = corrMajor;
                     bestCamelot = PitchClassToCamelotMajor[tonic];
                 }
 
-                double corrMinor = CorrelateProfile(normPcp, normPcpSq, KrumhanslMinorProfile, tonic);
+                double corrMinor = CorrelateProfile(centeredPcp, pcpSqSum, TemperleyMinorProfile, tonic);
                 if (corrMinor > bestCorrelation)
                 {
                     bestCorrelation = corrMinor;
@@ -659,67 +1030,44 @@ namespace KakiEQ_WinUI.Helpers
             return num / Math.Sqrt(pcpSqSum * profSq);
         }
 
-        private static double EstimateBpmFromOnsetFlux(float[] flux, int length, double envelopeRate)
+        private static void NormalizeL2(double[] v)
         {
-            // Restar media local para resaltar los pulsos rítmicos
-            double sum = 0;
-            for (int i = 0; i < length; i++) sum += flux[i];
-            float mean = (float)(sum / length);
-            for (int i = 0; i < length; i++)
+            double sq = 0;
+            for (int i = 0; i < v.Length; i++) sq += v[i] * v[i];
+            if (sq <= 1e-12) return;
+            double inv = 1.0 / Math.Sqrt(sq);
+            for (int i = 0; i < v.Length; i++) v[i] *= inv;
+        }
+
+        private static void SubtractLocalMeanAndRectify(float[] arr, int radius)
+        {
+            int n = arr.Length;
+            double[] prefix = new double[n + 1];
+            for (int i = 0; i < n; i++) prefix[i + 1] = prefix[i] + arr[i];
+
+            for (int i = 0; i < n; i++)
             {
-                float v = flux[i] - mean;
-                flux[i] = v > 0 ? v : 0;
+                int lo = Math.Max(0, i - radius);
+                int hi = Math.Min(n - 1, i + radius);
+                double localMean = (prefix[hi + 1] - prefix[lo]) / (hi - lo + 1);
+                double v = arr[i] - localMean;
+                arr[i] = v > 0 ? (float)v : 0f;
             }
+        }
 
-            // Rango de búsqueda: 68 BPM a 178 BPM
-            int minLag = Math.Max(4, (int)Math.Floor(envelopeRate * 60.0 / 178.0));
-            int maxLag = Math.Min(length / 2, (int)Math.Ceiling(envelopeRate * 60.0 / 68.0));
+        private static double SelfDot(float[] arr)
+        {
+            double s = 0;
+            for (int i = 0; i < arr.Length; i++) s += (double)arr[i] * arr[i];
+            return s;
+        }
 
-            if (minLag >= maxLag)
-                return 120;
-
-            double[] acf = new double[maxLag + 2];
-            for (int lag = minLag; lag <= maxLag; lag++)
-            {
-                double acc = 0;
-                int limit = length - lag;
-                for (int i = 0; i < limit; i++)
-                {
-                    acc += flux[i] * flux[i + lag];
-                }
-                acf[lag] = acc / limit;
-            }
-
-            double bestScore = -1.0;
-            double bestBpm = 120.0;
-
-            for (int lag = minLag + 1; lag < maxLag; lag++)
-            {
-                double curr = acf[lag];
-                // Evaluar energía en el pulso fundamental y su subdivisión (2x tempo / medio compás)
-                double subHarmonic = (lag * 2 <= maxLag) ? 0.35 * acf[lag * 2] : 0;
-                double halfLag = (lag / 2 >= minLag) ? 0.20 * acf[lag / 2] : 0;
-
-                double bpm = (60.0 * envelopeRate) / lag;
-                // Ponderación perceptual centrada en 120 BPM (curva log-gaussiana estándar en MIR)
-                double logDiff = Math.Log2(bpm / 120.0);
-                double tempoPrior = Math.Exp(-0.5 * (logDiff / 0.48) * (logDiff / 0.48));
-
-                double score = (curr + subHarmonic + halfLag) * tempoPrior;
-                if (score > bestScore)
-                {
-                    bestScore = score;
-                    // Interpolación parabólica para afinar el lag
-                    double prev = acf[lag - 1];
-                    double next = acf[lag + 1];
-                    double denom = prev - 2.0 * curr + next;
-                    double delta = Math.Abs(denom) > 1e-9 ? 0.5 * (prev - next) / denom : 0.0;
-                    delta = Math.Clamp(delta, -0.5, 0.5);
-                    bestBpm = (60.0 * envelopeRate) / (lag + delta);
-                }
-            }
-
-            return Math.Clamp(Math.Round(bestBpm), 68, 178);
+        private static double SampleAcf(double[] acf, double lag)
+        {
+            int i0 = (int)Math.Floor(lag);
+            if (i0 < 1 || i0 + 1 >= acf.Length) return 0.0;
+            double frac = lag - i0;
+            return acf[i0] * (1.0 - frac) + acf[i0 + 1] * frac;
         }
 
         private static (double bpm, string camelotKey) FallbackDeterministicEstimate(string filePath)
@@ -780,7 +1128,7 @@ namespace KakiEQ_WinUI.Helpers
                         {
                             if (track.Bpm <= 0 || string.IsNullOrWhiteSpace(track.CamelotKey))
                             {
-                                var (bpm, camelot) = EnsureTrackHarmonicSync(track);
+                                var (bpm, camelot, hasUnembeddedDiff) = ComputeTrackHarmonicSync(track);
                                 if (bpm > 0 || !string.IsNullOrEmpty(camelot))
                                 {
                                     var disp = _uiDispatcher;
@@ -790,6 +1138,7 @@ namespace KakiEQ_WinUI.Helpers
                                         {
                                             if (bpm > 0) track.Bpm = bpm;
                                             if (!string.IsNullOrEmpty(camelot)) track.CamelotKey = camelot;
+                                            if (hasUnembeddedDiff) track.HasUnembeddedMetadata = true;
                                             if (ViewModels.MainViewModel.Instance?.CurrentTrack == track)
                                             {
                                                 ViewModels.MainViewModel.Instance.UpdateCurrentTrackTechnicalInfo();
@@ -800,6 +1149,7 @@ namespace KakiEQ_WinUI.Helpers
                                     {
                                         if (bpm > 0) track.Bpm = bpm;
                                         if (!string.IsNullOrEmpty(camelot)) track.CamelotKey = camelot;
+                                        if (hasUnembeddedDiff) track.HasUnembeddedMetadata = true;
                                     }
 
                                     updatedBatch.Add(track);

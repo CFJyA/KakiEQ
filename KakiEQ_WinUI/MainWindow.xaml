@@ -113,7 +113,7 @@
                       Visibility="{x:Bind ViewModel.SidebarVisibility, Mode=OneWay}"
                       Background="{ThemeResource AppSidebarBg}"
                       CornerRadius="26"
-                      Width="168"
+                      Width="186"
                       Margin="10,0,0,0"
                       VerticalAlignment="Center">
                     <StackPanel Spacing="6" Padding="10,16">
@@ -121,9 +121,9 @@
                         <Button Command="{x:Bind ViewModel.NavigateHomeCommand}"
                                 HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                                 Background="{x:Bind ViewModel.NavHomeBg, Mode=OneWay}"
-                                BorderThickness="0" CornerRadius="16" Padding="12,10"
+                                BorderThickness="0" CornerRadius="16" Padding="12,10,10,10"
                                 helpers:FluidAnimationHelper.HoverMode="Nav">
-                            <StackPanel Orientation="Horizontal" Spacing="12">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
                                 <FontIcon Glyph="&#xE80F;" FontSize="16" Foreground="{x:Bind ViewModel.NavHomeFg, Mode=OneWay}"/>
                                 <TextBlock Text="Inicio" FontSize="13" FontWeight="SemiBold"
                                            Foreground="{x:Bind ViewModel.NavHomeFg, Mode=OneWay}" VerticalAlignment="Center"/>
@@ -134,9 +134,9 @@
                         <Button Command="{x:Bind ViewModel.NavigateSongsCommand}"
                                 HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                                 Background="{x:Bind ViewModel.NavSongsBg, Mode=OneWay}"
-                                BorderThickness="0" CornerRadius="16" Padding="12,10"
+                                BorderThickness="0" CornerRadius="16" Padding="12,10,10,10"
                                 helpers:FluidAnimationHelper.HoverMode="Nav">
-                            <StackPanel Orientation="Horizontal" Spacing="12">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
                                 <FontIcon Glyph="&#xEC4F;" FontSize="16" Foreground="{x:Bind ViewModel.NavSongsFg, Mode=OneWay}"/>
                                 <TextBlock Text="Canciones" FontSize="13" FontWeight="SemiBold"
                                            Foreground="{x:Bind ViewModel.NavSongsFg, Mode=OneWay}" VerticalAlignment="Center"/>
@@ -147,9 +147,9 @@
                         <Button Command="{x:Bind ViewModel.NavigateAlbumsCommand}"
                                 HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                                 Background="{x:Bind ViewModel.NavAlbumsBg, Mode=OneWay}"
-                                BorderThickness="0" CornerRadius="16" Padding="12,10"
+                                BorderThickness="0" CornerRadius="16" Padding="12,10,10,10"
                                 helpers:FluidAnimationHelper.HoverMode="Nav">
-                            <StackPanel Orientation="Horizontal" Spacing="12">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
                                 <FontIcon Glyph="&#xE93C;" FontSize="16" Foreground="{x:Bind ViewModel.NavAlbumsFg, Mode=OneWay}"/>
                                 <TextBlock Text="Álbumes" FontSize="13" FontWeight="SemiBold"
                                            Foreground="{x:Bind ViewModel.NavAlbumsFg, Mode=OneWay}" VerticalAlignment="Center"/>
@@ -160,9 +160,9 @@
                         <Button Command="{x:Bind ViewModel.NavigateArtistsCommand}"
                                 HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                                 Background="{x:Bind ViewModel.NavArtistsBg, Mode=OneWay}"
-                                BorderThickness="0" CornerRadius="16" Padding="12,10"
+                                BorderThickness="0" CornerRadius="16" Padding="12,10,10,10"
                                 helpers:FluidAnimationHelper.HoverMode="Nav">
-                            <StackPanel Orientation="Horizontal" Spacing="12">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
                                 <FontIcon Glyph="&#xE77B;" FontSize="16" Foreground="{x:Bind ViewModel.NavArtistsFg, Mode=OneWay}"/>
                                 <TextBlock Text="Artistas" FontSize="13" FontWeight="SemiBold"
                                            Foreground="{x:Bind ViewModel.NavArtistsFg, Mode=OneWay}" VerticalAlignment="Center"/>
@@ -173,9 +173,9 @@
                         <Button Command="{x:Bind ViewModel.NavigatePlaylistsCommand}"
                                 HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                                 Background="{x:Bind ViewModel.NavPlaylistsBg, Mode=OneWay}"
-                                BorderThickness="0" CornerRadius="16" Padding="12,10"
+                                BorderThickness="0" CornerRadius="16" Padding="12,10,10,10"
                                 helpers:FluidAnimationHelper.HoverMode="Nav">
-                            <StackPanel Orientation="Horizontal" Spacing="12">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
                                 <FontIcon Glyph="&#xE8F1;" FontSize="16" Foreground="{x:Bind ViewModel.NavPlaylistsFg, Mode=OneWay}"/>
                                 <TextBlock Text="Playlists" FontSize="13" FontWeight="SemiBold"
                                            Foreground="{x:Bind ViewModel.NavPlaylistsFg, Mode=OneWay}" VerticalAlignment="Center"/>
@@ -186,9 +186,9 @@
                         <Button Command="{x:Bind ViewModel.NavigateEqualizerCommand}"
                                 HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                                 Background="{x:Bind ViewModel.NavEqBg, Mode=OneWay}"
-                                BorderThickness="0" CornerRadius="16" Padding="12,10"
+                                BorderThickness="0" CornerRadius="16" Padding="12,10,10,10"
                                 helpers:FluidAnimationHelper.HoverMode="Nav">
-                            <StackPanel Orientation="Horizontal" Spacing="12">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
                                 <FontIcon Glyph="&#xE9E9;" FontSize="16" Foreground="{x:Bind ViewModel.NavEqFg, Mode=OneWay}"/>
                                 <TextBlock Text="Ecualizador" FontSize="13" FontWeight="SemiBold"
                                            Foreground="{x:Bind ViewModel.NavEqFg, Mode=OneWay}" VerticalAlignment="Center"/>
@@ -199,9 +199,9 @@
                         <Button Command="{x:Bind ViewModel.NavigateMultiOutputCommand}"
                                 HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                                 Background="{x:Bind ViewModel.NavMultiOutputBg, Mode=OneWay}"
-                                BorderThickness="0" CornerRadius="16" Padding="12,10"
+                                BorderThickness="0" CornerRadius="16" Padding="12,10,10,10"
                                 helpers:FluidAnimationHelper.HoverMode="Nav">
-                            <StackPanel Orientation="Horizontal" Spacing="12">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
                                 <FontIcon Glyph="&#xE95B;" FontSize="16" Foreground="{x:Bind ViewModel.NavMultiOutputFg, Mode=OneWay}"/>
                                 <TextBlock Text="Salidas de Audio" FontSize="13" FontWeight="SemiBold"
                                            Foreground="{x:Bind ViewModel.NavMultiOutputFg, Mode=OneWay}" VerticalAlignment="Center"/>
@@ -212,9 +212,9 @@
                         <Button Command="{x:Bind ViewModel.NavigateKronatlCommand}"
                                 HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                                 Background="{x:Bind ViewModel.NavKronatlBg, Mode=OneWay}"
-                                BorderThickness="0" CornerRadius="16" Padding="12,10"
+                                BorderThickness="0" CornerRadius="16" Padding="12,10,10,10"
                                 helpers:FluidAnimationHelper.HoverMode="Nav">
-                            <StackPanel Orientation="Horizontal" Spacing="12">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
                                 <FontIcon Glyph="&#xE823;" FontSize="16" Foreground="{x:Bind ViewModel.NavKronatlFg, Mode=OneWay}"/>
                                 <TextBlock Text="Kronatl" FontSize="13" FontWeight="SemiBold"
                                            Foreground="{x:Bind ViewModel.NavKronatlFg, Mode=OneWay}" VerticalAlignment="Center"/>
@@ -429,13 +429,8 @@
         <!-- 2. NOW PLAYING FULL SCREEN OVERLAY (2.2v Redesign based on Mockup) -->
         <Grid Grid.RowSpan="2" x:Name="NowPlayingOverlay"
               Background="#0D0C12"
-              Visibility="{x:Bind ViewModel.NowPlayingExpandedVisibility, Mode=OneWay}"
+              Visibility="Collapsed"
               Canvas.ZIndex="100">
-            <Grid.Transitions>
-                <TransitionCollection>
-                    <EntranceThemeTransition FromVerticalOffset="60" IsStaggeringEnabled="False"/>
-                </TransitionCollection>
-            </Grid.Transitions>
 
             <!-- Immersive Heavily Blurred Cover Art Background (~80% blur) -->
             <Image Source="{x:Bind ViewModel.CurrentBlurredCover, Mode=OneWay}"
@@ -545,7 +540,7 @@
                     <Grid Grid.Column="0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
 
                         <!-- View Mode 1: Standard Cover Art & Song Tag Pill (Mockup Layout in Bottom-Left) -->
-                        <Grid HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="32,0,0,16"
+                        <Grid x:Name="NowPlayingCoverPanel" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="32,0,0,16"
                               Visibility="{x:Bind ViewModel.AlbumCoverVisibility, Mode=OneWay}"
                               helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
                             <Grid.ColumnDefinitions>
@@ -577,7 +572,7 @@
                         </Grid>
 
                         <!-- View Mode 2: Synchronized LRC Lyrics View -->
-                        <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="20,0,20,0"
+                        <Grid x:Name="NowPlayingLyricsPanel" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="20,0,20,0"
                               Visibility="{x:Bind ViewModel.LyricsVisibility, Mode=OneWay}"
                               helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
                             <Grid.ColumnDefinitions>
@@ -696,9 +691,9 @@
                     </Grid>
 
                     <!-- RIGHT COLUMN: Cola de Reproducción (Queue Drawer, 100% Solid Opacity) -->
-                    <Grid Grid.Column="1" Width="360"
+                    <Grid Grid.Column="1" x:Name="NowPlayingQueueDrawer" Width="360"
                           Background="#141419" CornerRadius="20"
-                          Visibility="{x:Bind ViewModel.NowPlayingQueueVisibility, Mode=OneWay}"
+                          Visibility="Collapsed"
                           Margin="24,0,0,0"
                           helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
                         <Rectangle RadiusX="19" RadiusY="19" Stroke="#26FFFFFF" StrokeThickness="1.2" Margin="1" UseLayoutRounding="False" IsHitTestVisible="False"/>

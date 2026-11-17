@@ -27,6 +27,16 @@ namespace KakiEQ_WinUI.Services.Data
             WriteIndented = true
         };
 
+        private static Task WriteJsonAtomicallyAsync(string targetPath, string json)
+        {
+            return Task.Run(() =>
+            {
+                string tmpPath = targetPath + ".tmp";
+                File.WriteAllText(tmpPath, json);
+                File.Move(tmpPath, targetPath, overwrite: true);
+            });
+        }
+
         public DatabaseService()
         {
             var dataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KakiEQ");
@@ -81,7 +91,7 @@ namespace KakiEQ_WinUI.Services.Data
                 var ordered = tracks.OrderBy(t => t.Artist).ThenBy(t => t.Album).ThenBy(t => t.TrackNumber).ToList();
                 _cachedTracks = ordered;
                 var json = JsonSerializer.Serialize(ordered, JsonOptions);
-                await Task.Run(() => File.WriteAllText(_dbPath, json));
+                await WriteJsonAtomicallyAsync(_dbPath, json);
             }
             finally
             {
@@ -151,7 +161,7 @@ namespace KakiEQ_WinUI.Services.Data
                 var cleanList = playlists.Where(p => !p.IsCreateCard).ToList();
                 _cachedPlaylists = cleanList;
                 var json = JsonSerializer.Serialize(cleanList, JsonOptions);
-                await Task.Run(() => File.WriteAllText(_playlistsDbPath, json));
+                await WriteJsonAtomicallyAsync(_playlistsDbPath, json);
             }
             finally
             {
@@ -325,9 +335,11 @@ namespace KakiEQ_WinUI.Services.Data
             var playlist = playlists.FirstOrDefault(p => p.Name.Equals(playlistName, StringComparison.OrdinalIgnoreCase));
 
             if (playlist == null) return false;
-            bool matchesId = playlist.TrackIds != null && playlist.TrackIds.Contains(track.Id);
-            bool matchesPath = playlist.TrackFilePaths != null && !string.IsNullOrEmpty(track.FilePath) && playlist.TrackFilePaths.Contains(track.FilePath);
-            return matchesId || matchesPath;
+            if (!string.IsNullOrEmpty(track.FilePath) && playlist.TrackFilePaths != null && playlist.TrackFilePaths.Count > 0)
+            {
+                return playlist.TrackFilePaths.Any(p => p.Equals(track.FilePath, StringComparison.OrdinalIgnoreCase));
+            }
+            return playlist.TrackIds != null && playlist.TrackIds.Contains(track.Id);
         }
 
         public async Task RemoveTrackFromPlaylistAsync(string playlistName, Track track)
@@ -339,11 +351,13 @@ namespace KakiEQ_WinUI.Services.Data
             if (playlist != null)
             {
                 playlist.TrackIds?.Remove(track.Id);
-                if (!string.IsNullOrEmpty(track.FilePath))
+                if (!string.IsNullOrEmpty(track.FilePath) && playlist.TrackFilePaths != null)
                 {
-                    playlist.TrackFilePaths?.Remove(track.FilePath);
+                    playlist.TrackFilePaths.RemoveAll(p => p.Equals(track.FilePath, StringComparison.OrdinalIgnoreCase));
                 }
-                playlist.TrackCount = playlist.TrackIds?.Count ?? 0;
+                playlist.TrackCount = playlist.TrackFilePaths?.Count > 0
+                    ? playlist.TrackFilePaths.Count
+                    : (playlist.TrackIds?.Count ?? 0);
 
                 if (playlist.TrackCount == 0)
                 {
@@ -360,7 +374,13 @@ namespace KakiEQ_WinUI.Services.Data
             try
             {
                 var tracks = await GetAllTracksAsync();
-                var existing = tracks.FirstOrDefault(t => t.Id == track.Id || (!string.IsNullOrEmpty(t.FilePath) && t.FilePath.Equals(track.FilePath, StringComparison.OrdinalIgnoreCase)));
+                Track? existing = null;
+                if (!string.IsNullOrEmpty(track.FilePath))
+                {
+                    existing = tracks.FirstOrDefault(t => !string.IsNullOrEmpty(t.FilePath) && t.FilePath.Equals(track.FilePath, StringComparison.OrdinalIgnoreCase));
+                }
+                existing ??= tracks.FirstOrDefault(t => t.Id == track.Id);
+
                 if (existing != null)
                 {
                     existing.PlayCount++;
@@ -560,7 +580,7 @@ namespace KakiEQ_WinUI.Services.Data
 
                 _cachedDeviceEqProfiles = list;
                 var json = JsonSerializer.Serialize(list, JsonOptions);
-                await Task.Run(() => File.WriteAllText(_deviceEqProfilesDbPath, json));
+                await WriteJsonAtomicallyAsync(_deviceEqProfilesDbPath, json);
             }
             catch (Exception ex)
             {

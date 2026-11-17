@@ -260,16 +260,13 @@ namespace KakiEQ_WinUI.Helpers
                     // 2) Camelot Key Pill with Official Color and Automatic Contrast Calculation
                     int p2X = p1X + p1W + 16;
                     int p2W = 160;
-                    var winColor = CamelotColorConverter.GetColor(stats.DominantCamelotKey);
+                    string trackKey = !string.IsNullOrEmpty(stats.TopTrackCamelotKey) ? stats.TopTrackCamelotKey : stats.DominantCamelotKey;
+                    var winColor = CamelotColorConverter.GetColor(trackKey);
                     var camelotMagick = new MagickColor(winColor.R, winColor.G, winColor.B);
                     double luminosity = (winColor.R * 0.299 + winColor.G * 0.587 + winColor.B * 0.114);
                     var camelotText = luminosity > 135 ? new MagickColor("#000000") : new MagickColor("#FFFFFF");
 
-                    string camelotLabel = string.IsNullOrEmpty(stats.DominantCamelotKey) ? "8A" : stats.DominantCamelotKey;
-                    if (!string.IsNullOrEmpty(stats.SecondaryCamelotKey) && stats.SecondaryCamelotKey != stats.DominantCamelotKey)
-                    {
-                        camelotLabel = $"{stats.DominantCamelotKey} / {stats.SecondaryCamelotKey}";
-                    }
+                    string camelotLabel = string.IsNullOrEmpty(trackKey) ? "8A" : trackKey;
 
                     drawables
                         .FillColor(camelotMagick)
@@ -295,7 +292,7 @@ namespace KakiEQ_WinUI.Helpers
                         .StrokeWidth(0)
                         .FillColor(textWhite)
                         .FontPointSize(15)
-                        .Text(p3X + p3W / 2, badgesY + 30, $"{stats.AverageBpm} BPM");
+                        .Text(p3X + p3W / 2, badgesY + 30, $"{stats.TopTrackBpm} BPM");
 
                     // 4. RIGHT SIDE: 4 BENTO STAT CARDS (2x2 Grid) + Wide Waveform Spectrum Panel
                     int col0X = 660;
@@ -368,12 +365,15 @@ namespace KakiEQ_WinUI.Helpers
                         .RoundRectangle(sp1X, spY, sp1X + sp1W, spY + spH, 12, 12);
 
                     if (fontReg != null) drawables.Font(fontReg);
+                    string moodLabel = stats.DominantCamelotKey.EndsWith("B", StringComparison.OrdinalIgnoreCase)
+                        ? "Armonía Mayor Luminosa"
+                        : "Armonía Introspectiva";
                     drawables
                         .StrokeWidth(0)
                         .FillColor(secondaryAccent)
                         .FontPointSize(13.5)
                         .TextAlignment(TextAlignment.Center)
-                        .Text(sp1X + sp1W / 2, spY + 24, $"{stats.CamelotSpectrumFormatted} · Armonía Introspectiva");
+                        .Text(sp1X + sp1W / 2, spY + 24, $"{stats.CamelotSpectrumFormatted} · {moodLabel}");
 
                     // Pill 2: Cardinal Pulse
                     int sp2X = sp1X + sp1W + 16;
@@ -389,7 +389,7 @@ namespace KakiEQ_WinUI.Helpers
                         .FillColor(primaryAccent)
                         .FontPointSize(13.5)
                         .TextAlignment(TextAlignment.Center)
-                        .Text(sp2X + sp2W / 2, spY + 24, $"{stats.AverageBpm} BPM · {stats.BpmRhythmDescription}");
+                        .Text(sp2X + sp2W / 2, spY + 24, Truncate($"{stats.AverageBpm} BPM · {stats.BpmRhythmDescription}", 38));
 
                     // Pill 3: Master Lossless Engine
                     int sp3X = sp2X + sp2W + 16;
@@ -405,7 +405,7 @@ namespace KakiEQ_WinUI.Helpers
                         .FillColor(new MagickColor("#D0BCFF"))
                         .FontPointSize(13.5)
                         .TextAlignment(TextAlignment.Center)
-                        .Text(sp3X + sp3W / 2, spY + 24, "FLAC 24-bit · Procesamiento BASS de 32-bit");
+                        .Text(sp3X + sp3W / 2, spY + 24, Truncate(stats.TechnicalFormatBreakdown, 44));
 
                     // Full-Width Waveform Visualizer (76 bars centered inside panel)
                     int waveY = row2Y + 205;

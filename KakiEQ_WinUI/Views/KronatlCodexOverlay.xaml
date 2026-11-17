@@ -93,28 +93,60 @@
                 </Grid.ColumnDefinitions>
 
                 <Grid x:Name="StoryTrack0" Grid.Column="0" Height="4" CornerRadius="2" Background="#362C48">
-                    <Border x:Name="StoryFill0" HorizontalAlignment="Left" CornerRadius="2" Background="#FF6E1A" Width="0"/>
+                    <Border x:Name="StoryFill0" HorizontalAlignment="Stretch" CornerRadius="2" Background="#FF6E1A" RenderTransformOrigin="0,0.5">
+                        <Border.RenderTransform>
+                            <ScaleTransform x:Name="StoryScale0" ScaleX="0" ScaleY="1"/>
+                        </Border.RenderTransform>
+                    </Border>
                 </Grid>
                 <Grid x:Name="StoryTrack1" Grid.Column="1" Height="4" CornerRadius="2" Background="#362C48">
-                    <Border x:Name="StoryFill1" HorizontalAlignment="Left" CornerRadius="2" Background="#FF6E1A" Width="0"/>
+                    <Border x:Name="StoryFill1" HorizontalAlignment="Stretch" CornerRadius="2" Background="#FF6E1A" RenderTransformOrigin="0,0.5">
+                        <Border.RenderTransform>
+                            <ScaleTransform x:Name="StoryScale1" ScaleX="0" ScaleY="1"/>
+                        </Border.RenderTransform>
+                    </Border>
                 </Grid>
                 <Grid x:Name="StoryTrack2" Grid.Column="2" Height="4" CornerRadius="2" Background="#362C48">
-                    <Border x:Name="StoryFill2" HorizontalAlignment="Left" CornerRadius="2" Background="#FF6E1A" Width="0"/>
+                    <Border x:Name="StoryFill2" HorizontalAlignment="Stretch" CornerRadius="2" Background="#FF6E1A" RenderTransformOrigin="0,0.5">
+                        <Border.RenderTransform>
+                            <ScaleTransform x:Name="StoryScale2" ScaleX="0" ScaleY="1"/>
+                        </Border.RenderTransform>
+                    </Border>
                 </Grid>
                 <Grid x:Name="StoryTrack3" Grid.Column="3" Height="4" CornerRadius="2" Background="#362C48">
-                    <Border x:Name="StoryFill3" HorizontalAlignment="Left" CornerRadius="2" Background="#FF6E1A" Width="0"/>
+                    <Border x:Name="StoryFill3" HorizontalAlignment="Stretch" CornerRadius="2" Background="#FF6E1A" RenderTransformOrigin="0,0.5">
+                        <Border.RenderTransform>
+                            <ScaleTransform x:Name="StoryScale3" ScaleX="0" ScaleY="1"/>
+                        </Border.RenderTransform>
+                    </Border>
                 </Grid>
                 <Grid x:Name="StoryTrack4" Grid.Column="4" Height="4" CornerRadius="2" Background="#362C48">
-                    <Border x:Name="StoryFill4" HorizontalAlignment="Left" CornerRadius="2" Background="#FF6E1A" Width="0"/>
+                    <Border x:Name="StoryFill4" HorizontalAlignment="Stretch" CornerRadius="2" Background="#FF6E1A" RenderTransformOrigin="0,0.5">
+                        <Border.RenderTransform>
+                            <ScaleTransform x:Name="StoryScale4" ScaleX="0" ScaleY="1"/>
+                        </Border.RenderTransform>
+                    </Border>
                 </Grid>
                 <Grid x:Name="StoryTrack5" Grid.Column="5" Height="4" CornerRadius="2" Background="#362C48">
-                    <Border x:Name="StoryFill5" HorizontalAlignment="Left" CornerRadius="2" Background="#FF6E1A" Width="0"/>
+                    <Border x:Name="StoryFill5" HorizontalAlignment="Stretch" CornerRadius="2" Background="#FF6E1A" RenderTransformOrigin="0,0.5">
+                        <Border.RenderTransform>
+                            <ScaleTransform x:Name="StoryScale5" ScaleX="0" ScaleY="1"/>
+                        </Border.RenderTransform>
+                    </Border>
                 </Grid>
                 <Grid x:Name="StoryTrack6" Grid.Column="6" Height="4" CornerRadius="2" Background="#362C48">
-                    <Border x:Name="StoryFill6" HorizontalAlignment="Left" CornerRadius="2" Background="#FF6E1A" Width="0"/>
+                    <Border x:Name="StoryFill6" HorizontalAlignment="Stretch" CornerRadius="2" Background="#FF6E1A" RenderTransformOrigin="0,0.5">
+                        <Border.RenderTransform>
+                            <ScaleTransform x:Name="StoryScale6" ScaleX="0" ScaleY="1"/>
+                        </Border.RenderTransform>
+                    </Border>
                 </Grid>
                 <Grid x:Name="StoryTrack7" Grid.Column="7" Height="4" CornerRadius="2" Background="#362C48">
-                    <Border x:Name="StoryFill7" HorizontalAlignment="Left" CornerRadius="2" Background="#FF6E1A" Width="0"/>
+                    <Border x:Name="StoryFill7" HorizontalAlignment="Stretch" CornerRadius="2" Background="#FF6E1A" RenderTransformOrigin="0,0.5">
+                        <Border.RenderTransform>
+                            <ScaleTransform x:Name="StoryScale7" ScaleX="0" ScaleY="1"/>
+                        </Border.RenderTransform>
+                    </Border>
                 </Grid>
             </Grid>
 
@@ -204,7 +236,7 @@
                                 <TextBlock x:Name="Card0StatArtist" Text="👤 Artista Refugio: Ed Maverick" FontSize="12" FontWeight="SemiBold" Foreground="#FFFFFF"/>
                             </Border>
                             <Border Background="#2000E676" BorderBrush="#8000E676" BorderThickness="1" CornerRadius="12" Padding="12,6">
-                                <TextBlock Text="92% Lossless Hi-Res" FontSize="12" FontWeight="Bold" Foreground="#00E676"/>
+                                <TextBlock x:Name="Card0StatFidelity" Text="0% Lossless Hi-Res" FontSize="12" FontWeight="Bold" Foreground="#00E676"/>
                             </Border>
                         </StackPanel>
 
@@ -324,7 +356,7 @@
                                 <TextBlock x:Name="Card2Camelot" Text="Clave 12B / 3A" FontSize="12.5" FontWeight="Bold" Foreground="#00E676"/>
                             </Border>
                             <Border Background="#25FFFFFF" BorderBrush="#50FFFFFF" BorderThickness="1" CornerRadius="12" Padding="12,6">
-                                <TextBlock Text="133 BPM" FontSize="12.5" FontWeight="Bold" Foreground="#FFFFFF"/>
+                                <TextBlock x:Name="Card2Bpm" Text="120 BPM" FontSize="12.5" FontWeight="Bold" Foreground="#FFFFFF"/>
                             </Border>
                         </StackPanel>
 
@@ -437,7 +469,7 @@
                                 <Border x:Name="Card4CamelotPill" CornerRadius="16" Padding="20,10" HorizontalAlignment="Left">
                                     <TextBlock x:Name="Card4CamelotText" Text="12B / 3A" FontSize="24" FontWeight="ExtraBold" Foreground="#000000"/>
                                 </Border>
-                                <TextBlock Text="Tonalidades introspectivas con transiciones suaves y armónicas." FontSize="12.5" Foreground="#FFFFFF" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                <TextBlock x:Name="Card4CamelotMood" Text="Tonalidades introspectivas con transiciones suaves y armónicas." FontSize="12.5" Foreground="#FFFFFF" TextWrapping="Wrap" Margin="0,4,0,0"/>
                             </StackPanel>
 
                             <!-- BPM Cardinal Pulse -->
@@ -584,8 +616,8 @@
 
                         <!-- Giant Lossless Percentage -->
                         <StackPanel HorizontalAlignment="Center" Spacing="6">
-                            <TextBlock x:Name="Card6FidelityPercent" Text="92% Hi-Res Audio" FontSize="76" FontWeight="ExtraBold" Foreground="#00E676" HorizontalAlignment="Center"/>
-                            <TextBlock Text="Audio Lossless sin compresión destructiva (FLAC / WAV 24-bit)" FontSize="18" FontWeight="SemiBold" Foreground="#FFFFFF" HorizontalAlignment="Center"/>
+                            <TextBlock x:Name="Card6FidelityPercent" Text="0% Hi-Res Audio" FontSize="76" FontWeight="ExtraBold" Foreground="#00E676" HorizontalAlignment="Center"/>
+                            <TextBlock x:Name="Card6FidelitySubtitle" Text="FLAC · Motor BASS 32-bit" FontSize="18" FontWeight="SemiBold" Foreground="#FFFFFF" HorizontalAlignment="Center"/>
                         </StackPanel>
 
                         <!-- Wide Progress Meter Bar -->
@@ -596,17 +628,17 @@
                         <!-- Badges Row -->
                         <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center">
                             <Border Background="#2000E676" BorderBrush="#8000E676" BorderThickness="1" CornerRadius="12" Padding="14,6">
-                                <TextBlock Text="✓ FLAC 24-bit / 96kHz+" FontSize="12" FontWeight="Bold" Foreground="#00E676"/>
+                                <TextBlock x:Name="Card6BadgeFormats" Text="✓ FLAC / Hi-Res" FontSize="12" FontWeight="Bold" Foreground="#00E676"/>
                             </Border>
                             <Border Background="#20FFFFFF" BorderBrush="#50FFFFFF" BorderThickness="1" CornerRadius="12" Padding="14,6">
                                 <TextBlock Text="✓ Motor BASS de 32-bit Floating Point" FontSize="12" FontWeight="Bold" Foreground="#FFFFFF"/>
                             </Border>
                             <Border Background="#2000E676" BorderBrush="#8000E676" BorderThickness="1" CornerRadius="12" Padding="14,6">
-                                <TextBlock Text="✓ Cero Compresión con Pérdidas" FontSize="12" FontWeight="Bold" Foreground="#00E676"/>
+                                <TextBlock Text="✓ Ecualización DSP de Precisión" FontSize="12" FontWeight="Bold" Foreground="#00E676"/>
                             </Border>
                         </StackPanel>
 
-                        <TextBlock Text="«El 92% de tu tiempo disfrutaste de sonido masterizado en estudio, con la máxima amplitud dinámica y fidelidad pura que Kaki EQ puede entregar.»"
+                        <TextBlock x:Name="Card6FidelityLore" Text="«Tu música reproducida con la máxima amplitud dinámica y fidelidad pura que Kaki EQ puede entregar.»"
                                    FontSize="15" FontStyle="Italic" Foreground="#FFFFFF" TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center"/>
                     </StackPanel>
                 </Grid>
@@ -647,7 +679,7 @@
                                 <TextBlock x:Name="SummaryTimeText" Text="14h 9m" FontSize="36" FontWeight="ExtraBold" Foreground="#FFFFFF" HorizontalAlignment="Center"/>
                                 <TextBlock Text="Tiempo total vibrando" FontSize="12.5" Foreground="#FFD700" HorizontalAlignment="Center"/>
                                 <Border Background="#2000E676" BorderBrush="#8000E676" BorderThickness="1" CornerRadius="10" Padding="8,4" HorizontalAlignment="Center">
-                                    <TextBlock Text="92% Lossless Hi-Res" FontSize="11" FontWeight="Bold" Foreground="#00E676"/>
+                                    <TextBlock x:Name="SummaryFidelityText" Text="0% Lossless Hi-Res" FontSize="11" FontWeight="Bold" Foreground="#00E676"/>
                                 </Border>
                             </StackPanel>
                         </Border>

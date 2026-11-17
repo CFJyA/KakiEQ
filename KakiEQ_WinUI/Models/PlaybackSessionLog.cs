@@ -19,5 +19,6 @@ namespace KakiEQ_WinUI.Models
         public string? CoverImagePath { get; set; }
         public DateTime Timestamp { get; set; } = DateTime.Now;
         public bool CompletedWithoutSkip { get; set; } = true;
+        public bool IsBackfilled { get; set; } = false;
     }
 }

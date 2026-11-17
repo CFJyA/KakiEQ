@@ -7,6 +7,7 @@ using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.System;
 using KakiEQ_WinUI.Helpers;
@@ -20,6 +21,9 @@ namespace KakiEQ_WinUI.Views
         private KronatlSeason? _season;
         private float _previousVolume = 1.0f;
         private bool _wasPlayingBeforeCodex = false;
+        private bool _isClosing = false;
+        private int _lastSlideIndex = 0;
+        private Storyboard? _gradientStoryboard;
 
         // Auto-advancing story timer (Instagram / YouTube Music Recap style)
         private readonly DispatcherTimer _storyTimer;
@@ -35,7 +39,7 @@ namespace KakiEQ_WinUI.Views
 
             _storyTimer = new DispatcherTimer
             {
-                Interval = TimeSpan.FromMilliseconds(33) // ~30 FPS fluid fill
+                Interval = TimeSpan.FromMilliseconds(16) // ~60 FPS GPU-scaled transform fill
             };
             _storyTimer.Tick += StoryTimer_Tick;
         }
@@ -62,7 +66,9 @@ namespace KakiEQ_WinUI.Views
         public void Open(KronatlSeason season)
         {
             if (season == null) return;
+            _isClosing = false;
             _season = season;
+            _lastSlideIndex = 0;
 
             PopulateCodexData(season);
 
@@ -73,18 +79,26 @@ namespace KakiEQ_WinUI.Views
             UpdateStoryBars(0);
             _storyTimer.Start();
 
-            Visibility = Visibility.Visible;
+            FluidAnimationHelper.AnimateOverlayOpen(this);
+            FluidAnimationHelper.StartAmbientParticleFloat(CodexParticlesTop, CodexParticlesBottom, Card0Ring);
             Focus(FocusState.Programmatic);
 
             // Ambient background playback at subdued volume (~20%)
             StartAmbientPlayback(season);
         }
 
-        public void Close()
+        public async void Close()
         {
+            if (_isClosing || Visibility == Visibility.Collapsed) return;
+            _isClosing = true;
+
             _storyTimer.Stop();
+            _gradientStoryboard?.Stop();
+            FluidAnimationHelper.StopAmbientParticleFloat(CodexParticlesTop, CodexParticlesBottom, Card0Ring);
             StopAmbientPlayback();
-            Visibility = Visibility.Collapsed;
+
+            await FluidAnimationHelper.AnimateOverlayCloseAsync(this, 175);
+            _isClosing = false;
         }
 
         private void StoryTimer_Tick(object? sender, object e)
@@ -93,16 +107,14 @@ namespace KakiEQ_WinUI.Views
             int index = CodexFlipView.SelectedIndex;
             if (index < 0 || index >= 8) return;
 
-            _elapsedInSlide += 0.033;
+            _elapsedInSlide += 0.016;
             double progress = Math.Clamp(_elapsedInSlide / SLIDE_DURATION_SECONDS, 0.0, 1.0);
 
-            var fills = new[] { StoryFill0, StoryFill1, StoryFill2, StoryFill3, StoryFill4, StoryFill5, StoryFill6, StoryFill7 };
-            var tracks = new[] { StoryTrack0, StoryTrack1, StoryTrack2, StoryTrack3, StoryTrack4, StoryTrack5, StoryTrack6, StoryTrack7 };
+            var scales = new[] { StoryScale0, StoryScale1, StoryScale2, StoryScale3, StoryScale4, StoryScale5, StoryScale6, StoryScale7 };
 
-            if (index < fills.Length && fills[index] != null && tracks[index] != null)
+            if (index < scales.Length && scales[index] != null)
             {
-                double trackWidth = tracks[index].ActualWidth > 0 ? tracks[index].ActualWidth : 120.0;
-                fills[index].Width = progress * trackWidth;
+                scales[index].ScaleX = progress;
             }
 
             if (_elapsedInSlide >= SLIDE_DURATION_SECONDS)
@@ -203,7 +215,7 @@ namespace KakiEQ_WinUI.Views
             AmbientGlowStop3.Color = tertiaryColor;
             AmbientGlowCenter.Color = secondaryColor;
 
-            ApplySeasonalBackgroundGradient(season, 0);
+            ApplySeasonalBackgroundGradient(season, 0, animate: false);
 
             if (!string.IsNullOrEmpty(season.ParticlesImagePath))
             {
@@ -243,6 +255,7 @@ namespace KakiEQ_WinUI.Views
             Card0StatTime.Text = $"⏱ {stats.TotalListeningFormatted}";
             Card0StatTrack.Text = $"★ Pista del Alma: {stats.TopTrackTitle}";
             Card0StatArtist.Text = $"👤 Artista Refugio: {stats.TopArtist}";
+            Card0StatFidelity.Text = $"{stats.LosslessPercentage}% Lossless Hi-Res";
 
             // Slide 1: Tiempo Total
             Card1Hours.Text = stats.TotalListeningFormatted;
@@ -251,8 +264,10 @@ namespace KakiEQ_WinUI.Views
             // Slide 2: Pista del Alma
             Card2TrackTitle.Text = stats.TopTrackTitle;
             Card2Artist.Text = stats.TopTrackArtist;
-            Card2PlayCount.Text = $"{stats.TopTrackPlayCount} reproducciones en bucle";
-            Card2Camelot.Text = $"Clave {stats.DominantCamelotKey}";
+            Card2PlayCount.Text = $"{stats.TopTrackPlayCount} reproducciones";
+            string topKey = !string.IsNullOrEmpty(stats.TopTrackCamelotKey) ? stats.TopTrackCamelotKey : stats.DominantCamelotKey;
+            Card2Camelot.Text = $"Clave {topKey}";
+            Card2Bpm.Text = $"{stats.TopTrackBpm} BPM";
             Card2PeakTime.Text = $"Pico de euforia: {stats.TopTrackPeakTime}";
 
             if (!string.IsNullOrEmpty(stats.TopTrackCoverPath) && File.Exists(stats.TopTrackCoverPath))
@@ -303,6 +318,7 @@ namespace KakiEQ_WinUI.Views
 
             // Slide 4: Espectro Armónico, BPM & Top 5 Canciones
             Card4CamelotText.Text = stats.CamelotSpectrumFormatted;
+            Card4CamelotMood.Text = stats.CamelotMoodDescription;
             var camelotColor = CamelotColorConverter.GetColor(stats.DominantCamelotKey);
             Card4CamelotPill.Background = new SolidColorBrush(camelotColor);
             double lum = (camelotColor.R * 0.299 + camelotColor.G * 0.587 + camelotColor.B * 0.114);
@@ -335,6 +351,9 @@ namespace KakiEQ_WinUI.Views
 
             // Slide 6: Fidelidad Audiófila
             Card6FidelityPercent.Text = $"{stats.LosslessPercentage}% Hi-Res Audio";
+            Card6FidelitySubtitle.Text = stats.TechnicalFormatBreakdown;
+            Card6BadgeFormats.Text = $"✓ {stats.TechnicalFormatBreakdown}";
+            Card6FidelityLore.Text = $"«El {stats.LosslessPercentage}% de tu tiempo disfrutaste de audio sin compresión con pérdidas, entregado con la máxima amplitud dinámica por Kaki EQ.»";
             Card6FidelityBar.Width = Math.Clamp(540.0 * (stats.LosslessPercentage / 100.0), 40.0, 540.0);
 
             // Slide 7: Resumen Final
@@ -342,6 +361,7 @@ namespace KakiEQ_WinUI.Views
             Card7Badge.Text = season.SeasonalBadgeText;
             SummaryTimeText.Text = stats.TotalListeningFormatted;
             SummaryTimeText.Foreground = new SolidColorBrush(accentColor);
+            SummaryFidelityText.Text = $"{stats.LosslessPercentage}% Lossless Hi-Res";
 
             if (season.IsPlaylistSavedInLibrary)
             {
@@ -358,7 +378,7 @@ namespace KakiEQ_WinUI.Views
         private void UpdateStoryBars(int index)
         {
             var fills = new[] { StoryFill0, StoryFill1, StoryFill2, StoryFill3, StoryFill4, StoryFill5, StoryFill6, StoryFill7 };
-            var tracks = new[] { StoryTrack0, StoryTrack1, StoryTrack2, StoryTrack3, StoryTrack4, StoryTrack5, StoryTrack6, StoryTrack7 };
+            var scales = new[] { StoryScale0, StoryScale1, StoryScale2, StoryScale3, StoryScale4, StoryScale5, StoryScale6, StoryScale7 };
 
             var activeBrush = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 255, 110, 26)); // Autumn orange accent
             if (_season != null)
@@ -383,25 +403,24 @@ namespace KakiEQ_WinUI.Views
 
             for (int i = 0; i < fills.Length; i++)
             {
-                if (fills[i] == null || tracks[i] == null) continue;
+                if (fills[i] == null || scales[i] == null) continue;
 
                 if (i < index)
                 {
-                    // Previous bars are 100% full
-                    double trackW = tracks[i].ActualWidth > 0 ? tracks[i].ActualWidth : 120.0;
-                    fills[i].Width = trackW;
+                    // Previous bars are 100% full (GPU ScaleX = 1)
+                    scales[i].ScaleX = 1.0;
                     fills[i].Background = completedBrush;
                 }
                 else if (i == index)
                 {
-                    // Active bar starts at 0%
-                    fills[i].Width = 0;
+                    // Active bar starts at 0% (GPU ScaleX = 0)
+                    scales[i].ScaleX = 0.0;
                     fills[i].Background = activeBrush;
                 }
                 else
                 {
                     // Subsequent bars are 0%
-                    fills[i].Width = 0;
+                    scales[i].ScaleX = 0.0;
                 }
             }
 
@@ -425,7 +444,7 @@ namespace KakiEQ_WinUI.Views
             if (!_wasPlayingBeforeCodex)
             {
                 var ambientTrack = season.TopTracks[0];
-                _ = mainVm.PlayTrackAsync(ambientTrack);
+                _ = mainVm.PlayTrackAsync(ambientTrack, recordStats: false);
             }
         }
 
@@ -473,7 +492,7 @@ namespace KakiEQ_WinUI.Views
             }
         }
 
-        private void ApplySeasonalBackgroundGradient(KronatlSeason season, int slideIndex)
+        private void ApplySeasonalBackgroundGradient(KronatlSeason season, int slideIndex, bool animate = true)
         {
             // Highly saturated, vibrant seasonal palettes inspired by Spotify Wrapped & YouTube Music Recap
             Windows.UI.Color c0, c1, c2, c3, centerCol;
@@ -519,25 +538,85 @@ namespace KakiEQ_WinUI.Views
             // Rotate color stops per slide so each slide transition feels dynamic and vibrant
             var stops = new[] { c0, c1, c2, c3 };
             int shift = Math.Abs(slideIndex) % 4;
-            BgGradientStop0.Color = stops[shift];
-            BgGradientStop1.Color = stops[(shift + 1) % 4];
-            BgGradientStop2.Color = stops[(shift + 2) % 4];
-            BgGradientStop3.Color = stops[(shift + 3) % 4];
-            if (AmbientGlowCenter != null)
+            var target0 = stops[shift];
+            var target1 = stops[(shift + 1) % 4];
+            var target2 = stops[(shift + 2) % 4];
+            var target3 = stops[(shift + 3) % 4];
+            var centerRotated = stops[(shift + 1) % 4];
+            var effectiveCenter = slideIndex == 0 ? centerCol : centerRotated;
+
+            _gradientStoryboard?.Stop();
+
+            if (!animate)
             {
-                AmbientGlowCenter.Color = centerCol;
+                BgGradientStop0.Color = target0;
+                BgGradientStop1.Color = target1;
+                BgGradientStop2.Color = target2;
+                BgGradientStop3.Color = target3;
+                if (AmbientGlowCenter != null) AmbientGlowCenter.Color = effectiveCenter;
+                return;
+            }
+
+            try
+            {
+                var sb = new Storyboard();
+                var dur = new Duration(TimeSpan.FromMilliseconds(360));
+                var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+
+                void AddColorAnim(GradientStop? stop, Windows.UI.Color toColor)
+                {
+                    if (stop == null) return;
+                    var anim = new ColorAnimation
+                    {
+                        To = toColor,
+                        Duration = dur,
+                        EasingFunction = ease
+                    };
+                    Storyboard.SetTarget(anim, stop);
+                    Storyboard.SetTargetProperty(anim, "Color");
+                    sb.Children.Add(anim);
+                }
+
+                AddColorAnim(BgGradientStop0, target0);
+                AddColorAnim(BgGradientStop1, target1);
+                AddColorAnim(BgGradientStop2, target2);
+                AddColorAnim(BgGradientStop3, target3);
+                AddColorAnim(AmbientGlowCenter, effectiveCenter);
+
+                _gradientStoryboard = sb;
+                sb.Begin();
+            }
+            catch
+            {
+                BgGradientStop0.Color = target0;
+                BgGradientStop1.Color = target1;
+                BgGradientStop2.Color = target2;
+                BgGradientStop3.Color = target3;
+                if (AmbientGlowCenter != null) AmbientGlowCenter.Color = effectiveCenter;
             }
         }
 
         private void CodexFlipView_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (CodexFlipView == null || PageIndicatorText == null) return;
-            int current = CodexFlipView.SelectedIndex + 1;
+            int idx = CodexFlipView.SelectedIndex;
+            int direction = idx >= _lastSlideIndex ? 1 : -1;
+            _lastSlideIndex = idx;
+
+            int current = idx + 1;
             PageIndicatorText.Text = $"{current} de 8";
-            UpdateStoryBars(CodexFlipView.SelectedIndex);
+            UpdateStoryBars(idx);
+
             if (_season != null)
             {
-                ApplySeasonalBackgroundGradient(_season, CodexFlipView.SelectedIndex);
+                ApplySeasonalBackgroundGradient(_season, idx, animate: true);
+            }
+
+            if (idx >= 0 && idx < CodexFlipView.Items.Count &&
+                CodexFlipView.Items[idx] is FlipViewItem flipItem &&
+                flipItem.Content is FrameworkElement slideContent)
+            {
+                FluidAnimationHelper.AnimateSlideContentEntrance(slideContent, direction);
             }
         }
 
@@ -577,6 +656,7 @@ namespace KakiEQ_WinUI.Views
             if (MainViewModel.Instance != null)
             {
                 await MainViewModel.Instance.LoadGlobalPlaylistsAsync();
+                await MainViewModel.Instance.PlaylistsVm.LoadPlaylistsAsync();
             }
 
             SavePlaylistButton.Content = "✓ Guardada en Biblioteca";

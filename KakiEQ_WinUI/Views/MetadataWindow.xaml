@@ -182,7 +182,7 @@
                             </Grid>
                         </Border>
 
-                        <!-- Embed Missing Metadata Button (Only visible when DB has metadata missing in the physical file) -->
+                        <!-- Embed Missing Metadata Button (Only visible when DB has metadata missing or updated vs physical file) -->
                         <Button x:Name="EmbedMissingMetadataButton"
                                 Click="EmbedMissingMetadata_Click"
                                 Visibility="Collapsed"
@@ -190,10 +190,24 @@
                                 Background="{ThemeResource AppSurfaceElevated}"
                                 BorderBrush="{ThemeResource AppAccent}" BorderThickness="1.2"
                                 CornerRadius="20"
-                                ToolTipService.ToolTip="Se detectaron datos en la Base de Datos (ej. BPM, Clave Camelot, Disco) que aún no están incrustados en el archivo físico">
+                                ToolTipService.ToolTip="Incrustar los metadatos actualizados de la Base de Datos (ej. BPM, Clave Camelot, Disco) en el archivo físico">
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="8">
                                 <FontIcon Glyph="&#xE896;" FontSize="14" Foreground="{ThemeResource AppAccent}"/>
                                 <TextBlock x:Name="EmbedMissingMetadataButtonText" Text="Incrustar Metadatos Faltantes" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource AppAccent}"/>
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Reanalyze Single Track Harmonic DSP Button -->
+                        <Button x:Name="ReanalyzeSingleHarmonicButton"
+                                Click="ReanalyzeSingleHarmonic_Click"
+                                HorizontalAlignment="Stretch" Height="38"
+                                Background="{ThemeResource AppSurfaceContainer}"
+                                BorderBrush="{ThemeResource AppBorder}" BorderThickness="1"
+                                CornerRadius="19"
+                                ToolTipService.ToolTip="Recalcular BPM y Clave Armónica Camelot 100% offline con el motor DSP para esta pista">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="8">
+                                <FontIcon Glyph="&#xE72C;" FontSize="13" Foreground="{ThemeResource AppAccent}"/>
+                                <TextBlock x:Name="ReanalyzeSingleHarmonicText" Text="Reanalizar BPM / Clave (DSP)" FontSize="12" FontWeight="SemiBold"/>
                             </StackPanel>
                         </Button>
 
@@ -432,6 +446,7 @@
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
                     <!-- Mode Selector: Canciones vs Álbumes -->
@@ -463,20 +478,32 @@
                                Text="0 canciones" FontSize="12" Foreground="{ThemeResource AppTextSubtle}"
                                VerticalAlignment="Center"/>
 
-                    <Button Grid.Column="3" x:Name="EmbedAllMissingToolbarButton"
+                    <Button Grid.Column="3" x:Name="ReanalyzeAllHarmonicButton"
+                            Click="ReanalyzeAllHarmonic_Click"
+                            Background="{ThemeResource AppSurfaceElevated}"
+                            BorderBrush="{ThemeResource AppBorder}" BorderThickness="1"
+                            CornerRadius="16" Height="36" Padding="12,0"
+                            ToolTipService.ToolTip="Recalcular BPM y Clave Armónica Camelot 100% offline con el motor DSP para toda la biblioteca">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <FontIcon Glyph="&#xE72C;" FontSize="13" Foreground="{ThemeResource AppAccent}"/>
+                            <TextBlock x:Name="ReanalyzeAllHarmonicText" Text="Reanalizar BPM / Clave" FontSize="12" FontWeight="SemiBold"/>
+                        </StackPanel>
+                    </Button>
+
+                    <Button Grid.Column="4" x:Name="EmbedAllMissingToolbarButton"
                             Click="EmbedAllMissingMetadata_Click"
                             Visibility="Collapsed"
                             Background="{ThemeResource AppSurfaceElevated}"
                             BorderBrush="{ThemeResource AppAccent}" BorderThickness="1.2"
                             CornerRadius="16" Height="36" Padding="12,0"
-                            ToolTipService.ToolTip="Incrustar automáticamente en los archivos físicos todos los metadatos de la Base de Datos que aún no están en las etiquetas del archivo">
+                            ToolTipService.ToolTip="Incrustar en los archivos físicos todos los metadatos pendientes o actualizados de la Base de Datos (BPM, Clave Camelot, etc.)">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <FontIcon Glyph="&#xE896;" FontSize="13" Foreground="{ThemeResource AppAccent}"/>
                             <TextBlock x:Name="EmbedAllMissingToolbarText" Text="Incrustar Metadatos Faltantes" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource AppAccent}"/>
                         </StackPanel>
                     </Button>
 
-                    <Button Grid.Column="4" Click="OpenExternalFile_Click"
+                    <Button Grid.Column="5" Click="OpenExternalFile_Click"
                             Background="{ThemeResource AppSurfaceElevated}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1"
                             CornerRadius="16" Height="36" Padding="12,0">
                         <StackPanel Orientation="Horizontal" Spacing="6">

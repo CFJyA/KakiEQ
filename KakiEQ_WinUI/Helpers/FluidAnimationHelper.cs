@@ -242,10 +242,12 @@ namespace KakiEQ_WinUI.Helpers
                 else if (mode == "Fab")
                 {
                     AnimateTranslation(element, 0f, -1.5f, 120);
+                    AnimateScale(element, 1.05f, 140);
                 }
                 else if (mode == "Icon")
                 {
                     HighlightUniformBorder(element, true);
+                    AnimateScale(element, 1.06f, 120);
                     if (element is Button btn && (btn.Background == null || (btn.Background is SolidColorBrush scb && scb.Color.A == 0)))
                     {
                         btn.Background = HoverIconBackgroundBrush;
@@ -273,6 +275,10 @@ namespace KakiEQ_WinUI.Helpers
 
                 element.SetValue(IsCurrentlyHoveredProperty, false);
                 AnimateTranslation(element, 0f, 0f, 140);
+                if (mode is "Fab" or "Icon")
+                {
+                    AnimateScale(element, 1.0f, 140);
+                }
                 HighlightUniformBorder(element, false);
 
                 if (mode == "Icon" && element is Button btn && ReferenceEquals(btn.Background, HoverIconBackgroundBrush))
@@ -504,6 +510,353 @@ namespace KakiEQ_WinUI.Helpers
 
                 visual.StartAnimation("Translation", transAnim);
                 visual.StartAnimation("Opacity", opacityAnim);
+            }
+            catch { }
+        }
+
+        private static void AnimateScale(FrameworkElement element, float targetScale, int durationMs)
+        {
+            try
+            {
+                var visual = ElementCompositionPreview.GetElementVisual(element);
+                var compositor = visual.Compositor;
+
+                float w = (float)(element.ActualWidth > 0 ? element.ActualWidth : 40);
+                float h = (float)(element.ActualHeight > 0 ? element.ActualHeight : 40);
+                visual.CenterPoint = new Vector3(w * 0.5f, h * 0.5f, 0f);
+
+                var easing = compositor.CreateCubicBezierEasingFunction(
+                    new Vector2(0.16f, 1.0f),
+                    new Vector2(0.3f, 1.0f));
+
+                var scaleAnim = compositor.CreateVector3KeyFrameAnimation();
+                scaleAnim.InsertKeyFrame(1.0f, new Vector3(targetScale, targetScale, 1.0f), easing);
+                scaleAnim.Duration = TimeSpan.FromMilliseconds(durationMs);
+
+                visual.StartAnimation("Scale", scaleAnim);
+            }
+            catch { }
+        }
+
+        // ====================================================================
+        // 4. OVERLAY ENTRANCE & EXIT ANIMATIONS (NowPlaying & Kronatl Codex)
+        // ====================================================================
+        public static void AnimateOverlayOpen(FrameworkElement? overlay)
+        {
+            if (overlay == null) return;
+            try
+            {
+                overlay.Visibility = Visibility.Visible;
+                overlay.IsHitTestVisible = true;
+                overlay.Opacity = 1.0;
+
+                ElementCompositionPreview.SetIsTranslationEnabled(overlay, true);
+                var visual = ElementCompositionPreview.GetElementVisual(overlay);
+                var compositor = visual.Compositor;
+
+                var easing = compositor.CreateCubicBezierEasingFunction(
+                    new Vector2(0.16f, 1.0f),
+                    new Vector2(0.3f, 1.0f));
+
+                var transAnim = compositor.CreateVector3KeyFrameAnimation();
+                transAnim.InsertKeyFrame(0f, new Vector3(0f, 34f, 0f));
+                transAnim.InsertKeyFrame(1f, Vector3.Zero, easing);
+                transAnim.Duration = TimeSpan.FromMilliseconds(230);
+
+                var opacityAnim = compositor.CreateScalarKeyFrameAnimation();
+                opacityAnim.InsertKeyFrame(0f, 0f);
+                opacityAnim.InsertKeyFrame(1f, 1f, easing);
+                opacityAnim.Duration = TimeSpan.FromMilliseconds(200);
+
+                visual.StartAnimation("Translation", transAnim);
+                visual.StartAnimation("Opacity", opacityAnim);
+            }
+            catch
+            {
+                overlay.Visibility = Visibility.Visible;
+                overlay.IsHitTestVisible = true;
+            }
+        }
+
+        public static async System.Threading.Tasks.Task AnimateOverlayCloseAsync(FrameworkElement? overlay, int durationMs = 175)
+        {
+            if (overlay == null || overlay.Visibility == Visibility.Collapsed)
+                return;
+
+            try
+            {
+                overlay.IsHitTestVisible = false;
+                ElementCompositionPreview.SetIsTranslationEnabled(overlay, true);
+                var visual = ElementCompositionPreview.GetElementVisual(overlay);
+                var compositor = visual.Compositor;
+
+                var easing = compositor.CreateCubicBezierEasingFunction(
+                    new Vector2(0.32f, 0f),
+                    new Vector2(0.67f, 0f));
+
+                var transAnim = compositor.CreateVector3KeyFrameAnimation();
+                transAnim.InsertKeyFrame(0f, Vector3.Zero);
+                transAnim.InsertKeyFrame(1f, new Vector3(0f, 28f, 0f), easing);
+                transAnim.Duration = TimeSpan.FromMilliseconds(durationMs);
+
+                var opacityAnim = compositor.CreateScalarKeyFrameAnimation();
+                opacityAnim.InsertKeyFrame(0f, 1f);
+                opacityAnim.InsertKeyFrame(1f, 0f, easing);
+                opacityAnim.Duration = TimeSpan.FromMilliseconds(durationMs);
+
+                visual.StartAnimation("Translation", transAnim);
+                visual.StartAnimation("Opacity", opacityAnim);
+
+                await System.Threading.Tasks.Task.Delay(durationMs);
+
+                if (!overlay.IsHitTestVisible)
+                {
+                    overlay.Visibility = Visibility.Collapsed;
+                    visual.StopAnimation("Translation");
+                    visual.StopAnimation("Opacity");
+                    visual.Opacity = 1f;
+                }
+            }
+            catch
+            {
+                overlay.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        // ====================================================================
+        // 5. QUEUE DRAWER & SIDEBAR SMOOTH SLIDE TRANSITIONS
+        // ====================================================================
+        public static async void AnimateDrawerToggle(FrameworkElement? drawer, bool isOpen)
+        {
+            if (drawer == null) return;
+            try
+            {
+                ElementCompositionPreview.SetIsTranslationEnabled(drawer, true);
+                var visual = ElementCompositionPreview.GetElementVisual(drawer);
+                var compositor = visual.Compositor;
+
+                if (isOpen)
+                {
+                    drawer.Visibility = Visibility.Visible;
+                    drawer.IsHitTestVisible = true;
+                    drawer.Opacity = 1.0;
+
+                    var easing = compositor.CreateCubicBezierEasingFunction(
+                        new Vector2(0.16f, 1.0f),
+                        new Vector2(0.3f, 1.0f));
+
+                    var transAnim = compositor.CreateVector3KeyFrameAnimation();
+                    transAnim.InsertKeyFrame(0f, new Vector3(44f, 0f, 0f));
+                    transAnim.InsertKeyFrame(1f, Vector3.Zero, easing);
+                    transAnim.Duration = TimeSpan.FromMilliseconds(220);
+
+                    var opacityAnim = compositor.CreateScalarKeyFrameAnimation();
+                    opacityAnim.InsertKeyFrame(0f, 0f);
+                    opacityAnim.InsertKeyFrame(1f, 1f, easing);
+                    opacityAnim.Duration = TimeSpan.FromMilliseconds(185);
+
+                    visual.StartAnimation("Translation", transAnim);
+                    visual.StartAnimation("Opacity", opacityAnim);
+                }
+                else
+                {
+                    if (drawer.Visibility == Visibility.Collapsed) return;
+
+                    drawer.IsHitTestVisible = false;
+                    var easing = compositor.CreateCubicBezierEasingFunction(
+                        new Vector2(0.32f, 0f),
+                        new Vector2(0.67f, 0f));
+
+                    var transAnim = compositor.CreateVector3KeyFrameAnimation();
+                    transAnim.InsertKeyFrame(0f, Vector3.Zero);
+                    transAnim.InsertKeyFrame(1f, new Vector3(36f, 0f, 0f), easing);
+                    transAnim.Duration = TimeSpan.FromMilliseconds(155);
+
+                    var opacityAnim = compositor.CreateScalarKeyFrameAnimation();
+                    opacityAnim.InsertKeyFrame(0f, 1f);
+                    opacityAnim.InsertKeyFrame(1f, 0f, easing);
+                    opacityAnim.Duration = TimeSpan.FromMilliseconds(145);
+
+                    visual.StartAnimation("Translation", transAnim);
+                    visual.StartAnimation("Opacity", opacityAnim);
+
+                    await System.Threading.Tasks.Task.Delay(155);
+
+                    if (!drawer.IsHitTestVisible)
+                    {
+                        drawer.Visibility = Visibility.Collapsed;
+                        visual.StopAnimation("Translation");
+                        visual.StopAnimation("Opacity");
+                        visual.Opacity = 1f;
+                    }
+                }
+            }
+            catch
+            {
+                drawer.Visibility = isOpen ? Visibility.Visible : Visibility.Collapsed;
+            }
+        }
+
+        // ====================================================================
+        // 6. APPLE MUSIC-STYLE LRC LYRIC LINE FOCUS & SCALE
+        // ====================================================================
+        public static void AnimateLyricLineFocus(FrameworkElement? container, bool isActive)
+        {
+            if (container == null) return;
+            try
+            {
+                ElementCompositionPreview.SetIsTranslationEnabled(container, true);
+                var visual = ElementCompositionPreview.GetElementVisual(container);
+                var compositor = visual.Compositor;
+
+                float h = (float)(container.ActualHeight > 0 ? container.ActualHeight : 48);
+                visual.CenterPoint = new Vector3(24f, h * 0.5f, 0f);
+
+                var easing = compositor.CreateCubicBezierEasingFunction(
+                    new Vector2(0.16f, 1.0f),
+                    new Vector2(0.3f, 1.0f));
+
+                float targetScale = isActive ? 1.032f : 1.0f;
+                float targetX = isActive ? 6f : 0f;
+
+                var scaleAnim = compositor.CreateVector3KeyFrameAnimation();
+                scaleAnim.InsertKeyFrame(1f, new Vector3(targetScale, targetScale, 1f), easing);
+                scaleAnim.Duration = TimeSpan.FromMilliseconds(240);
+
+                var transAnim = compositor.CreateVector3KeyFrameAnimation();
+                transAnim.InsertKeyFrame(1f, new Vector3(targetX, 0f, 0f), easing);
+                transAnim.Duration = TimeSpan.FromMilliseconds(240);
+
+                visual.StartAnimation("Scale", scaleAnim);
+                visual.StartAnimation("Translation", transAnim);
+            }
+            catch { }
+        }
+
+        // ====================================================================
+        // 7. KRONATL CODEX SLIDE & AMBIENT PARTICLE ANIMATIONS
+        // ====================================================================
+        public static void AnimateSlideContentEntrance(FrameworkElement? slideElement, int direction)
+        {
+            if (slideElement == null) return;
+            try
+            {
+                ElementCompositionPreview.SetIsTranslationEnabled(slideElement, true);
+                var visual = ElementCompositionPreview.GetElementVisual(slideElement);
+                var compositor = visual.Compositor;
+
+                float w = (float)(slideElement.ActualWidth > 0 ? slideElement.ActualWidth : 900);
+                float h = (float)(slideElement.ActualHeight > 0 ? slideElement.ActualHeight : 500);
+                visual.CenterPoint = new Vector3(w * 0.5f, h * 0.5f, 0f);
+
+                var easing = compositor.CreateCubicBezierEasingFunction(
+                    new Vector2(0.16f, 1.0f),
+                    new Vector2(0.3f, 1.0f));
+
+                float startX = direction >= 0 ? 28f : -28f;
+
+                var transAnim = compositor.CreateVector3KeyFrameAnimation();
+                transAnim.InsertKeyFrame(0f, new Vector3(startX, 10f, 0f));
+                transAnim.InsertKeyFrame(1f, Vector3.Zero, easing);
+                transAnim.Duration = TimeSpan.FromMilliseconds(280);
+
+                var scaleAnim = compositor.CreateVector3KeyFrameAnimation();
+                scaleAnim.InsertKeyFrame(0f, new Vector3(0.975f, 0.975f, 1f));
+                scaleAnim.InsertKeyFrame(1f, Vector3.One, easing);
+                scaleAnim.Duration = TimeSpan.FromMilliseconds(280);
+
+                var opacityAnim = compositor.CreateScalarKeyFrameAnimation();
+                opacityAnim.InsertKeyFrame(0f, 0.15f);
+                opacityAnim.InsertKeyFrame(1f, 1f, easing);
+                opacityAnim.Duration = TimeSpan.FromMilliseconds(240);
+
+                visual.StartAnimation("Translation", transAnim);
+                visual.StartAnimation("Scale", scaleAnim);
+                visual.StartAnimation("Opacity", opacityAnim);
+            }
+            catch { }
+        }
+
+        public static void StartAmbientParticleFloat(
+            FrameworkElement? topParticles,
+            FrameworkElement? bottomParticles,
+            FrameworkElement? pulseRing)
+        {
+            try
+            {
+                if (topParticles != null)
+                {
+                    ElementCompositionPreview.SetIsTranslationEnabled(topParticles, true);
+                    var topVisual = ElementCompositionPreview.GetElementVisual(topParticles);
+                    var comp = topVisual.Compositor;
+
+                    var driftTop = comp.CreateVector3KeyFrameAnimation();
+                    driftTop.InsertKeyFrame(0.0f, Vector3.Zero);
+                    driftTop.InsertKeyFrame(0.35f, new Vector3(14f, 6f, 0f));
+                    driftTop.InsertKeyFrame(0.70f, new Vector3(-12f, 3f, 0f));
+                    driftTop.InsertKeyFrame(1.0f, Vector3.Zero);
+                    driftTop.Duration = TimeSpan.FromSeconds(9.0);
+                    driftTop.IterationBehavior = AnimationIterationBehavior.Forever;
+                    topVisual.StartAnimation("Translation", driftTop);
+                }
+
+                if (bottomParticles != null)
+                {
+                    ElementCompositionPreview.SetIsTranslationEnabled(bottomParticles, true);
+                    var botVisual = ElementCompositionPreview.GetElementVisual(bottomParticles);
+                    var comp = botVisual.Compositor;
+
+                    var driftBot = comp.CreateVector3KeyFrameAnimation();
+                    driftBot.InsertKeyFrame(0.0f, Vector3.Zero);
+                    driftBot.InsertKeyFrame(0.35f, new Vector3(-14f, -6f, 0f));
+                    driftBot.InsertKeyFrame(0.70f, new Vector3(12f, -3f, 0f));
+                    driftBot.InsertKeyFrame(1.0f, Vector3.Zero);
+                    driftBot.Duration = TimeSpan.FromSeconds(10.5);
+                    driftBot.IterationBehavior = AnimationIterationBehavior.Forever;
+                    botVisual.StartAnimation("Translation", driftBot);
+                }
+
+                if (pulseRing != null)
+                {
+                    var ringVisual = ElementCompositionPreview.GetElementVisual(pulseRing);
+                    var comp = ringVisual.Compositor;
+                    ringVisual.CenterPoint = new Vector3(105f, 105f, 0f);
+
+                    var pulseScale = comp.CreateVector3KeyFrameAnimation();
+                    pulseScale.InsertKeyFrame(0.0f, Vector3.One);
+                    pulseScale.InsertKeyFrame(0.5f, new Vector3(1.055f, 1.055f, 1f));
+                    pulseScale.InsertKeyFrame(1.0f, Vector3.One);
+                    pulseScale.Duration = TimeSpan.FromSeconds(3.6);
+                    pulseScale.IterationBehavior = AnimationIterationBehavior.Forever;
+                    ringVisual.StartAnimation("Scale", pulseScale);
+                }
+            }
+            catch { }
+        }
+
+        public static void StopAmbientParticleFloat(
+            FrameworkElement? topParticles,
+            FrameworkElement? bottomParticles,
+            FrameworkElement? pulseRing)
+        {
+            try
+            {
+                if (topParticles != null)
+                {
+                    var v = ElementCompositionPreview.GetElementVisual(topParticles);
+                    v.StopAnimation("Translation");
+                }
+                if (bottomParticles != null)
+                {
+                    var v = ElementCompositionPreview.GetElementVisual(bottomParticles);
+                    v.StopAnimation("Translation");
+                }
+                if (pulseRing != null)
+                {
+                    var v = ElementCompositionPreview.GetElementVisual(pulseRing);
+                    v.StopAnimation("Scale");
+                    v.Scale = Vector3.One;
+                }
             }
             catch { }
         }

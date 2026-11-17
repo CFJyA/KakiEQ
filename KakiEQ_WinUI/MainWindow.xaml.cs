@@ -131,12 +131,39 @@ namespace KakiEQ_WinUI
             _trayService.PreviousRequested += () => ViewModel.PreviousCommand.Execute(null);
             _trayService.ExitRequested += ExitApplication;
 
-            // Monitor ViewModel changes for Frame Page navigation and tray tooltip
-            ViewModel.PropertyChanged += (s, e) =>
+            // Monitor ViewModel changes for Frame Page navigation, fluid overlays, and tray tooltip
+            ViewModel.PropertyChanged += async (s, e) =>
             {
                 if (e.PropertyName == nameof(ViewModel.CurrentView))
                 {
                     NavigateToView(ViewModel.CurrentView);
+                }
+                else if (e.PropertyName == nameof(ViewModel.IsNowPlayingExpanded))
+                {
+                    if (ViewModel.IsNowPlayingExpanded)
+                    {
+                        Helpers.FluidAnimationHelper.AnimateOverlayOpen(NowPlayingOverlay);
+                    }
+                    else
+                    {
+                        await Helpers.FluidAnimationHelper.AnimateOverlayCloseAsync(NowPlayingOverlay, 175);
+                    }
+                }
+                else if (e.PropertyName == nameof(ViewModel.IsNowPlayingQueueVisible))
+                {
+                    Helpers.FluidAnimationHelper.AnimateDrawerToggle(NowPlayingQueueDrawer, ViewModel.IsNowPlayingQueueVisible);
+                }
+                else if (e.PropertyName == nameof(ViewModel.IsLyricsVisible))
+                {
+                    var activePanel = ViewModel.IsLyricsVisible ? NowPlayingLyricsPanel : NowPlayingCoverPanel;
+                    Helpers.FluidAnimationHelper.PlayPageEntranceAnimation(activePanel);
+                }
+                else if (e.PropertyName == nameof(ViewModel.IsSidebarExpanded))
+                {
+                    if (ViewModel.IsSidebarExpanded)
+                    {
+                        Helpers.FluidAnimationHelper.PlayPageEntranceAnimation(SidebarContainer);
+                    }
                 }
                 else if (e.PropertyName == nameof(ViewModel.CurrentTrack))
                 {
@@ -280,6 +307,11 @@ namespace KakiEQ_WinUI
                 // Activate target primary page with zero visual tree rebuild
                 _activePageElement = targetPage;
                 Helpers.FluidAnimationHelper.SetPageActiveState(targetPage, true, animateEntrance: true);
+
+                if (viewModel is KronatlViewModel kronatlVm)
+                {
+                    _ = kronatlVm.LoadSeasonsAsync(silent: true);
+                }
                 return;
             }
 
@@ -407,7 +439,12 @@ namespace KakiEQ_WinUI
                 XamlRoot = this.Content.XamlRoot
             };
 
-            var result = await dialog.ShowAsync();
+            ContentDialogResult result = ContentDialogResult.None;
+            try
+            {
+                result = await dialog.ShowAsync();
+            }
+            catch { }
             if (result == ContentDialogResult.Primary)
             {
                 if (rememberCheckBox.IsChecked == true)
@@ -602,6 +639,7 @@ namespace KakiEQ_WinUI
         }
 
         private ScrollViewer? _lyricsScrollViewer;
+        private ListViewItem? _lastAnimatedLyricContainer;
 
         private void ScrollToActiveLyric(int activeIndex)
         {
@@ -615,9 +653,19 @@ namespace KakiEQ_WinUI
                     _lyricsScrollViewer = FindChild<ScrollViewer>(LyricsListView);
                 }
 
+                var container = LyricsListView.ContainerFromIndex(activeIndex) as ListViewItem;
+                if (_lastAnimatedLyricContainer != null && !ReferenceEquals(_lastAnimatedLyricContainer, container))
+                {
+                    Helpers.FluidAnimationHelper.AnimateLyricLineFocus(_lastAnimatedLyricContainer, false);
+                }
+                if (container != null)
+                {
+                    Helpers.FluidAnimationHelper.AnimateLyricLineFocus(container, true);
+                    _lastAnimatedLyricContainer = container;
+                }
+
                 if (_lyricsScrollViewer != null)
                 {
-                    var container = LyricsListView.ContainerFromIndex(activeIndex) as ListViewItem;
                     if (container != null && container.ActualHeight > 0)
                     {
                         var transform = container.TransformToVisual(_lyricsScrollViewer);
@@ -661,20 +709,7 @@ namespace KakiEQ_WinUI
         {
             var track = ViewModel.CurrentTrack;
             if (track == null) return;
-
-            if (_metadataWindow != null)
-            {
-                _metadataWindow.Activate();
-                return;
-            }
-
-            _metadataWindow = new Views.MetadataWindow(track);
-            _metadataWindow.Closed += (s, args) =>
-            {
-                _metadataWindow = null;
-                _ = ViewModel.LoadLyricsForCurrentTrackAsync();
-            };
-            _metadataWindow.Activate();
+            OpenMetadataWindow(track);
         }
 
         private void ToggleTheme_Click(object sender, RoutedEventArgs e)
@@ -862,7 +897,11 @@ namespace KakiEQ_WinUI
                 XamlRoot = this.Content.XamlRoot
             };
 
-            await aboutDialog.ShowAsync();
+            try
+            {
+                await aboutDialog.ShowAsync();
+            }
+            catch { }
         }
 
         public async void ShowToast(string message, string glyph = "\uE73E")

@@ -21,6 +21,25 @@ namespace KakiEQ_WinUI
         private static extern bool AllowSetForegroundWindow(int dwProcessId);
         private const int ASFW_ANY = -1;
 
+        private static void WriteCrashLog(string entry)
+        {
+            try
+            {
+                var dataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KakiEQ");
+                Directory.CreateDirectory(dataFolder);
+                string logPath = Path.Combine(dataFolder, "debug_crash.txt");
+                File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {entry}\n");
+            }
+            catch { }
+        }
+
+        private static bool IsSupportedAudioExtension(string? filePath)
+        {
+            if (string.IsNullOrWhiteSpace(filePath)) return false;
+            string ext = Path.GetExtension(filePath).ToLowerInvariant();
+            return ext is ".mp3" or ".flac" or ".wav" or ".m4a" or ".aac" or ".ogg" or ".wma" or ".opus";
+        }
+
         /// <summary>
         /// Initializes the singleton application object.
         /// </summary>
@@ -28,22 +47,12 @@ namespace KakiEQ_WinUI
         {
             UnhandledException += (s, e) =>
             {
-                try
-                {
-                    string logPath = @"C:\Users\W11\source\repos\KakiEQ_WinUI\debug_crash.txt";
-                    File.AppendAllText(logPath, $"[CRASH]: {e.Message}\nException: {e.Exception}\nStackTrace: {e.Exception?.StackTrace}\nInner: {e.Exception?.InnerException}\n");
-                }
-                catch { }
+                WriteCrashLog($"[CRASH]: {e.Message}\nException: {e.Exception}\nStackTrace: {e.Exception?.StackTrace}\nInner: {e.Exception?.InnerException}");
                 e.Handled = true;
             };
             AppDomain.CurrentDomain.UnhandledException += (s, e) =>
             {
-                try
-                {
-                    string logPath = @"C:\Users\W11\source\repos\KakiEQ_WinUI\debug_crash.txt";
-                    File.AppendAllText(logPath, $"[APPDOMAIN CRASH]: {e.ExceptionObject}\n");
-                }
-                catch { }
+                WriteCrashLog($"[APPDOMAIN CRASH]: {e.ExceptionObject}");
             };
             InitializeComponent();
         }
@@ -142,7 +151,7 @@ namespace KakiEQ_WinUI
                         using var reader = new StreamReader(server);
                         string? filePath = await reader.ReadLineAsync();
 
-                        if (!string.IsNullOrWhiteSpace(filePath) && File.Exists(filePath))
+                        if (!string.IsNullOrWhiteSpace(filePath) && IsSupportedAudioExtension(filePath) && File.Exists(filePath))
                         {
                             AppDispatcherQueue?.TryEnqueue(() =>
                             {
