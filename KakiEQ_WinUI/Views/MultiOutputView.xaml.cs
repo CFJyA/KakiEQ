@@ -133,5 +133,54 @@ namespace KakiEQ_WinUI.Views
                 flyout.ShowAt(btn);
             }
         }
+
+        private void MultiOutputPage_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            double w = e.NewSize.Width;
+            if (w <= 0) return;
+
+            bool isNarrow = w < 720;
+
+            if (MultiOutHeaderActionsPanel != null)
+            {
+                if (isNarrow)
+                {
+                    Grid.SetRow(MultiOutHeaderActionsPanel, 1);
+                    Grid.SetColumn(MultiOutHeaderActionsPanel, 0);
+                    Grid.SetColumnSpan(MultiOutHeaderActionsPanel, 2);
+                    MultiOutHeaderActionsPanel.HorizontalAlignment = HorizontalAlignment.Left;
+                }
+                else
+                {
+                    Grid.SetRow(MultiOutHeaderActionsPanel, 0);
+                    Grid.SetColumn(MultiOutHeaderActionsPanel, 1);
+                    Grid.SetColumnSpan(MultiOutHeaderActionsPanel, 1);
+                    MultiOutHeaderActionsPanel.HorizontalAlignment = HorizontalAlignment.Right;
+                }
+            }
+
+            if (MultiOutBannerChipsPanel != null)
+            {
+                MultiOutBannerChipsPanel.Visibility = isNarrow ? Visibility.Collapsed : Visibility.Visible;
+            }
+
+            if (MultiOutVirtualDriverActionsPanel != null)
+            {
+                if (isNarrow)
+                {
+                    Grid.SetRow(MultiOutVirtualDriverActionsPanel, 1);
+                    Grid.SetColumn(MultiOutVirtualDriverActionsPanel, 1);
+                    Grid.SetColumnSpan(MultiOutVirtualDriverActionsPanel, 2);
+                    MultiOutVirtualDriverActionsPanel.HorizontalAlignment = HorizontalAlignment.Left;
+                }
+                else
+                {
+                    Grid.SetRow(MultiOutVirtualDriverActionsPanel, 0);
+                    Grid.SetColumn(MultiOutVirtualDriverActionsPanel, 2);
+                    Grid.SetColumnSpan(MultiOutVirtualDriverActionsPanel, 1);
+                    MultiOutVirtualDriverActionsPanel.HorizontalAlignment = HorizontalAlignment.Right;
+                }
+            }
+        }
     }
 }

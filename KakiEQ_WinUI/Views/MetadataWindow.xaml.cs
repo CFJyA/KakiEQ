@@ -2137,5 +2137,68 @@ namespace KakiEQ_WinUI.Views
             LrcGeneratorOverlay.Visibility = Visibility.Collapsed;
             ShowInfoDialog("LRC Guardado", "La letra sincronizada con marcas de tiempo se ha generado y guardado correctamente.");
         }
+
+        private void MetadataWorkspaceGrid_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            double w = e.NewSize.Width;
+            double h = e.NewSize.Height;
+            if (w <= 0) return;
+
+            if (LrcGeneratorOverlay != null)
+            {
+                LrcGeneratorOverlay.Padding = w < 640 ? new Thickness(12) : new Thickness(32);
+            }
+
+            if (w < 720)
+            {
+                MetadataWorkspaceGrid.Padding = new Thickness(12, 10, 12, 12);
+                MetaLeftCol.Width = new GridLength(1, GridUnitType.Star);
+                MetaSepCol.Width = new GridLength(0);
+                MetaRightCol.Width = new GridLength(0);
+
+                Grid.SetRow(LeftMetadataScrollViewer, 0);
+                Grid.SetRowSpan(LeftMetadataScrollViewer, 1);
+                Grid.SetColumn(LeftMetadataScrollViewer, 0);
+                LeftMetadataScrollViewer.MaxHeight = h > 200 ? Math.Max(220, h * 0.44) : 300;
+                LeftMetadataScrollViewer.Padding = new Thickness(0);
+
+                MetadataVerticalSeparator.Visibility = Visibility.Collapsed;
+
+                Grid.SetRow(RightMetadataPanelGrid, 2);
+                Grid.SetRowSpan(RightMetadataPanelGrid, 1);
+                Grid.SetColumn(RightMetadataPanelGrid, 0);
+                RightMetadataPanelGrid.Margin = new Thickness(0, 10, 0, 0);
+
+                CoverArtBorder.Width = 170;
+                CoverArtBorder.Height = 170;
+            }
+            else
+            {
+                bool isCompactSide = w < 960;
+                MetadataWorkspaceGrid.Padding = isCompactSide ? new Thickness(14, 12, 14, 12) : new Thickness(24, 18, 24, 18);
+                double leftW = isCompactSide ? 268 : 360;
+                double coverSize = isCompactSide ? 236 : 320;
+
+                MetaLeftCol.Width = new GridLength(leftW);
+                MetaSepCol.Width = GridLength.Auto;
+                MetaRightCol.Width = new GridLength(1, GridUnitType.Star);
+
+                Grid.SetRow(LeftMetadataScrollViewer, 0);
+                Grid.SetRowSpan(LeftMetadataScrollViewer, 3);
+                Grid.SetColumn(LeftMetadataScrollViewer, 0);
+                LeftMetadataScrollViewer.MaxHeight = double.PositiveInfinity;
+                LeftMetadataScrollViewer.Padding = new Thickness(0, 0, 12, 0);
+
+                MetadataVerticalSeparator.Visibility = Visibility.Visible;
+
+                Grid.SetRow(RightMetadataPanelGrid, 0);
+                Grid.SetRowSpan(RightMetadataPanelGrid, 3);
+                Grid.SetColumn(RightMetadataPanelGrid, 2);
+                RightMetadataPanelGrid.Margin = new Thickness(0);
+
+                CoverArtBorder.Width = coverSize;
+                CoverArtBorder.Height = coverSize;
+            }
+        }
     }
 }

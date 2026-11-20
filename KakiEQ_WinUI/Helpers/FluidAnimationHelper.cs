@@ -135,23 +135,30 @@ namespace KakiEQ_WinUI.Helpers
                 int columns;
                 if (isHomeGrid)
                 {
-                    // Home grids have 10 (or 20) items: use 10 columns on wide/maximized screens, 5 columns on normal screens
+                    // Home grids have 10 items: 10 columns on ultra-wide, 5 on standard desktop, 4/3/2 on narrower windows
                     if (availWidth >= 1420)
                         columns = 10;
-                    else
+                    else if (availWidth >= 760)
                         columns = 5;
+                    else if (availWidth >= 560)
+                        columns = 4;
+                    else if (availWidth >= 380)
+                        columns = 3;
+                    else
+                        columns = 2;
                 }
                 else
                 {
-                    // Albums, Artists, Playlists: target ~172px per card, minimum 3 columns
-                    columns = Math.Max(3, (int)Math.Round(availWidth / 172.0));
+                    // Albums, Artists, Playlists: target ~172px per card, minimum 2 columns on very thin windows
+                    int minCols = availWidth < 380 ? 2 : 3;
+                    columns = Math.Max(minCols, (int)Math.Round(availWidth / 172.0));
                 }
 
                 double exactItemWidth = Math.Floor(availWidth / columns);
-                if (exactItemWidth < 120) exactItemWidth = 120;
+                if (exactItemWidth < 100) exactItemWidth = 100;
 
-                // Maintain aspect ratio (cover + text area below)
-                double textHeight = name == "PlaylistsGridView" ? 60.0 : 52.0;
+                // Maintain square cover ratio + outer Margin="5" (10px) + bottom metadata stack
+                double textHeight = name == "PlaylistsGridView" ? 68.0 : 64.0;
                 double exactItemHeight = Math.Floor(exactItemWidth + textHeight);
 
                 if (Math.Abs(wrapGrid.ItemWidth - exactItemWidth) >= 1.0 ||

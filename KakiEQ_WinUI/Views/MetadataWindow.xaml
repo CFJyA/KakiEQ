@@ -26,19 +26,24 @@
         </Border>
 
         <!-- Main Workspace: 2-Column layout matching AlbumDetail / ArtistDetail -->
-        <Grid Grid.Row="1" Padding="24,18,24,18">
+        <Grid Grid.Row="1" x:Name="MetadataWorkspaceGrid" Padding="24,18,24,18" SizeChanged="MetadataWorkspaceGrid_SizeChanged">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="370"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="*"/>
+                <ColumnDefinition x:Name="MetaLeftCol" Width="360"/>
+                <ColumnDefinition x:Name="MetaSepCol" Width="Auto"/>
+                <ColumnDefinition x:Name="MetaRightCol" Width="*"/>
             </Grid.ColumnDefinitions>
 
             <!-- LEFT COLUMN: Metadata View & Edit Panel -->
-            <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="0,0,16,0">
+            <ScrollViewer Grid.Row="0" Grid.RowSpan="3" Grid.Column="0" x:Name="LeftMetadataScrollViewer" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="0,0,16,0">
                 <StackPanel Spacing="14">
                     
                     <!-- Cover Art Display & Edit button -->
-                    <Border Width="330" Height="330" CornerRadius="20" Background="{ThemeResource AppCoverPlaceholderBg}">
+                    <Border x:Name="CoverArtBorder" Width="320" Height="320" CornerRadius="20" Background="{ThemeResource AppCoverPlaceholderBg}" HorizontalAlignment="Center">
                         <Grid>
                             <FontIcon Glyph="&#xEC4F;" FontSize="72" Foreground="{ThemeResource AppCoverPlaceholderFg}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             <Image x:Name="CoverImageDisplay" Stretch="UniformToFill"/>
@@ -154,11 +159,12 @@
                                     <StackPanel Grid.Column="1" Spacing="4">
                                         <TextBlock x:Name="DisplayLyricsStatusText" Text="Sin letra sincronizada" FontSize="12" Foreground="{ThemeResource AppTextPrimary}"/>
                                         <Button Click="OpenLrcEditor_Click"
+                                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                                                 Background="{ThemeResource AppSurfaceElevated}" BorderBrush="{ThemeResource AppAccent}" BorderThickness="1"
                                                 CornerRadius="10" Padding="8,4" Margin="0,4,0,0">
                                             <StackPanel Orientation="Horizontal" Spacing="6">
                                                 <FontIcon Glyph="&#xE916;" FontSize="12" Foreground="{ThemeResource AppAccent}"/>
-                                                <TextBlock Text="Generar / Sincronizar LRC con Marcas de Tiempo" FontSize="11" FontWeight="SemiBold" Foreground="{ThemeResource AppTextPrimary}"/>
+                                                <TextBlock Text="Generar / Sincronizar LRC" FontSize="11" FontWeight="SemiBold" Foreground="{ThemeResource AppTextPrimary}" TextWrapping="Wrap"/>
                                             </StackPanel>
                                         </Button>
                                     </StackPanel>
@@ -429,28 +435,29 @@
             </ScrollViewer>
 
             <!-- Subtle Vertical Separator -->
-            <Border Grid.Column="1" Width="1" Background="{ThemeResource AppBorder}" Margin="0,4,20,12"/>
+            <Border Grid.Row="0" Grid.RowSpan="3" Grid.Column="1" x:Name="MetadataVerticalSeparator" Width="1" Background="{ThemeResource AppBorder}" Margin="0,4,20,12"/>
 
             <!-- RIGHT COLUMN: Audio Files List -->
-            <Grid Grid.Column="2">
+            <Grid Grid.Row="0" Grid.RowSpan="3" Grid.Column="2" x:Name="RightMetadataPanelGrid">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <!-- Filter & Search Toolbar -->
-                <Grid Grid.Row="0" Margin="0,0,0,14" ColumnSpacing="10">
+                <!-- Filter, Search & Actions Toolbar (2 responsive rows) -->
+                <Grid Grid.Row="0" Margin="0,0,0,14" RowSpacing="8" ColumnSpacing="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
                     <!-- Mode Selector: Canciones vs Álbumes -->
-                    <Border Grid.Column="0" Background="{ThemeResource AppSurfaceContainer}" CornerRadius="16" Padding="3" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1">
+                    <Border Grid.Row="0" Grid.Column="0" Background="{ThemeResource AppSurfaceContainer}" CornerRadius="16" Padding="3" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1">
                         <StackPanel Orientation="Horizontal" Spacing="4">
                             <Button x:Name="TabSongsModeBtn" Click="TabSongsMode_Click"
                                     CornerRadius="13" Height="28" Padding="12,0" BorderThickness="0">
@@ -469,48 +476,55 @@
                         </StackPanel>
                     </Border>
 
-                    <TextBox Grid.Column="1" x:Name="SearchBox"
+                    <TextBox Grid.Row="0" Grid.Column="1" x:Name="SearchBox"
+                             MinWidth="110"
                              PlaceholderText="Buscar archivo por título, artista o álbum..."
                              TextChanged="SearchBox_TextChanged"
                              CornerRadius="16" Height="36"/>
 
-                    <TextBlock Grid.Column="2" x:Name="FileCountLabel"
+                    <TextBlock Grid.Row="0" Grid.Column="2" x:Name="FileCountLabel"
                                Text="0 canciones" FontSize="12" Foreground="{ThemeResource AppTextSubtle}"
                                VerticalAlignment="Center"/>
 
-                    <Button Grid.Column="3" x:Name="ReanalyzeAllHarmonicButton"
-                            Click="ReanalyzeAllHarmonic_Click"
-                            Background="{ThemeResource AppSurfaceElevated}"
-                            BorderBrush="{ThemeResource AppBorder}" BorderThickness="1"
-                            CornerRadius="16" Height="36" Padding="12,0"
-                            ToolTipService.ToolTip="Recalcular BPM y Clave Armónica Camelot 100% offline con el motor DSP para toda la biblioteca">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <FontIcon Glyph="&#xE72C;" FontSize="13" Foreground="{ThemeResource AppAccent}"/>
-                            <TextBlock x:Name="ReanalyzeAllHarmonicText" Text="Reanalizar BPM / Clave" FontSize="12" FontWeight="SemiBold"/>
-                        </StackPanel>
-                    </Button>
+                    <ScrollViewer Grid.Row="1" Grid.ColumnSpan="3"
+                                  HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
+                                  HorizontalScrollMode="Enabled">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button x:Name="ReanalyzeAllHarmonicButton"
+                                    Click="ReanalyzeAllHarmonic_Click"
+                                    Background="{ThemeResource AppSurfaceElevated}"
+                                    BorderBrush="{ThemeResource AppBorder}" BorderThickness="1"
+                                    CornerRadius="16" Height="34" Padding="12,0"
+                                    ToolTipService.ToolTip="Recalcular BPM y Clave Armónica Camelot 100% offline con el motor DSP para toda la biblioteca">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <FontIcon Glyph="&#xE72C;" FontSize="13" Foreground="{ThemeResource AppAccent}"/>
+                                    <TextBlock x:Name="ReanalyzeAllHarmonicText" Text="Reanalizar BPM / Clave" FontSize="12" FontWeight="SemiBold"/>
+                                </StackPanel>
+                            </Button>
 
-                    <Button Grid.Column="4" x:Name="EmbedAllMissingToolbarButton"
-                            Click="EmbedAllMissingMetadata_Click"
-                            Visibility="Collapsed"
-                            Background="{ThemeResource AppSurfaceElevated}"
-                            BorderBrush="{ThemeResource AppAccent}" BorderThickness="1.2"
-                            CornerRadius="16" Height="36" Padding="12,0"
-                            ToolTipService.ToolTip="Incrustar en los archivos físicos todos los metadatos pendientes o actualizados de la Base de Datos (BPM, Clave Camelot, etc.)">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <FontIcon Glyph="&#xE896;" FontSize="13" Foreground="{ThemeResource AppAccent}"/>
-                            <TextBlock x:Name="EmbedAllMissingToolbarText" Text="Incrustar Metadatos Faltantes" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource AppAccent}"/>
-                        </StackPanel>
-                    </Button>
+                            <Button x:Name="EmbedAllMissingToolbarButton"
+                                    Click="EmbedAllMissingMetadata_Click"
+                                    Visibility="Collapsed"
+                                    Background="{ThemeResource AppSurfaceElevated}"
+                                    BorderBrush="{ThemeResource AppAccent}" BorderThickness="1.2"
+                                    CornerRadius="16" Height="34" Padding="12,0"
+                                    ToolTipService.ToolTip="Incrustar en los archivos físicos todos los metadatos pendientes o actualizados de la Base de Datos (BPM, Clave Camelot, etc.)">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <FontIcon Glyph="&#xE896;" FontSize="13" Foreground="{ThemeResource AppAccent}"/>
+                                    <TextBlock x:Name="EmbedAllMissingToolbarText" Text="Incrustar Metadatos Faltantes" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource AppAccent}"/>
+                                </StackPanel>
+                            </Button>
 
-                    <Button Grid.Column="5" Click="OpenExternalFile_Click"
-                            Background="{ThemeResource AppSurfaceElevated}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1"
-                            CornerRadius="16" Height="36" Padding="12,0">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <FontIcon Glyph="&#xED25;" FontSize="13" Foreground="{ThemeResource AppAccent}"/>
-                            <TextBlock Text="Abrir archivo externo..." FontSize="12" FontWeight="SemiBold"/>
+                            <Button Click="OpenExternalFile_Click"
+                                    Background="{ThemeResource AppSurfaceElevated}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1"
+                                    CornerRadius="16" Height="34" Padding="12,0">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <FontIcon Glyph="&#xED25;" FontSize="13" Foreground="{ThemeResource AppAccent}"/>
+                                    <TextBlock Text="Abrir archivo externo..." FontSize="12" FontWeight="SemiBold"/>
+                                </StackPanel>
+                            </Button>
                         </StackPanel>
-                    </Button>
+                    </ScrollViewer>
                 </Grid>
 
                 <!-- Files Table / List for TRACKS MODE -->
@@ -521,19 +535,19 @@
                     </Grid.RowDefinitions>
 
                     <!-- Table Column Header -->
-                    <Grid Grid.Row="0" Margin="12,0,12,8">
+                    <Grid Grid.Row="0" Margin="12,0,12,8" ColumnSpacing="8">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="36"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="180"/>
-                            <ColumnDefinition Width="160"/>
-                            <ColumnDefinition Width="70"/>
+                            <ColumnDefinition Width="2.2*"/>
+                            <ColumnDefinition Width="1.3*"/>
+                            <ColumnDefinition Width="1.2*"/>
+                            <ColumnDefinition Width="64"/>
                         </Grid.ColumnDefinitions>
                         <TextBlock Grid.Column="0" Text="#" FontSize="11" FontWeight="Bold" Foreground="{ThemeResource AppTextSubtle}" HorizontalAlignment="Center"/>
-                        <TextBlock Grid.Column="1" Text="TÍTULO / ARCHIVO" FontSize="11" FontWeight="Bold" Foreground="{ThemeResource AppTextSubtle}"/>
-                        <TextBlock Grid.Column="2" Text="ARTISTA" FontSize="11" FontWeight="Bold" Foreground="{ThemeResource AppTextSubtle}"/>
-                        <TextBlock Grid.Column="3" Text="ÁLBUM" FontSize="11" FontWeight="Bold" Foreground="{ThemeResource AppTextSubtle}"/>
-                        <TextBlock Grid.Column="4" Text="DURACIÓN" FontSize="11" FontWeight="Bold" Foreground="{ThemeResource AppTextSubtle}" HorizontalAlignment="Right"/>
+                        <TextBlock Grid.Column="1" Text="TÍTULO / ARCHIVO" FontSize="11" FontWeight="Bold" Foreground="{ThemeResource AppTextSubtle}" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Grid.Column="2" Text="ARTISTA" FontSize="11" FontWeight="Bold" Foreground="{ThemeResource AppTextSubtle}" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Grid.Column="3" Text="ÁLBUM" FontSize="11" FontWeight="Bold" Foreground="{ThemeResource AppTextSubtle}" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Grid.Column="4" Text="DUR." FontSize="11" FontWeight="Bold" Foreground="{ThemeResource AppTextSubtle}" HorizontalAlignment="Right"/>
                     </Grid>
 
                     <!-- Tracks ListView -->
@@ -543,13 +557,13 @@
                               Padding="0,0,4,16">
                         <ListView.ItemTemplate>
                             <DataTemplate x:DataType="models:Track">
-                                <Grid Padding="8,8" CornerRadius="8">
+                                <Grid Padding="8,8" CornerRadius="8" ColumnSpacing="8">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="36"/>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="180"/>
-                                        <ColumnDefinition Width="160"/>
-                                        <ColumnDefinition Width="70"/>
+                                        <ColumnDefinition Width="2.2*"/>
+                                        <ColumnDefinition Width="1.3*"/>
+                                        <ColumnDefinition Width="1.2*"/>
+                                        <ColumnDefinition Width="64"/>
                                     </Grid.ColumnDefinitions>
 
                                     <TextBlock Grid.Column="0" Text="{x:Bind DisplayIndexFormatted}" FontSize="12" Foreground="{ThemeResource AppTextMuted}"
@@ -582,17 +596,17 @@
                     </Grid.RowDefinitions>
 
                     <!-- Table Column Header -->
-                    <Grid Grid.Row="0" Margin="12,0,12,8">
+                    <Grid Grid.Row="0" Margin="12,0,12,8" ColumnSpacing="8">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="48"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="180"/>
-                            <ColumnDefinition Width="110"/>
-                            <ColumnDefinition Width="80"/>
+                            <ColumnDefinition Width="44"/>
+                            <ColumnDefinition Width="2.2*"/>
+                            <ColumnDefinition Width="1.4*"/>
+                            <ColumnDefinition Width="88"/>
+                            <ColumnDefinition Width="68"/>
                         </Grid.ColumnDefinitions>
                         <TextBlock Grid.Column="0" Text="ARTE" FontSize="11" FontWeight="Bold" Foreground="{ThemeResource AppTextSubtle}" HorizontalAlignment="Center"/>
-                        <TextBlock Grid.Column="1" Text="ÁLBUM" FontSize="11" FontWeight="Bold" Foreground="{ThemeResource AppTextSubtle}" Margin="8,0,0,0"/>
-                        <TextBlock Grid.Column="2" Text="INTÉRPRETE" FontSize="11" FontWeight="Bold" Foreground="{ThemeResource AppTextSubtle}"/>
+                        <TextBlock Grid.Column="1" Text="ÁLBUM" FontSize="11" FontWeight="Bold" Foreground="{ThemeResource AppTextSubtle}" Margin="4,0,0,0" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Grid.Column="2" Text="INTÉRPRETE" FontSize="11" FontWeight="Bold" Foreground="{ThemeResource AppTextSubtle}" TextTrimming="CharacterEllipsis"/>
                         <TextBlock Grid.Column="3" Text="TIPO" FontSize="11" FontWeight="Bold" Foreground="{ThemeResource AppTextSubtle}"/>
                         <TextBlock Grid.Column="4" Text="PISTAS" FontSize="11" FontWeight="Bold" Foreground="{ThemeResource AppTextSubtle}" HorizontalAlignment="Right"/>
                     </Grid>
@@ -604,13 +618,13 @@
                               Padding="0,0,4,16">
                         <ListView.ItemTemplate>
                             <DataTemplate x:DataType="models:AlbumItem">
-                                <Grid Padding="8,8" CornerRadius="8">
+                                <Grid Padding="8,8" CornerRadius="8" ColumnSpacing="8">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="48"/>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="180"/>
-                                        <ColumnDefinition Width="110"/>
-                                        <ColumnDefinition Width="80"/>
+                                        <ColumnDefinition Width="44"/>
+                                        <ColumnDefinition Width="2.2*"/>
+                                        <ColumnDefinition Width="1.4*"/>
+                                        <ColumnDefinition Width="88"/>
+                                        <ColumnDefinition Width="68"/>
                                     </Grid.ColumnDefinitions>
 
                                     <!-- Cover art thumb -->
@@ -623,7 +637,7 @@
 
                                     <!-- Album Title -->
                                     <TextBlock Grid.Column="1" Text="{x:Bind Title, Mode=OneWay}" FontSize="13" FontWeight="SemiBold"
-                                               Foreground="{ThemeResource AppTextPrimary}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                                               Foreground="{ThemeResource AppTextPrimary}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="4,0,0,0"/>
 
                                     <!-- Artist -->
                                     <TextBlock Grid.Column="2" Text="{x:Bind Artist, Mode=OneWay}" FontSize="12" Foreground="{ThemeResource AppTextSecondary}"

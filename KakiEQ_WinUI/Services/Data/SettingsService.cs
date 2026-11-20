@@ -22,6 +22,11 @@ namespace KakiEQ_WinUI.Services.Data
         public bool StartWithWindows { get; set; } = false;
         public string RunInBackgroundPreference { get; set; } = "Ask"; // "Ask", "Background", "Exit"
         public bool ShowAudioTechnicalInfo { get; set; } = false;
+        public bool VolumeNormalizationEnabled { get; set; } = false;
+        public bool HarmonicAutomixEnabled { get; set; } = false;
+        public bool SpectrumAnalyzerEnabled { get; set; } = true;
+        public bool WasapiExclusiveEnabled { get; set; } = false;
+        public bool StemMorphCrossfadeEnabled { get; set; } = false;
     }
 
     public class SettingsService

@@ -12,39 +12,43 @@
     Background="Transparent"
     mc:Ignorable="d">
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="24,24,28,116">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="24,24,28,116" SizeChanged="MultiOutputPage_SizeChanged">
         <StackPanel Spacing="24" HorizontalAlignment="Stretch" helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
 
             <!-- 1. Header with Title, Badge, Master Volume & Refresh -->
-            <Grid helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
+            <Grid ColumnSpacing="14" RowSpacing="10" helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
                 <!-- Title & Description -->
-                <StackPanel Grid.Column="0" Spacing="6" VerticalAlignment="Center" helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
-                    <StackPanel Orientation="Horizontal" Spacing="12">
-                        <TextBlock Text="Salidas de Audio Simultáneas" FontSize="26" FontWeight="Bold" Foreground="{ThemeResource AppTextPrimary}"/>
+                <StackPanel Grid.Row="0" Grid.Column="0" Spacing="6" VerticalAlignment="Center" helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <TextBlock Text="Salidas de Audio Simultáneas" FontSize="23" FontWeight="Bold" Foreground="{ThemeResource AppTextPrimary}" TextTrimming="CharacterEllipsis"/>
                         <Border Background="{ThemeResource AppAccentContainer}" CornerRadius="12" Padding="10,4" VerticalAlignment="Center">
                             <TextBlock Text="{x:Bind ViewModel.ActiveDevicesSummary, Mode=OneWay}" FontSize="11" FontWeight="Bold" Foreground="{ThemeResource AppAccentText}"/>
                         </Border>
                     </StackPanel>
                     <TextBlock Text="Transmite música simultáneamente a través de múltiples auriculares, bocinas Bluetooth y salidas de audio por cable con sincronización en tiempo real."
-                               FontSize="13" Foreground="{ThemeResource AppTextSubtle}" TextWrapping="Wrap"/>
+                               FontSize="12.5" Foreground="{ThemeResource AppTextSubtle}" TextWrapping="Wrap"/>
                 </StackPanel>
 
                 <!-- Actions on right: Master Volume & Refresh -->
-                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center"
+                <StackPanel Grid.Row="0" Grid.Column="1" x:Name="MultiOutHeaderActionsPanel" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center"
                             helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
                     <!-- Master Volume Group -->
                     <Border Background="{ThemeResource AppCardBackground}" BorderThickness="0" CornerRadius="16">
                         <Grid>
-                            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center" Padding="14,8">
+                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Padding="12,6">
                                 <FontIcon Glyph="&#xE767;" FontSize="14" Foreground="{ThemeResource AppAccent}" VerticalAlignment="Center"/>
-                                <TextBlock Text="Volumen:" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource AppTextSecondary}" VerticalAlignment="Center"/>
-                                <Slider Width="95" Minimum="0" Maximum="100" Value="{x:Bind ViewModel.MasterVolumePercent, Mode=TwoWay}" VerticalAlignment="Center"/>
-                                <TextBlock Text="{x:Bind ViewModel.MasterVolumePercentFormatted, Mode=OneWay}" FontSize="12" FontWeight="Bold" Foreground="{ThemeResource AppTextPrimary}" Width="36" VerticalAlignment="Center"/>
+                                <TextBlock Text="Vol:" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource AppTextSecondary}" VerticalAlignment="Center"/>
+                                <Slider Width="76" Minimum="0" Maximum="100" Value="{x:Bind ViewModel.MasterVolumePercent, Mode=TwoWay}" VerticalAlignment="Center"/>
+                                <TextBlock Text="{x:Bind ViewModel.MasterVolumePercentFormatted, Mode=OneWay}" FontSize="12" FontWeight="Bold" Foreground="{ThemeResource AppTextPrimary}" Width="34" VerticalAlignment="Center"/>
                             </StackPanel>
                             <Rectangle RadiusX="15" RadiusY="15"
                                        Stroke="{ThemeResource AppBorder}" StrokeThickness="1.2"
@@ -55,11 +59,11 @@
                     <!-- Refresh Button -->
                     <Button Command="{x:Bind ViewModel.RefreshDevicesCommand, Mode=OneWay}"
                             Background="{ThemeResource AppSurfaceContainer}" BorderBrush="{ThemeResource AppBorder}" Foreground="{ThemeResource AppAccent}"
-                            CornerRadius="16" Padding="14,8" ToolTipService.ToolTip="Volver a buscar dispositivos conectados"
+                            CornerRadius="16" Padding="12,8" ToolTipService.ToolTip="Volver a buscar dispositivos conectados"
                             helpers:FluidAnimationHelper.HoverMode="Button">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
                             <FontIcon Glyph="&#xE72C;" FontSize="13"/>
-                            <TextBlock Text="Buscar Dispositivos" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            <TextBlock Text="Buscar" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
                 </StackPanel>
@@ -85,7 +89,7 @@
                         </StackPanel>
 
                         <!-- Status chips -->
-                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center" Margin="16,0,0,0"
+                        <StackPanel Grid.Column="1" x:Name="MultiOutBannerChipsPanel" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center" Margin="16,0,0,0"
                                     helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
                             <Border Background="{ThemeResource AppSurfaceElevated}" CornerRadius="12" Padding="10,6">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
@@ -112,7 +116,11 @@
                     helpers:FluidAnimationHelper.HoverMode="Card"
                     helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
                 <Grid>
-                    <Grid Padding="20,18">
+                    <Grid Padding="20,18" RowSpacing="10">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
@@ -120,37 +128,41 @@
                         </Grid.ColumnDefinitions>
 
                         <!-- Icon -->
-                        <Border Grid.Column="0" Width="52" Height="52" CornerRadius="26" Background="{ThemeResource AppAccentContainer}" Margin="0,0,16,0" VerticalAlignment="Center">
+                        <Border Grid.Row="0" Grid.Column="0" Width="52" Height="52" CornerRadius="26" Background="{ThemeResource AppAccentContainer}" Margin="0,0,16,0" VerticalAlignment="Center">
                             <FontIcon Glyph="&#xE7F6;" FontSize="22" Foreground="{ThemeResource AppAccentText}"/>
                         </Border>
 
                         <!-- Info -->
-                        <StackPanel Grid.Column="1" Spacing="6" VerticalAlignment="Center" Margin="0,0,16,0"
+                        <StackPanel Grid.Row="0" Grid.Column="1" Spacing="6" VerticalAlignment="Center" Margin="0,0,14,0"
                                     helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
-                            <StackPanel Orientation="Horizontal" Spacing="10">
-                                <TextBlock Text="Dispositivo Virtual de Audio Kaki EQ" FontSize="16" FontWeight="Bold" Foreground="{ThemeResource AppTextPrimary}"/>
-                                <Border Background="{ThemeResource AppSurfaceElevated}" CornerRadius="10" Padding="8,3" VerticalAlignment="Center">
+                            <Grid ColumnSpacing="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Dispositivo Virtual de Audio Kaki EQ" FontSize="15.5" FontWeight="Bold" Foreground="{ThemeResource AppTextPrimary}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                <Border Grid.Column="1" Background="{ThemeResource AppSurfaceElevated}" CornerRadius="10" Padding="8,3" VerticalAlignment="Center">
                                     <TextBlock Text="{x:Bind ViewModel.DriverBadgeText, Mode=OneWay}" FontSize="11" FontWeight="Bold" Foreground="{ThemeResource AppAccent}"/>
                                 </Border>
-                            </StackPanel>
+                            </Grid>
                             <TextBlock Text="Registra a Kaki EQ directamente en el menú de salida de audio de Windows 11 para que cualquier programa envíe su sonido aquí y se multiplique en todas tus salidas activas."
                                        FontSize="12" Foreground="{ThemeResource AppTextSubtle}" TextWrapping="Wrap"/>
-                            <TextBlock Text="{x:Bind ViewModel.DriverStatusSummary, Mode=OneWay}" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource AppSecondary}"/>
+                            <TextBlock Text="{x:Bind ViewModel.DriverStatusSummary, Mode=OneWay}" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource AppSecondary}" TextWrapping="Wrap"/>
                         </StackPanel>
 
                         <!-- Action Controls -->
-                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center"
+                        <StackPanel Grid.Row="0" Grid.Column="2" x:Name="MultiOutVirtualDriverActionsPanel" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"
                                     helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
                             <!-- If NOT installed: 1-Click Install Button -->
                             <Button Visibility="{x:Bind ViewModel.InstallButtonVisibility, Mode=OneWay}"
                                     Command="{x:Bind ViewModel.InstallDriverCommand, Mode=OneWay}"
                                     Background="{ThemeResource AppAccent}" Foreground="#121212"
-                                    CornerRadius="16" Padding="16,8" FontWeight="SemiBold"
+                                    CornerRadius="16" Padding="14,8" FontWeight="SemiBold"
                                     ToolTipService.ToolTip="Instalar controlador firmado WHQL sin errores de firma"
                                     helpers:FluidAnimationHelper.HoverMode="Button">
-                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
                                     <FontIcon Glyph="&#xE896;" FontSize="13"/>
-                                    <TextBlock Text="Instalar Dispositivo (1 Clic)" FontSize="12" FontWeight="Bold" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Instalar (1 Clic)" FontSize="12" FontWeight="Bold" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
 
@@ -158,18 +170,18 @@
                             <ToggleSwitch Visibility="{x:Bind ViewModel.RoutingSwitchVisibility, Mode=OneWay}"
                                           IsOn="{x:Bind ViewModel.IsSystemRoutingActive, Mode=TwoWay}"
                                           Toggled="SystemRoutingToggle_Toggled"
-                                          OnContent="Transmitiendo" OffContent="En Pausa"
-                                          VerticalAlignment="Center"/>
+                                          OnContent="Activo" OffContent="En Pausa"
+                                          MinWidth="0" VerticalAlignment="Center"/>
 
                             <!-- Open Sound Settings in Windows 11 -->
                             <Button Command="{x:Bind ViewModel.OpenWindowsSoundSettingsCommand, Mode=OneWay}"
                                     Background="{ThemeResource AppSurfaceContainer}" BorderBrush="{ThemeResource AppBorder}"
-                                    Foreground="{ThemeResource AppTextPrimary}" CornerRadius="16" Padding="12,8"
+                                    Foreground="{ThemeResource AppTextPrimary}" CornerRadius="16" Padding="10,7"
                                     ToolTipService.ToolTip="Abrir menú de configuración de sonido de Windows 11"
                                     helpers:FluidAnimationHelper.HoverMode="Button">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <FontIcon Glyph="&#xE713;" FontSize="13"/>
-                                    <TextBlock Text="Ajustes de Windows" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                    <FontIcon Glyph="&#xE713;" FontSize="12"/>
+                                    <TextBlock Text="Windows" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
                         </StackPanel>
@@ -193,136 +205,153 @@
                         <Border Background="{ThemeResource AppCardBackground}" BorderThickness="0" CornerRadius="18" Margin="0,0,0,14"
                                 helpers:FluidAnimationHelper.HoverMode="Card">
                             <Grid>
-                                <Grid Padding="18,16">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
+                                <Grid Padding="18,14" RowSpacing="12">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
 
-                                    <!-- Column 0: Device Icon -->
-                                    <Border Grid.Column="0" Width="52" Height="52" CornerRadius="26" Background="{ThemeResource AppAccentSurface}" Margin="0,0,16,0" VerticalAlignment="Center">
-                                        <FontIcon Glyph="{Binding IconGlyph}" FontSize="22" Foreground="{ThemeResource AppAccent}"/>
-                                    </Border>
+                                    <!-- Row 0: Device Icon, Title/Metadata, Test Button & On/Off Switch -->
+                                    <Grid Grid.Row="0" ColumnSpacing="14">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
 
-                                    <!-- Column 1: Info & Badges -->
-                                    <StackPanel Grid.Column="1" Spacing="6" VerticalAlignment="Center" Margin="0,0,16,0">
-                                        <StackPanel Orientation="Horizontal" Spacing="8">
-                                            <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold" Foreground="{ThemeResource AppTextPrimary}" VerticalAlignment="Center"/>
-                                            <!-- Primary / Windows Default Badge -->
-                                            <Border Visibility="{Binding IsPrimary, Converter={StaticResource BoolToVisConverter}}"
-                                                    Background="{ThemeResource AppAccentContainer}" CornerRadius="8" Padding="7,2" VerticalAlignment="Center">
-                                                <TextBlock Text="Predeterminado de Windows" FontSize="10" FontWeight="Bold" Foreground="{ThemeResource AppAccentText}"/>
-                                            </Border>
-                                        </StackPanel>
-
-                                        <!-- Subtitle & Status tags -->
-                                        <StackPanel Orientation="Horizontal" Spacing="12">
-                                            <TextBlock Text="{Binding DeviceTypeDescription}" FontSize="12" Foreground="{ThemeResource AppTextSubtle}"/>
-                                            <TextBlock Text="•" FontSize="12" Foreground="{ThemeResource AppTextMuted}"/>
-                                            <TextBlock Text="{Binding Driver}" FontSize="11" Foreground="{ThemeResource AppTextMuted}"/>
-                                            <TextBlock Text="•" FontSize="12" Foreground="{ThemeResource AppTextMuted}"/>
-                                            <!-- Status indicator text -->
-                                            <TextBlock Text="{Binding StatusBadgeText}" FontSize="11" FontWeight="SemiBold"
-                                                       Foreground="{Binding IsEnabled, Converter={StaticResource BoolToAccentConverter}}"/>
-                                        </StackPanel>
-                                    </StackPanel>
-
-                                    <!-- Column 2: Controls (Mute, Volume Slider, Latency, Test, Enable Toggle) -->
-                                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
-
-                                        <!-- Volume Slider & Mute -->
-                                        <Border Background="{ThemeResource AppSurfaceElevated}" CornerRadius="14" Padding="10,6">
-                                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                                <!-- Mute Button -->
-                                                <Button Click="MuteButton_Click"
-                                                        Background="Transparent" BorderThickness="0" Padding="0" Width="28" Height="28" CornerRadius="14"
-                                                        Foreground="{ThemeResource AppTextSecondary}" ToolTipService.ToolTip="Silenciar este dispositivo"
-                                                        helpers:FluidAnimationHelper.HoverMode="Icon">
-                                                    <FontIcon Glyph="{Binding VolumeIconGlyph}" FontSize="14"/>
-                                                </Button>
-
-                                                <!-- Volume Slider -->
-                                                <Slider Width="90" Minimum="0" Maximum="100"
-                                                        Value="{Binding VolumePercentInt, Mode=TwoWay}"
-                                                        ValueChanged="VolumeSlider_ValueChanged"
-                                                        VerticalAlignment="Center"/>
-
-                                                <TextBlock Text="{Binding VolumePercentFormatted}" FontSize="11" FontWeight="SemiBold"
-                                                           Foreground="{ThemeResource AppTextPrimary}" Width="36" VerticalAlignment="Center"/>
-                                            </StackPanel>
+                                        <!-- Device Icon -->
+                                        <Border Grid.Column="0" Width="46" Height="46" CornerRadius="23" Background="{ThemeResource AppAccentSurface}" VerticalAlignment="Center">
+                                            <FontIcon Glyph="{Binding IconGlyph}" FontSize="20" Foreground="{ThemeResource AppAccent}"/>
                                         </Border>
 
-                                        <!-- Per-Device EQ Controls (Profile Badge Chip & Adjust EQ Button) -->
-                                        <Border Background="{ThemeResource AppSurfaceElevated}" CornerRadius="14" Padding="6,4">
-                                            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                                                <!-- EQ Profile Badge Pill (Click opens Flyout menu) -->
+                                        <!-- Info & Badges -->
+                                        <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold" Foreground="{ThemeResource AppTextPrimary}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                                <Border Visibility="{Binding IsPrimary, Converter={StaticResource BoolToVisConverter}}"
+                                                        Background="{ThemeResource AppAccentContainer}" CornerRadius="8" Padding="7,2" VerticalAlignment="Center">
+                                                    <TextBlock Text="Predeterminado de Windows" FontSize="10" FontWeight="Bold" Foreground="{ThemeResource AppAccentText}"/>
+                                                </Border>
+                                            </StackPanel>
+
+                                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                                <TextBlock Text="{Binding DeviceTypeDescription}" FontSize="12" Foreground="{ThemeResource AppTextSubtle}"/>
+                                                <TextBlock Text="•" FontSize="12" Foreground="{ThemeResource AppTextMuted}"/>
+                                                <TextBlock Text="{Binding Driver}" FontSize="11" Foreground="{ThemeResource AppTextMuted}" TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Text="•" FontSize="12" Foreground="{ThemeResource AppTextMuted}"/>
+                                                <TextBlock Text="{Binding StatusBadgeText}" FontSize="11" FontWeight="SemiBold"
+                                                           Foreground="{Binding IsEnabled, Converter={StaticResource BoolToAccentConverter}}"/>
+                                            </StackPanel>
+                                        </StackPanel>
+
+                                        <!-- Test Chime & Active Toggle (Never clips on right edge) -->
+                                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                            <Button Click="TestButton_Click"
+                                                    Background="{ThemeResource AppSurfaceContainer}" BorderBrush="{ThemeResource AppBorder}"
+                                                    Foreground="{ThemeResource AppTextPrimary}" CornerRadius="14" Padding="10,6"
+                                                    ToolTipService.ToolTip="Reproducir tono de prueba armónico (528 Hz)"
+                                                    helpers:FluidAnimationHelper.HoverMode="Button">
+                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                    <FontIcon Glyph="&#xE767;" FontSize="12" Foreground="{ThemeResource AppAccent}"/>
+                                                    <TextBlock Text="Probar" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </Button>
+
+                                            <ToggleSwitch IsOn="{Binding IsEnabled, Mode=TwoWay}"
+                                                          Toggled="DeviceToggle_Toggled"
+                                                          OnContent="Activo" OffContent="Inactivo"
+                                                          MinWidth="0" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <!-- Row 1: Responsive DSP Controls Strip (Volume, Per-Device EQ, Latency) -->
+                                    <Grid Grid.Row="1" ColumnSpacing="8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <!-- Volume Slider & Mute -->
+                                        <Border Grid.Column="0" Background="{ThemeResource AppSurfaceElevated}" CornerRadius="14" Padding="8,5">
+                                            <Grid ColumnSpacing="6">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Button Grid.Column="0" Click="MuteButton_Click"
+                                                        Background="Transparent" BorderThickness="0" Padding="0" Width="26" Height="26" CornerRadius="13"
+                                                        Foreground="{ThemeResource AppTextSecondary}" ToolTipService.ToolTip="Silenciar este dispositivo"
+                                                        helpers:FluidAnimationHelper.HoverMode="Icon">
+                                                    <FontIcon Glyph="{Binding VolumeIconGlyph}" FontSize="13"/>
+                                                </Button>
+
+                                                <Slider Grid.Column="1" Minimum="0" Maximum="100"
+                                                        Value="{Binding VolumePercentInt, Mode=TwoWay}"
+                                                        ValueChanged="VolumeSlider_ValueChanged"
+                                                        VerticalAlignment="Center" HorizontalAlignment="Stretch"/>
+
+                                                <TextBlock Grid.Column="2" Text="{Binding VolumePercentFormatted}" FontSize="11" FontWeight="SemiBold"
+                                                           Foreground="{ThemeResource AppTextPrimary}" Width="34" TextAlignment="Right" VerticalAlignment="Center"/>
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- Per-Device EQ Controls -->
+                                        <Border Grid.Column="1" Background="{ThemeResource AppSurfaceElevated}" CornerRadius="14" Padding="6,4">
+                                            <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
                                                 <Button Click="DeviceEqBadge_Click"
                                                         Tag="{Binding}"
                                                         Background="{ThemeResource AppAccentSurface}"
                                                         BorderBrush="{ThemeResource AppBorder}"
                                                         BorderThickness="1"
                                                         CornerRadius="10"
-                                                        Padding="8,4"
+                                                        Padding="7,4"
                                                         ToolTipService.ToolTip="Seleccionar perfil de ecualización para este dispositivo"
                                                         helpers:FluidAnimationHelper.HoverMode="Button">
-                                                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                                    <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
                                                         <FontIcon Glyph="&#xE995;" FontSize="11" Foreground="{ThemeResource AppAccent}"/>
                                                         <TextBlock Text="{Binding EqBadgeText}" FontSize="11" FontWeight="Bold" Foreground="{ThemeResource AppAccent}" VerticalAlignment="Center"/>
-                                                        <FontIcon Glyph="&#xE70D;" FontSize="8" Foreground="{ThemeResource AppAccent}" Margin="2,1,0,0"/>
+                                                        <FontIcon Glyph="&#xE70D;" FontSize="8" Foreground="{ThemeResource AppAccent}" Margin="1,1,0,0"/>
                                                     </StackPanel>
                                                 </Button>
 
-                                                <!-- Shortcut Button: Ajustar EQ -->
                                                 <Button Click="AdjustDeviceEq_Click"
                                                         Tag="{Binding}"
                                                         Background="Transparent"
                                                         BorderThickness="0"
                                                         Foreground="{ThemeResource AppTextPrimary}"
                                                         CornerRadius="10"
-                                                        Padding="8,4"
+                                                        Padding="7,4"
                                                         ToolTipService.ToolTip="Abrir ecualizador para este dispositivo"
                                                         helpers:FluidAnimationHelper.HoverMode="Button">
-                                                    <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                                                    <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
                                                         <FontIcon Glyph="&#xE9D9;" FontSize="12" Foreground="{ThemeResource AppTextSecondary}"/>
-                                                        <TextBlock Text="Ajustar EQ" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                        <TextBlock Text="Ajustar" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                                     </StackPanel>
                                                 </Button>
                                             </StackPanel>
                                         </Border>
 
                                         <!-- Latency / Delay compensation -->
-                                        <Border Background="{ThemeResource AppSurfaceElevated}" CornerRadius="14" Padding="10,6">
-                                            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                                                <FontIcon Glyph="&#xE823;" FontSize="12" Foreground="{ThemeResource AppTextSubtle}"/>
-                                                <TextBlock Text="{Binding LatencyFormatted}" FontSize="11" FontWeight="SemiBold"
-                                                           Foreground="{ThemeResource AppTextSecondary}" Width="65" VerticalAlignment="Center"/>
-                                                <Slider Width="65" Minimum="0" Maximum="300" StepFrequency="5"
+                                        <Border Grid.Column="2" Background="{ThemeResource AppSurfaceElevated}" CornerRadius="14" Padding="8,5">
+                                            <Grid ColumnSpacing="6">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <FontIcon Grid.Column="0" Glyph="&#xE823;" FontSize="12" Foreground="{ThemeResource AppTextSubtle}" VerticalAlignment="Center"/>
+                                                <TextBlock Grid.Column="1" Text="{Binding LatencyFormatted}" FontSize="11" FontWeight="SemiBold"
+                                                           Foreground="{ThemeResource AppTextSecondary}" MinWidth="48" VerticalAlignment="Center"/>
+                                                <Slider Grid.Column="2" Minimum="0" Maximum="300" StepFrequency="5"
                                                         Value="{Binding LatencyCompensationMs, Mode=TwoWay}"
                                                         ValueChanged="LatencySlider_ValueChanged"
                                                         ToolTipService.ToolTip="Ajustar retardo en milisegundos para sincronizar Bluetooth"
-                                                        VerticalAlignment="Center"/>
-                                            </StackPanel>
+                                                        VerticalAlignment="Center" HorizontalAlignment="Stretch"/>
+                                            </Grid>
                                         </Border>
-
-                                        <!-- Test Chime Button -->
-                                        <Button Click="TestButton_Click"
-                                                Background="{ThemeResource AppSurfaceContainer}" BorderBrush="{ThemeResource AppBorder}"
-                                                Foreground="{ThemeResource AppTextPrimary}" CornerRadius="14" Padding="10,6"
-                                                ToolTipService.ToolTip="Reproducir tono de prueba armónico (528 Hz)"
-                                                helpers:FluidAnimationHelper.HoverMode="Button">
-                                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                                <FontIcon Glyph="&#xE767;" FontSize="12" Foreground="{ThemeResource AppAccent}"/>
-                                                <TextBlock Text="Probar" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                                            </StackPanel>
-                                        </Button>
-
-                                        <!-- Main On/Off Switch -->
-                                        <ToggleSwitch IsOn="{Binding IsEnabled, Mode=TwoWay}"
-                                                      Toggled="DeviceToggle_Toggled"
-                                                      OnContent="Activo" OffContent="Inactivo"
-                                                      Margin="4,0,0,0" VerticalAlignment="Center"/>
-                                    </StackPanel>
+                                    </Grid>
                                 </Grid>
 
                                 <!-- Uniform Vector Border -->

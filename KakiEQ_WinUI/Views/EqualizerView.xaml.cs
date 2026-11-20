@@ -17,6 +17,13 @@ namespace KakiEQ_WinUI.Views
     {
         public EqualizerViewModel? ViewModel => (DataContext as EqualizerViewModel) ?? MainViewModel.Instance?.EqualizerVm;
 
+        private const int SpectrumBandCount = 32;
+        private readonly float[] _rawSpectrum = new float[SpectrumBandCount];
+        private readonly float[] _smoothSpectrum = new float[SpectrumBandCount];
+        private readonly List<Rectangle> _spectrumBars = new();
+        private Polygon? _spectrumPolygon;
+        private Microsoft.UI.Dispatching.DispatcherQueueTimer? _spectrumTimer;
+
         private Line? _zeroLine;
         private Polyline? _curvePolyline;
         private readonly List<Ellipse> _bandDots = new();
@@ -25,6 +32,9 @@ namespace KakiEQ_WinUI.Views
         private readonly SolidColorBrush _zeroLineBrush = new(Windows.UI.Color.FromArgb(50, 255, 255, 255));
         private readonly SolidColorBrush _curveStrokeBrush = new(Windows.UI.Color.FromArgb(255, 187, 134, 252)); // #BB86FC
         private readonly SolidColorBrush _dotFillBrush = new(Windows.UI.Color.FromArgb(255, 3, 218, 198));       // #03DAC6
+        private readonly SolidColorBrush _spectrumBarBrush = new(Windows.UI.Color.FromArgb(72, 3, 218, 198));
+        private readonly SolidColorBrush _spectrumPolyFillBrush = new(Windows.UI.Color.FromArgb(38, 187, 134, 252));
+        private readonly SolidColorBrush _spectrumPolyStrokeBrush = new(Windows.UI.Color.FromArgb(95, 187, 134, 252));
 
         public EqualizerView()
         {
@@ -46,7 +56,9 @@ namespace KakiEQ_WinUI.Views
                 }
                 SubscribeViewModel();
                 RedrawCurve();
+                StartSpectrumTimer();
             };
+            Unloaded += (s, e) => StopSpectrumTimer();
         }
 
         protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -62,7 +74,24 @@ namespace KakiEQ_WinUI.Views
             }
             SubscribeViewModel();
             RedrawCurve();
+            StartSpectrumTimer();
             FluidAnimationHelper.PlayPageEntranceAnimation(this);
+        }
+
+        private void StartSpectrumTimer()
+        {
+            if (_spectrumTimer == null && DispatcherQueue != null)
+            {
+                _spectrumTimer = DispatcherQueue.CreateTimer();
+                _spectrumTimer.Interval = TimeSpan.FromMilliseconds(25);
+                _spectrumTimer.Tick += (_, _) => UpdateSpectrumVisuals();
+            }
+            _spectrumTimer?.Start();
+        }
+
+        private void StopSpectrumTimer()
+        {
+            _spectrumTimer?.Stop();
         }
 
         private void SubscribeViewModel()
@@ -79,18 +108,64 @@ namespace KakiEQ_WinUI.Views
             RedrawCurve();
         }
 
+        private void EqHeaderGrid_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            double w = e.NewSize.Width;
+            if (w <= 0 || EqHeaderActionsPanel == null || EqDspTargetPanel == null) return;
+
+            if (w < 680)
+            {
+                Grid.SetRow(EqHeaderActionsPanel, 1);
+                Grid.SetColumn(EqHeaderActionsPanel, 0);
+                Grid.SetColumnSpan(EqHeaderActionsPanel, 2);
+                EqHeaderActionsPanel.HorizontalAlignment = HorizontalAlignment.Left;
+                Grid.SetRow(EqDspTargetPanel, 2);
+            }
+            else
+            {
+                Grid.SetRow(EqHeaderActionsPanel, 0);
+                Grid.SetColumn(EqHeaderActionsPanel, 1);
+                Grid.SetColumnSpan(EqHeaderActionsPanel, 1);
+                EqHeaderActionsPanel.HorizontalAlignment = HorizontalAlignment.Right;
+                Grid.SetRow(EqDspTargetPanel, 1);
+            }
+        }
+
+        private void BandsItemsControl_Loaded(object sender, RoutedEventArgs e)
+        {
+            if (SlidersRackGrid != null && SlidersRackGrid.ActualWidth > 0)
+            {
+                ApplyResponsiveBandSizing(SlidersRackGrid.ActualWidth);
+            }
+        }
+
         private void SlidersRackGrid_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            ApplyResponsiveBandSizing(e.NewSize.Width);
+        }
+
+        private void ApplyResponsiveBandSizing(double rackWidth)
         {
             try
             {
-                if (BandsItemsControl?.ItemsPanelRoot is StackPanel panel && e.NewSize.Width > 300)
+                if (BandsItemsControl?.ItemsPanelRoot is StackPanel panel && rackWidth > 220)
                 {
-                    double availForBands = e.NewSize.Width - 120; // Subtract Preamp + Separator
-                    double extraSpace = availForBands - (10 * 82);
-                    double newSpacing = Math.Round(Math.Clamp(extraSpace / 9.0, 2.0, 48.0));
-                    if (Math.Abs(panel.Spacing - newSpacing) > 1.5)
+                    double availForBands = Math.Max(220, rackWidth - 88); // Subtract Preamp + Separator
+                    double spacing = Math.Round(Math.Clamp((availForBands - 620.0) / 14.0, 2.0, 24.0));
+                    double bandWidth = Math.Clamp(Math.Floor((availForBands - 9.0 * spacing) / 10.0), 42.0, 86.0);
+
+                    if (Math.Abs(panel.Spacing - spacing) > 0.5)
                     {
-                        panel.Spacing = newSpacing;
+                        panel.Spacing = spacing;
+                    }
+
+                    int count = BandsItemsControl.Items?.Count ?? 0;
+                    for (int i = 0; i < count; i++)
+                    {
+                        if (BandsItemsControl.ContainerFromIndex(i) is FrameworkElement cont)
+                        {
+                            cont.Width = bandWidth;
+                        }
                     }
                 }
             }
@@ -100,6 +175,33 @@ namespace KakiEQ_WinUI.Views
         private void EnsureCanvasPrimitives(int bandCount)
         {
             if (CurveCanvas == null) return;
+
+            if (_spectrumPolygon == null)
+            {
+                _spectrumPolygon = new Polygon
+                {
+                    Fill = _spectrumPolyFillBrush,
+                    Stroke = _spectrumPolyStrokeBrush,
+                    StrokeThickness = 1.1,
+                    Visibility = Visibility.Collapsed
+                };
+                CurveCanvas.Children.Insert(0, _spectrumPolygon);
+            }
+
+            while (_spectrumBars.Count < SpectrumBandCount)
+            {
+                var bar = new Rectangle
+                {
+                    RadiusX = 2,
+                    RadiusY = 2,
+                    Fill = _spectrumBarBrush,
+                    Width = 4,
+                    Height = 2,
+                    Visibility = Visibility.Collapsed
+                };
+                _spectrumBars.Add(bar);
+                CurveCanvas.Children.Insert(0, bar);
+            }
 
             if (_zeroLine == null)
             {
@@ -133,6 +235,69 @@ namespace KakiEQ_WinUI.Views
                 _bandDots.Add(dot);
                 CurveCanvas.Children.Add(dot);
             }
+        }
+
+        private void UpdateSpectrumVisuals()
+        {
+            if (CurveCanvas == null || CurveCanvas.ActualWidth <= 20 || CurveCanvas.ActualHeight <= 10) return;
+
+            var mainVm = MainViewModel.Instance;
+            bool enabled = mainVm?.IsSpectrumAnalyzerEnabled == true;
+            bool isActiveView = mainVm?.CurrentView is EqualizerViewModel && !mainVm.IsNowPlayingExpanded;
+
+            if (!enabled || !isActiveView)
+            {
+                if (_spectrumPolygon != null && _spectrumPolygon.Visibility != Visibility.Collapsed)
+                {
+                    _spectrumPolygon.Visibility = Visibility.Collapsed;
+                    for (int i = 0; i < _spectrumBars.Count; i++)
+                    {
+                        _spectrumBars[i].Visibility = Visibility.Collapsed;
+                    }
+                }
+                return;
+            }
+
+            EnsureCanvasPrimitives(ViewModel?.Bands.Count ?? 10);
+
+            bool hasSignal = mainVm!.AudioEngine.GetSpectrumBands(_rawSpectrum);
+            double width = CurveCanvas.ActualWidth;
+            double height = CurveCanvas.ActualHeight;
+            double paddingX = 24.0;
+            double bottomY = height - 4.0;
+            double maxBarHeight = Math.Max(10.0, height - 10.0);
+            double usableWidth = Math.Max(40.0, width - (2.0 * paddingX));
+            double slotW = usableWidth / SpectrumBandCount;
+            double barW = Math.Max(3.0, slotW * 0.56);
+
+            if (_spectrumPolygon != null)
+            {
+                _spectrumPolygon.Visibility = Visibility.Visible;
+                _spectrumPolygon.Points.Clear();
+                _spectrumPolygon.Points.Add(new Point(paddingX, bottomY));
+            }
+
+            for (int i = 0; i < SpectrumBandCount; i++)
+            {
+                float target = hasSignal ? _rawSpectrum[i] : 0f;
+                float coeff = target > _smoothSpectrum[i] ? 0.52f : 0.16f;
+                _smoothSpectrum[i] += (target - _smoothSpectrum[i]) * coeff;
+
+                double barH = Math.Max(2.0, _smoothSpectrum[i] * maxBarHeight);
+                double left = paddingX + i * slotW + (slotW - barW) * 0.5;
+                double top = bottomY - barH;
+
+                var bar = _spectrumBars[i];
+                if (bar.Visibility != Visibility.Visible) bar.Visibility = Visibility.Visible;
+                bar.Width = barW;
+                bar.Height = barH;
+                Canvas.SetLeft(bar, left);
+                Canvas.SetTop(bar, top);
+
+                _spectrumPolygon?.Points.Add(new Point(left + barW * 0.5, top));
+            }
+
+            _spectrumPolygon?.Points.Add(new Point(paddingX + usableWidth, bottomY));
         }
 
         private void RedrawCurve()

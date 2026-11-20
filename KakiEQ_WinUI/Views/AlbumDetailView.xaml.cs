@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.UI.Xaml;
@@ -87,6 +88,23 @@ namespace KakiEQ_WinUI.Views
             if (sender is FrameworkElement row && ((row.Tag as Track) ?? (row.DataContext as Track)) is Track track && !track.IsDiscHeader)
             {
                 TrackContextMenuHelper.ShowAtTarget(track, row, e.GetPosition(row));
+            }
+        }
+
+        private void DetailRootGrid_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            double w = e.NewSize.Width;
+            if (w <= 0 || DetailLeftCol == null) return;
+
+            bool isCompact = w < 820;
+            DetailLeftCol.Width = new GridLength(w < 620 ? 190 : (isCompact ? Math.Round(Math.Clamp(w * 0.34, 210, 320)) : 360));
+            if (DetailRootGrid != null)
+            {
+                DetailRootGrid.Padding = w < 680 ? new Thickness(12, 12, 12, 0) : new Thickness(24, 18, 24, 0);
+            }
+            if (DetailVertSep != null)
+            {
+                DetailVertSep.Margin = w < 680 ? new Thickness(0, 4, 10, 116) : new Thickness(0, 4, 20, 116);
             }
         }
     }

@@ -11,15 +11,16 @@
     Background="Transparent"
     mc:Ignorable="d">
 
-    <Grid Padding="24,18,24,0" helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
+    <Grid x:Name="DetailRootGrid" Padding="24,18,24,0" SizeChanged="DetailRootGrid_SizeChanged" helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="360"/>
+            <ColumnDefinition x:Name="DetailLeftCol" Width="360"/>
             <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
         <!-- LEFT COLUMN: Back button, Enlarged Cover art (330px), Album info, Stats, Actions, More from artist tiles (all 330px) -->
-        <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="0,0,14,116">
+        <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="0,0,10,116">
+            <Viewbox StretchDirection="DownOnly" Stretch="Uniform" HorizontalAlignment="Left" VerticalAlignment="Top">
             <StackPanel Width="330" HorizontalAlignment="Left" Spacing="14" helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
                 <!-- Back Button -->
                 <Button Command="{Binding GoBackCommand}"
@@ -187,10 +188,11 @@
                     </GridView>
                 </StackPanel>
             </StackPanel>
+            </Viewbox>
         </ScrollViewer>
 
         <!-- Subtle Vertical Separator -->
-        <Border Grid.Column="1" Width="1" Background="{ThemeResource AppBorder}" Margin="0,4,20,116"/>
+        <Border Grid.Column="1" x:Name="DetailVertSep" Width="1" Background="{ThemeResource AppBorder}" Margin="0,4,20,116"/>
 
         <!-- RIGHT COLUMN: Tracklist (Full height, scrollable, no clipping, aesthetic alignment) -->
         <Grid Grid.Column="2" helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">

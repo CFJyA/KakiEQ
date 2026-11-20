@@ -1,3 +1,4 @@
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 using KakiEQ_WinUI.Helpers;
@@ -39,6 +40,25 @@ namespace KakiEQ_WinUI.Views
             if (e.ClickedItem is ArtistItem artist)
             {
                 MainViewModel.Instance?.NavigateToArtist(artist.Name);
+            }
+        }
+
+        private void ArtistsHeaderGrid_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            if (ArtistsSearchCountPanel == null) return;
+            if (e.NewSize.Width < 680)
+            {
+                Grid.SetRow(ArtistsSearchCountPanel, 1);
+                Grid.SetColumn(ArtistsSearchCountPanel, 0);
+                Grid.SetColumnSpan(ArtistsSearchCountPanel, 2);
+                ArtistsSearchCountPanel.HorizontalAlignment = HorizontalAlignment.Left;
+            }
+            else
+            {
+                Grid.SetRow(ArtistsSearchCountPanel, 0);
+                Grid.SetColumn(ArtistsSearchCountPanel, 1);
+                Grid.SetColumnSpan(ArtistsSearchCountPanel, 1);
+                ArtistsSearchCountPanel.HorizontalAlignment = HorizontalAlignment.Right;
             }
         }
     }

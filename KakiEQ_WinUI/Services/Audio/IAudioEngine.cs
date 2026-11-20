@@ -20,6 +20,14 @@ namespace KakiEQ_WinUI.Services.Audio
         float Volume { get; }
         bool CrossfadeEnabled { get; set; }
         int CrossfadeDurationSeconds { get; set; }
+        bool VolumeNormalizationEnabled { get; set; }
+        bool HarmonicAutomixEnabled { get; set; }
+        bool StemMorphCrossfadeEnabled { get; set; }
+        bool WasapiExclusiveEnabled { get; set; }
+        float CurrentNormalizationGainDb { get; }
+        void SetTrackBpmContext(double currentTrackBpm, double nextTrackBpm = 0);
+        void PrewarmTrackAudioProfile(string? filePath);
+        bool GetSpectrumBands(float[] bandsOut);
 
         bool IsKaraokeMode { get; set; }
         float KaraokeVocalAttenuation { get; set; }

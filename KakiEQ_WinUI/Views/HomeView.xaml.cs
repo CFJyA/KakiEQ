@@ -105,5 +105,57 @@ namespace KakiEQ_WinUI.Views
                 MainWindow.Instance?.OpenKronatlCodex(season);
             }
         }
+
+        private void HomeView_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            double w = e.NewSize.Width;
+            if (w <= 0) return;
+
+            if (HeroSectionGrid != null && HeroLeftCol != null && HeroRightCol != null && HeroWelcomeCard != null && HeroKronatlCard != null)
+            {
+                if (w < 760)
+                {
+                    HeroLeftCol.Width = new GridLength(1, GridUnitType.Star);
+                    HeroRightCol.MaxWidth = double.PositiveInfinity;
+                    HeroRightCol.Width = new GridLength(0);
+                    Grid.SetColumnSpan(HeroWelcomeCard, 2);
+                    Grid.SetRow(HeroKronatlCard, 1);
+                    Grid.SetColumn(HeroKronatlCard, 0);
+                    Grid.SetColumnSpan(HeroKronatlCard, 2);
+                }
+                else
+                {
+                    HeroLeftCol.Width = new GridLength(1.15, GridUnitType.Star);
+                    HeroRightCol.MaxWidth = 430;
+                    HeroRightCol.Width = new GridLength(1, GridUnitType.Star);
+                    Grid.SetColumnSpan(HeroWelcomeCard, 1);
+                    Grid.SetRow(HeroKronatlCard, 0);
+                    Grid.SetColumn(HeroKronatlCard, 1);
+                    Grid.SetColumnSpan(HeroKronatlCard, 1);
+                }
+            }
+
+            if (QuickAccessGrid != null && QuickCol3 != null && QuickCol4 != null && QuickBtn3 != null && QuickBtn4 != null)
+            {
+                if (w < 640)
+                {
+                    QuickCol3.Width = new GridLength(0);
+                    QuickCol4.Width = new GridLength(0);
+                    Grid.SetRow(QuickBtn3, 1);
+                    Grid.SetColumn(QuickBtn3, 0);
+                    Grid.SetRow(QuickBtn4, 1);
+                    Grid.SetColumn(QuickBtn4, 1);
+                }
+                else
+                {
+                    QuickCol3.Width = new GridLength(1, GridUnitType.Star);
+                    QuickCol4.Width = new GridLength(1, GridUnitType.Star);
+                    Grid.SetRow(QuickBtn3, 0);
+                    Grid.SetColumn(QuickBtn3, 3);
+                    Grid.SetRow(QuickBtn4, 0);
+                    Grid.SetColumn(QuickBtn4, 4);
+                }
+            }
+        }
     }
 }

@@ -33,7 +33,7 @@
             <Border Background="#1C1422" BorderThickness="0" CornerRadius="18"
                     helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
                 <Grid>
-                    <Grid Padding="24,20">
+                    <Grid Padding="24,20" SizeChanged="KronatlLoreBanner_SizeChanged">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
@@ -49,7 +49,7 @@
                         </StackPanel>
 
                         <!-- Seasonal Palette Chips -->
-                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="16,0,0,0">
+                        <StackPanel Grid.Column="1" x:Name="KronatlPaletteChipsPanel" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="16,0,0,0">
                             <Border Background="#3B1812" BorderBrush="#FF7043" BorderThickness="1" CornerRadius="12" Padding="12,6">
                                 <TextBlock Text="🍂 Otoño (Naranjas, Verdes y Morados)" FontSize="11" FontWeight="SemiBold" Foreground="#FF7043"/>
                             </Border>

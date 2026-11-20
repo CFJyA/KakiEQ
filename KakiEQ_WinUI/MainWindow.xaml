@@ -16,7 +16,7 @@
         <MicaBackdrop />
     </Window.SystemBackdrop>
 
-    <Grid Background="{ThemeResource AppBackground}" x:Name="RootWindowGrid">
+    <Grid Background="{ThemeResource AppBackground}" x:Name="RootWindowGrid" SizeChanged="RootWindowGrid_SizeChanged">
         <Grid.RowDefinitions>
             <RowDefinition Height="58"/>  <!-- 0: Custom Top Navigation / TitleBar -->
             <RowDefinition Height="*"/>   <!-- 1: Full-Bleed Workspace: Frame Pages + 100% Floating Sidebar + 100% Floating Player Bar -->
@@ -67,7 +67,7 @@
                             helpers:FluidAnimationHelper.HoverMode="Button">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <FontIcon Glyph="&#xE8EC;" FontSize="13" Foreground="#BB86FC"/>
-                            <TextBlock Text="Metadatos" FontSize="12" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="TitleBarMetadataText" Text="Metadatos" FontSize="12" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
 
@@ -78,7 +78,7 @@
                             helpers:FluidAnimationHelper.HoverMode="Button">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <FontIcon Glyph="&#xE713;" FontSize="13" Foreground="#BB86FC"/>
-                            <TextBlock Text="Ajustes" FontSize="12" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="TitleBarSettingsText" Text="Ajustes" FontSize="12" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
                 </StackPanel>
@@ -182,6 +182,19 @@
                             </StackPanel>
                         </Button>
 
+                        <!-- Kronatl -->
+                        <Button Command="{x:Bind ViewModel.NavigateKronatlCommand}"
+                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                Background="{x:Bind ViewModel.NavKronatlBg, Mode=OneWay}"
+                                BorderThickness="0" CornerRadius="16" Padding="12,10,10,10"
+                                helpers:FluidAnimationHelper.HoverMode="Nav">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <FontIcon Glyph="&#xE823;" FontSize="16" Foreground="{x:Bind ViewModel.NavKronatlFg, Mode=OneWay}"/>
+                                <TextBlock Text="Kronatl" FontSize="13" FontWeight="SemiBold"
+                                           Foreground="{x:Bind ViewModel.NavKronatlFg, Mode=OneWay}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+
                         <!-- Ecualizador -->
                         <Button Command="{x:Bind ViewModel.NavigateEqualizerCommand}"
                                 HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
@@ -205,19 +218,6 @@
                                 <FontIcon Glyph="&#xE95B;" FontSize="16" Foreground="{x:Bind ViewModel.NavMultiOutputFg, Mode=OneWay}"/>
                                 <TextBlock Text="Salidas de Audio" FontSize="13" FontWeight="SemiBold"
                                            Foreground="{x:Bind ViewModel.NavMultiOutputFg, Mode=OneWay}" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </Button>
-
-                        <!-- Kronatl (Xiuhpohualli Sonoro) -->
-                        <Button Command="{x:Bind ViewModel.NavigateKronatlCommand}"
-                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
-                                Background="{x:Bind ViewModel.NavKronatlBg, Mode=OneWay}"
-                                BorderThickness="0" CornerRadius="16" Padding="12,10,10,10"
-                                helpers:FluidAnimationHelper.HoverMode="Nav">
-                            <StackPanel Orientation="Horizontal" Spacing="10">
-                                <FontIcon Glyph="&#xE823;" FontSize="16" Foreground="{x:Bind ViewModel.NavKronatlFg, Mode=OneWay}"/>
-                                <TextBlock Text="Kronatl" FontSize="13" FontWeight="SemiBold"
-                                           Foreground="{x:Bind ViewModel.NavKronatlFg, Mode=OneWay}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                     </StackPanel>
@@ -259,11 +259,11 @@
                   HorizontalAlignment="Stretch"
                   Canvas.ZIndex="20"
                   Visibility="{x:Bind ViewModel.BottomPlayerBarVisibility, Mode=OneWay}">
-                <Grid Padding="20,4,20,4">
+                <Grid Padding="14,4,14,4">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="260"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="260"/>
+                        <ColumnDefinition x:Name="PlayerLeftCol" Width="240"/>
+                        <ColumnDefinition x:Name="PlayerCenterCol" Width="*"/>
+                        <ColumnDefinition x:Name="PlayerRightCol" Width="240"/>
                     </Grid.ColumnDefinitions>
 
                     <!-- Left: Track Info (Clickable to open Now Playing Overlay) -->
@@ -297,8 +297,8 @@
                     </Button>
 
                     <!-- Center: Playback Controls & Responsive Progress Bar -->
-                    <Grid Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Stretch"
-                          MaxWidth="780" MinWidth="340" Margin="16,0">
+                    <Grid Grid.Column="1" x:Name="PlayerCenterGrid" VerticalAlignment="Center" HorizontalAlignment="Stretch"
+                          MaxWidth="780" MinWidth="200" Margin="10,0">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
@@ -346,6 +346,15 @@
                                     helpers:FluidAnimationHelper.HoverMode="Icon">
                                 <FontIcon Glyph="&#xE8EE;" FontSize="13"/>
                             </Button>
+
+                            <!-- Intelligent Harmonic Automix -->
+                            <Button Command="{x:Bind ViewModel.ToggleHarmonicAutomixCommand}"
+                                    Background="Transparent" BorderThickness="0" Padding="0" Width="30" Height="30" CornerRadius="15"
+                                    Foreground="{x:Bind ViewModel.HarmonicAutomixBrush, Mode=OneWay}"
+                                    ToolTipService.ToolTip="{x:Bind ViewModel.HarmonicAutomixTooltip, Mode=OneWay}"
+                                    helpers:FluidAnimationHelper.HoverMode="Icon">
+                                <FontIcon Glyph="&#xE945;" FontSize="13"/>
+                            </Button>
                         </StackPanel>
 
                         <!-- Seek Bar row (Stretches smoothly when window maximizes/restores) -->
@@ -391,7 +400,7 @@
                         </Button>
 
                         <!-- EQ Shortcut -->
-                        <Button Command="{x:Bind ViewModel.NavigateEqualizerCommand}"
+                        <Button x:Name="PlayerEqShortcutBtn" Command="{x:Bind ViewModel.NavigateEqualizerCommand}"
                                 Background="Transparent" BorderThickness="0" Padding="0" Width="34" Height="34" CornerRadius="17"
                                 Foreground="#B0B0B0" ToolTipService.ToolTip="Abrir Ecualizador"
                                 helpers:FluidAnimationHelper.HoverMode="Icon">
@@ -399,7 +408,7 @@
                         </Button>
 
                         <!-- Multi-Output Shortcut -->
-                        <Button Command="{x:Bind ViewModel.NavigateMultiOutputCommand}"
+                        <Button x:Name="PlayerMultiOutShortcutBtn" Command="{x:Bind ViewModel.NavigateMultiOutputCommand}"
                                 Background="Transparent" BorderThickness="0" Padding="0" Width="34" Height="34" CornerRadius="17"
                                 Foreground="#B0B0B0" ToolTipService.ToolTip="Salidas de audio simultáneas"
                                 helpers:FluidAnimationHelper.HoverMode="Icon">
@@ -407,10 +416,10 @@
                         </Button>
 
                         <!-- Volume icon -->
-                        <FontIcon Glyph="{x:Bind ViewModel.VolumeIconGlyph, Mode=OneWay}" FontSize="14" Foreground="#888888" VerticalAlignment="Center"/>
+                        <FontIcon x:Name="PlayerVolumeIcon" Glyph="{x:Bind ViewModel.VolumeIconGlyph, Mode=OneWay}" FontSize="14" Foreground="#888888" VerticalAlignment="Center"/>
 
                         <!-- Volume slider -->
-                        <Slider Width="75" Minimum="0" Maximum="100"
+                        <Slider x:Name="PlayerVolumeSlider" Width="75" Minimum="0" Maximum="100"
                                 Value="{x:Bind ViewModel.Volume, Mode=TwoWay}"
                                 VerticalAlignment="Center"/>
                     </StackPanel>
@@ -442,7 +451,7 @@
             <Border Background="#260C0C14"/>
 
             <!-- Main Layout Grid: Top Bar, Center Content, Bottom Playback -->
-            <Grid Padding="36,20,36,24" helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
+            <Grid x:Name="NowPlayingRootLayoutGrid" Padding="36,20,36,24" helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/> <!-- Top Bar -->
                     <RowDefinition Height="*"/>    <!-- Center Stage (Cover/Pill or Lyrics, plus Queue Drawer) -->
@@ -465,13 +474,13 @@
                             ToolTipService.ToolTip="Volver">
                         <StackPanel Orientation="Horizontal" Spacing="10">
                             <FontIcon Glyph="&#xE70D;" FontSize="13" Foreground="White" VerticalAlignment="Center"/>
-                            <TextBlock Text="REPRODUCIENDO AHORA" FontSize="12" FontWeight="Bold" Foreground="White"
+                            <TextBlock x:Name="NowPlayingBackText" Text="REPRODUCIENDO AHORA" FontSize="12" FontWeight="Bold" Foreground="White"
                                        CharacterSpacing="60" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
 
                     <!-- Top Center: Audio Technical Specifications Badge (Format, Bits, Bitrate, Base dB) -->
-                    <Grid Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center"
+                    <Grid Grid.Column="1" x:Name="NowPlayingTechBadgeGrid" HorizontalAlignment="Center" VerticalAlignment="Center"
                           Background="#1C1C24" CornerRadius="16"
                           Visibility="{x:Bind ViewModel.AudioTechInfoVisibility, Mode=OneWay}"
                           ToolTipService.ToolTip="Especificaciones técnicas de audio del archivo actual">
@@ -524,7 +533,7 @@
                             ToolTipService.ToolTip="Mostrar u ocultar la cola de reproducción">
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <FontIcon Glyph="&#xE8D6;" FontSize="14" Foreground="{x:Bind ViewModel.QueueToggleForegroundBrush, Mode=OneWay}" VerticalAlignment="Center"/>
-                            <TextBlock Text="Cola de Reproducción" FontSize="13" FontWeight="SemiBold" Foreground="{x:Bind ViewModel.QueueToggleForegroundBrush, Mode=OneWay}" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="NowPlayingQueueBtnText" Text="Cola de Reproducción" FontSize="13" FontWeight="SemiBold" Foreground="{x:Bind ViewModel.QueueToggleForegroundBrush, Mode=OneWay}" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
                 </Grid>
@@ -543,20 +552,24 @@
                         <Grid x:Name="NowPlayingCoverPanel" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="32,0,0,16"
                               Visibility="{x:Bind ViewModel.AlbumCoverVisibility, Mode=OneWay}"
                               helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
 
                             <!-- Big Album Art with Rounded Corners -->
-                            <Grid Grid.Column="0" Width="380" Height="380" CornerRadius="28" Background="#1E1E24">
+                            <Grid Grid.Row="0" Grid.Column="0" x:Name="NowPlayingCoverArtBox" Width="380" Height="380" CornerRadius="28" Background="#1E1E24">
                                 <FontIcon Glyph="&#xEC4F;" FontSize="96" Foreground="#444450" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 <Image Source="{x:Bind ViewModel.CurrentTrack.CoverHeroSource, Mode=OneWay}" Stretch="UniformToFill"/>
                                 <Rectangle RadiusX="27" RadiusY="27" Stroke="#26FFFFFF" StrokeThickness="1.2" Margin="1" UseLayoutRounding="False" IsHitTestVisible="False"/>
                             </Grid>
 
                             <!-- Dark Tag Box Pill (100% Solid Opacity) -->
-                            <Grid Grid.Column="1" VerticalAlignment="Bottom" Margin="-30,0,0,28"
+                            <Grid Grid.Row="0" Grid.Column="1" x:Name="NowPlayingTagBox" VerticalAlignment="Bottom" Margin="-30,0,0,28"
                                   Background="#16161C" CornerRadius="18" MaxWidth="380">
                                 <Rectangle RadiusX="17" RadiusY="17" Stroke="#26FFFFFF" StrokeThickness="1.2" Margin="1" UseLayoutRounding="False" IsHitTestVisible="False"/>
                                 <StackPanel Spacing="3" Padding="24,18">
@@ -581,7 +594,7 @@
                             </Grid.ColumnDefinitions>
 
                             <!-- Medium Album Art + Track Info -->
-                            <StackPanel Grid.Column="0" Spacing="16" VerticalAlignment="Bottom" Margin="16,0,36,24" MaxWidth="280">
+                            <StackPanel Grid.Column="0" x:Name="NowPlayingLyricsLeftPanel" Spacing="16" VerticalAlignment="Bottom" Margin="16,0,36,24" MaxWidth="280">
                                 <Grid Width="260" Height="260" CornerRadius="22" Background="#1E1E24">
                                     <FontIcon Glyph="&#xEC4F;" FontSize="64" Foreground="#444450" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                     <Image Source="{x:Bind ViewModel.CurrentTrack.CoverHeroSource, Mode=OneWay}" Stretch="UniformToFill"/>
@@ -688,6 +701,151 @@
                                 </StackPanel>
                             </Grid>
                         </Grid>
+
+                        <!-- View Mode 3: Interactive 2D Harmonic Constellation Map -->
+                        <Grid x:Name="NowPlayingConstellationPanel"
+                              HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                              Margin="14,0,14,8"
+                              SizeChanged="NowPlayingConstellationPanel_SizeChanged"
+                              Visibility="{x:Bind ViewModel.ConstellationVisibility, Mode=OneWay}"
+                              helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+
+                            <!-- Compact Top Toolbar: Title + Route Presets + Apply -->
+                            <Grid Grid.Row="0" x:Name="ConstellationToolbarGrid" Background="#161620" CornerRadius="14" Padding="14,9" Margin="0,0,0,10">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" MinWidth="120"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Rectangle Grid.RowSpan="2" Grid.ColumnSpan="2" RadiusX="13" RadiusY="13" Stroke="#22FFFFFF" StrokeThickness="1" Margin="1" UseLayoutRounding="False" IsHitTestVisible="False"/>
+
+                                <StackPanel Grid.Row="0" Grid.Column="0" x:Name="ConstellationTitlePanel" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                    <Border Width="28" Height="28" CornerRadius="14" Background="#25BB86FC">
+                                        <FontIcon Glyph="&#xE734;" FontSize="14" Foreground="#BB86FC" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Spacing="1" VerticalAlignment="Center">
+                                        <TextBlock Text="Constelación Armónica 2D" FontSize="14" FontWeight="Bold" Foreground="White" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock x:Name="ConstellationStatsText"
+                                                   Text="Arrastra o haz clic entre estrellas para trazar tu ruta DJ"
+                                                   FontSize="11" Foreground="#9A9AB0" TextTrimming="CharacterEllipsis"/>
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <StackPanel Grid.Row="0" Grid.Column="1" x:Name="ConstellationActionsPanel" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" Margin="10,0,0,0">
+                                    <Button Click="ConstellationPresetBoost_Click"
+                                            Background="#22F0932B" BorderBrush="#44F0932B" BorderThickness="1"
+                                            CornerRadius="12" Padding="10,5"
+                                            ToolTipService.ToolTip="Trazar ruta automática ascendente (+1/+2 Camelot y mayor BPM)"
+                                            helpers:FluidAnimationHelper.HoverMode="Button">
+                                        <TextBlock Text="+ Energía" FontSize="11.5" FontWeight="SemiBold" Foreground="#FDCB6E"/>
+                                    </Button>
+
+                                    <Button Click="ConstellationPresetSmooth_Click"
+                                            Background="#2003DAC6" BorderBrush="#4403DAC6" BorderThickness="1"
+                                            CornerRadius="12" Padding="10,5"
+                                            ToolTipService.ToolTip="Trazar ruta de flujo suave por vecindad Camelot y tempo cercano"
+                                            helpers:FluidAnimationHelper.HoverMode="Button">
+                                        <TextBlock Text="Flujo" FontSize="11.5" FontWeight="SemiBold" Foreground="#03DAC6"/>
+                                    </Button>
+
+                                    <Button Click="ConstellationPresetChill_Click"
+                                            Background="#220984E3" BorderBrush="#440984E3" BorderThickness="1"
+                                            CornerRadius="12" Padding="10,5"
+                                            ToolTipService.ToolTip="Trazar ruta descendente (-1 Camelot y menor BPM gradual)"
+                                            helpers:FluidAnimationHelper.HoverMode="Button">
+                                        <TextBlock Text="- Energía" FontSize="11.5" FontWeight="SemiBold" Foreground="#74B9FF"/>
+                                    </Button>
+
+                                    <Button Click="ConstellationClearRoute_Click"
+                                            Background="#1CFFFFFF" BorderBrush="#28FFFFFF" BorderThickness="1"
+                                            CornerRadius="12" Padding="9,5"
+                                            ToolTipService.ToolTip="Limpiar ruta trazada actual"
+                                            helpers:FluidAnimationHelper.HoverMode="Button">
+                                        <TextBlock Text="Limpiar" FontSize="11.5" Foreground="#CCCCDC"/>
+                                    </Button>
+
+                                    <Button x:Name="ConstellationApplyBtn"
+                                            Click="ConstellationApplyRoute_Click"
+                                            Background="#BB86FC" BorderThickness="0"
+                                            CornerRadius="12" Padding="11,5"
+                                            ToolTipService.ToolTip="Aplicar la ruta trazada como próxima cola de reproducción"
+                                            helpers:FluidAnimationHelper.HoverMode="Button">
+                                        <TextBlock Text="Aplicar Ruta" FontSize="11.5" FontWeight="Bold" Foreground="#0E0E14"/>
+                                    </Button>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Interactive Polar Camelot x BPM Star Map Canvas -->
+                            <Grid Grid.Row="1" Background="#CC0D0D14" CornerRadius="20">
+                                <Rectangle RadiusX="19" RadiusY="19" Stroke="#24FFFFFF" StrokeThickness="1.2" Margin="1" UseLayoutRounding="False" IsHitTestVisible="False"/>
+
+                                <Canvas x:Name="ConstellationCanvas"
+                                        Background="Transparent"
+                                        SizeChanged="ConstellationCanvas_SizeChanged"
+                                        PointerPressed="ConstellationCanvas_PointerPressed"
+                                        PointerMoved="ConstellationCanvas_PointerMoved"
+                                        PointerReleased="ConstellationCanvas_PointerReleased"
+                                        PointerExited="ConstellationCanvas_PointerExited"/>
+
+                                <!-- Top-Left Micro Legend -->
+                                <Border x:Name="ConstellationLegendBorder" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12"
+                                        Background="#CC14141D" BorderBrush="#22FFFFFF" BorderThickness="1"
+                                        CornerRadius="10" Padding="10,5" IsHitTestVisible="False">
+                                    <TextBlock Text="Ángulo: Rueda Camelot (1–12)  •  Radio: BPM  •  Ext: Mayor (B) / Int: Menor (A)"
+                                               FontSize="10.5" Foreground="#9A9AB2"/>
+                                </Border>
+
+                                <!-- Empty Fallback when no harmonic metadata exists -->
+                                <StackPanel x:Name="ConstellationEmptyState" Visibility="Collapsed"
+                                            HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10">
+                                    <FontIcon Glyph="&#xE734;" FontSize="42" Foreground="#4A4A60"/>
+                                    <TextBlock Text="Aún no hay suficientes pistas analizadas con BPM y Clave Camelot"
+                                               FontSize="14" FontWeight="SemiBold" Foreground="#B8B8C8" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="Analiza tus canciones en Metadatos o reproduce una pista para poblar la constelación."
+                                               FontSize="12" Foreground="#7A7A90" HorizontalAlignment="Center" TextWrapping="Wrap" MaxWidth="360" TextAlignment="Center"/>
+                                </StackPanel>
+
+                                <!-- Floating Live Track & Compatibility Inspector Card -->
+                                <Grid x:Name="ConstellationInspectorCard"
+                                      HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                                      Margin="14" MaxWidth="370"
+                                      Background="#EB14141D" CornerRadius="16" Padding="14,11"
+                                      IsHitTestVisible="False">
+                                    <Rectangle RadiusX="15" RadiusY="15" Stroke="#33BB86FC" StrokeThickness="1" Margin="1" UseLayoutRounding="False"/>
+                                    <StackPanel Spacing="6">
+                                        <StackPanel Spacing="1">
+                                            <TextBlock x:Name="ConstellationInspTitle" Text="Explora la Constelación"
+                                                       FontSize="14" FontWeight="Bold" Foreground="White" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock x:Name="ConstellationInspArtist" Text="Pasa el cursor sobre cualquier estrella"
+                                                       FontSize="11.5" Foreground="#A8A8BC" TextTrimming="CharacterEllipsis"/>
+                                        </StackPanel>
+
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <Border x:Name="ConstellationInspCamelotBadge" Background="#28BB86FC" CornerRadius="6" Padding="7,2">
+                                                <TextBlock x:Name="ConstellationInspCamelotText" Text="--" FontSize="11" FontWeight="Bold" Foreground="White"/>
+                                            </Border>
+                                            <Border Background="#22FFFFFF" CornerRadius="6" Padding="7,2">
+                                                <TextBlock x:Name="ConstellationInspBpmText" Text="-- BPM" FontSize="11" FontWeight="SemiBold" Foreground="#E2E2EC"/>
+                                            </Border>
+                                            <Border x:Name="ConstellationInspCompatBadge" Background="#2203DAC6" CornerRadius="6" Padding="7,2">
+                                                <TextBlock x:Name="ConstellationInspCompatText" Text="Lista para conectar" FontSize="11" FontWeight="SemiBold" Foreground="#03DAC6"/>
+                                            </Border>
+                                        </StackPanel>
+
+                                        <TextBlock x:Name="ConstellationRouteSummaryText"
+                                                   Text="Ruta DJ: 0 pistas  •  Haz clic o arrastra entre estrellas"
+                                                   FontSize="11" Foreground="#9E9EB4" TextTrimming="CharacterEllipsis"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Grid>
+                        </Grid>
                     </Grid>
 
                     <!-- RIGHT COLUMN: Cola de Reproducción (Queue Drawer, 100% Solid Opacity) -->
@@ -789,15 +947,24 @@
                     </Grid>
                 </Grid>
 
-                <!-- BOTTOM PLAYBACK BAR: Full-Width Seek Bar Flanked by Timestamps + Controls Row -->
+                <!-- BOTTOM PLAYBACK BAR: Spectrum Visualizer + Full-Width Seek Bar Flanked by Timestamps + Controls Row -->
                 <Grid Grid.Row="2" Margin="0,16,0,0" helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
                     <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/> <!-- Real-Time FFT Spectrum Visualizer -->
                         <RowDefinition Height="Auto"/> <!-- Full-width seek bar with timestamps -->
                         <RowDefinition Height="Auto"/> <!-- Controls row -->
                     </Grid.RowDefinitions>
 
+                    <!-- Real-Time FFT Frequency Spectrum Visualizer -->
+                    <Canvas Grid.Row="0" x:Name="NowPlayingSpectrumCanvas"
+                            Height="36"
+                            Margin="64,0,64,10"
+                            HorizontalAlignment="Stretch"
+                            IsHitTestVisible="False"
+                            Visibility="{x:Bind ViewModel.SpectrumAnalyzerVisibility, Mode=OneWay}"/>
+
                     <!-- Full-width seek bar flanked by timestamps (Solid badge containers for 100% visibility) -->
-                    <Grid Grid.Row="0" Margin="0,0,0,16">
+                    <Grid Grid.Row="1" Margin="0,0,0,16">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
@@ -826,14 +993,18 @@
                     </Grid>
 
                     <!-- Controls Row: Playback Controls Capsule + Pill with Like, Lyrics, EQ, Fullscreen, Volume -->
-                    <Grid Grid.Row="1">
+                    <Grid Grid.Row="2" x:Name="NowPlayingBottomControlsGrid">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
 
                         <!-- Left: Solid pill capsule for Playback Controls (Shuffle, Prev, Play/Pause, Next, Repeat) -->
-                        <Grid Grid.Column="0" HorizontalAlignment="Left" Background="#1C1C24" CornerRadius="28">
+                        <Grid Grid.Row="0" Grid.Column="0" x:Name="NowPlayingLeftTransportPill" HorizontalAlignment="Left" Background="#1C1C24" CornerRadius="28">
                             <Rectangle RadiusX="27" RadiusY="27" Stroke="#26FFFFFF" StrokeThickness="1.2" Margin="1" UseLayoutRounding="False" IsHitTestVisible="False"/>
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="10" Padding="14,6">
                                 <!-- Shuffle -->
@@ -876,11 +1047,20 @@
                                         helpers:FluidAnimationHelper.HoverMode="Icon">
                                     <FontIcon Glyph="&#xE8EE;" FontSize="16"/>
                                 </Button>
+
+                                <!-- Intelligent Harmonic Automix -->
+                                <Button Command="{x:Bind ViewModel.ToggleHarmonicAutomixCommand}"
+                                        Background="Transparent" BorderThickness="0" Width="38" Height="38" CornerRadius="19"
+                                        Foreground="{x:Bind ViewModel.HarmonicAutomixBrush, Mode=OneWay}"
+                                        ToolTipService.ToolTip="{x:Bind ViewModel.HarmonicAutomixTooltip, Mode=OneWay}"
+                                        helpers:FluidAnimationHelper.HoverMode="Icon">
+                                    <FontIcon Glyph="&#xE945;" FontSize="16"/>
+                                </Button>
                             </StackPanel>
                         </Grid>
 
                         <!-- Right: Capsule pill (100% Solid Opacity) with Like, Lyrics, EQ, Fullscreen, Volume -->
-                        <Grid Grid.Column="1" Background="#1C1C24" CornerRadius="28">
+                        <Grid Grid.Row="0" Grid.Column="1" x:Name="NowPlayingRightActionsPill" Background="#1C1C24" CornerRadius="28">
                             <Rectangle RadiusX="27" RadiusY="27" Stroke="#26FFFFFF" StrokeThickness="1.2" Margin="1" UseLayoutRounding="False" IsHitTestVisible="False"/>
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="10" Padding="14,6">
                                 <!-- Like (Heart) Button -->
@@ -898,6 +1078,14 @@
                                         ToolTipService.ToolTip="Mostrar/Ocultar letra sincronizada (LRC)"
                                         helpers:FluidAnimationHelper.HoverMode="Icon">
                                     <FontIcon Glyph="&#xEC4F;" FontSize="16" Foreground="{x:Bind ViewModel.LyricsBrush, Mode=OneWay}"/>
+                                </Button>
+
+                                <!-- Harmonic Constellation Map Toggle Button ("Constelación Armónica 2D") -->
+                                <Button Command="{x:Bind ViewModel.ToggleConstellationCommand}"
+                                        Background="Transparent" BorderThickness="0" Padding="0" Width="36" Height="36" CornerRadius="18"
+                                        ToolTipService.ToolTip="Constelación Armónica Interactiva (Mapa Camelot × BPM)"
+                                        helpers:FluidAnimationHelper.HoverMode="Icon">
+                                    <FontIcon Glyph="&#xE734;" FontSize="16" Foreground="{x:Bind ViewModel.ConstellationBrush, Mode=OneWay}"/>
                                 </Button>
 
                                 <!-- Karaoke Mode Toggle Button (Visible in Fullscreen + Lyrics) -->
@@ -926,10 +1114,10 @@
                                 </Button>
 
                                 <!-- Volume Icon -->
-                                <FontIcon Glyph="{x:Bind ViewModel.VolumeIconGlyph, Mode=OneWay}" FontSize="15" Foreground="#AFAFB9" VerticalAlignment="Center" Margin="4,0,2,0"/>
+                                <FontIcon x:Name="NowPlayingVolumeIcon" Glyph="{x:Bind ViewModel.VolumeIconGlyph, Mode=OneWay}" FontSize="15" Foreground="#AFAFB9" VerticalAlignment="Center" Margin="4,0,2,0"/>
 
                                 <!-- Volume Slider -->
-                                <Slider Width="85" Minimum="0" Maximum="100"
+                                <Slider x:Name="NowPlayingVolumeSlider" Width="85" Minimum="0" Maximum="100"
                                         Value="{x:Bind ViewModel.Volume, Mode=TwoWay}"
                                         VerticalAlignment="Center"/>
                             </StackPanel>

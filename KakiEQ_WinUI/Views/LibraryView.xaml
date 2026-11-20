@@ -51,7 +51,7 @@
             </StackPanel>
 
             <!-- Search Bar -->
-            <TextBox Grid.Column="1" HorizontalAlignment="Right" Width="260" Margin="0,0,16,0"
+            <TextBox Grid.Column="1" HorizontalAlignment="Stretch" MinWidth="110" MaxWidth="300" Margin="12,0"
                      Text="{x:Bind ViewModel.SearchQuery, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                      PlaceholderText="Buscar canciones o artistas..."
                      Background="{ThemeResource AppSurfaceContainer}" BorderBrush="{ThemeResource AppBorder}" CornerRadius="12" Padding="12,6"

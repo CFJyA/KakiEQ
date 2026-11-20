@@ -8,7 +8,7 @@
     mc:Ignorable="d"
     Title="Ajustes - Kaki EQ">
 
-    <Grid Background="{ThemeResource AppBackground}">
+    <Grid Background="{ThemeResource AppBackground}" SizeChanged="SettingsRootGrid_SizeChanged">
         <Grid.RowDefinitions>
             <RowDefinition Height="54"/>
             <RowDefinition Height="*"/>
@@ -25,13 +25,13 @@
         </Border>
 
         <!-- Main Content -->
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="28,20,28,32">
+        <ScrollViewer Grid.Row="1" x:Name="SettingsScrollViewer" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="28,20,28,32">
             <StackPanel MaxWidth="760" HorizontalAlignment="Stretch" Spacing="24">
                 
                 <!-- Page Header -->
                 <StackPanel Spacing="4">
                     <TextBlock Text="Ajustes" FontSize="26" FontWeight="Bold" Foreground="{ThemeResource AppTextPrimary}"/>
-                    <TextBlock Text="Personaliza tu experiencia auditiva y configura las opciones de Kaki EQ." FontSize="13" Foreground="{ThemeResource AppTextSubtle}"/>
+                    <TextBlock Text="Personaliza tu experiencia auditiva y configura las opciones de Kaki EQ." FontSize="13" Foreground="{ThemeResource AppTextSubtle}" TextWrapping="Wrap"/>
                 </StackPanel>
 
                 <!-- ================= 1. SELECCION DE LA CARPETA ================= -->
@@ -41,26 +41,30 @@
                     <Border Background="{ThemeResource AppCardBackground}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1" CornerRadius="16" Padding="20">
                         <StackPanel Spacing="16">
                             <Grid ColumnSpacing="16">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
 
-                                <Border Grid.Column="0" Width="44" Height="44" CornerRadius="12" Background="{ThemeResource AppAccentContainer}" VerticalAlignment="Center">
+                                <Border Grid.Row="0" Grid.Column="0" Width="44" Height="44" CornerRadius="12" Background="{ThemeResource AppAccentContainer}" VerticalAlignment="Center">
                                     <FontIcon Glyph="&#xED25;" FontSize="20" Foreground="{ThemeResource AppAccentText}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 </Border>
 
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                <StackPanel Grid.Row="0" Grid.Column="1" VerticalAlignment="Center" Spacing="2">
                                     <TextBlock Text="Carpeta de Música" FontSize="15" FontWeight="SemiBold" Foreground="{ThemeResource AppTextPrimary}"/>
                                     <TextBlock Text="Ubicación donde Kaki EQ busca tus archivos de audio y crea la biblioteca musical."
                                                FontSize="12" Foreground="{ThemeResource AppTextSubtle}" TextWrapping="Wrap"/>
                                 </StackPanel>
 
-                                <Button Grid.Column="2" Click="PickFolder_Click"
+                                <Button Grid.Row="0" Grid.Column="2" x:Name="PickFolderButton" Click="PickFolder_Click"
                                         Background="{ThemeResource AppAccent}" Foreground="#121212"
                                         CornerRadius="16" Padding="14,8" VerticalAlignment="Center">
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
                                         <FontIcon Glyph="&#xED25;" FontSize="13" Foreground="#121212"/>
                                         <TextBlock Text="Elegir carpeta..." FontSize="12" FontWeight="SemiBold" Foreground="#121212"/>
                                     </StackPanel>
@@ -123,7 +127,7 @@
                                 </StackPanel>
 
                                 <ToggleSwitch Grid.Column="2" x:Name="DarkModeToggle"
-                                              OnContent="Activado" OffContent="Desactivado"
+                                              OnContent="Activado" OffContent="Desactivado" MinWidth="0"
                                               Toggled="DarkModeToggle_Toggled" VerticalAlignment="Center"/>
                             </Grid>
 
@@ -148,7 +152,7 @@
                                 </StackPanel>
 
                                 <ToggleSwitch Grid.Column="2" x:Name="CrossfadeToggle"
-                                              OnContent="Activado" OffContent="Desactivado"
+                                              OnContent="Activado" OffContent="Desactivado" MinWidth="0"
                                               Toggled="CrossfadeToggle_Toggled" VerticalAlignment="Center"/>
                             </Grid>
 
@@ -169,8 +173,56 @@
                                         <TextBlock Text="1 segundo" FontSize="10" Foreground="{ThemeResource AppTextSubtle}" HorizontalAlignment="Left"/>
                                         <TextBlock Text="10 segundos" FontSize="10" Foreground="{ThemeResource AppTextSubtle}" HorizontalAlignment="Right"/>
                                     </Grid>
+
+                                    <Border Height="1" Background="{ThemeResource AppBorder}" Margin="0,6,0,4"/>
+
+                                    <!-- Sub-opción: Stem-Morphing Crossfade -->
+                                    <Grid ColumnSpacing="12">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <FontIcon Grid.Column="0" Glyph="&#xE945;" FontSize="15" Foreground="{ThemeResource AppAccent}" VerticalAlignment="Center"/>
+
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="1">
+                                            <TextBlock Text="Stem-Morphing Crossfade (Empalme Vocal / Instrumental)" FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource AppTextPrimary}"/>
+                                            <TextBlock Text="Aísla la voz saliente sobre la base instrumental entrante para mezclar canciones tipo mashup sin choque de bajos ni voces."
+                                                       FontSize="11" Foreground="{ThemeResource AppTextSubtle}" TextWrapping="Wrap"/>
+                                        </StackPanel>
+
+                                        <ToggleSwitch Grid.Column="2" x:Name="StemMorphCrossfadeToggle"
+                                                      OnContent="Activado" OffContent="Desactivado" MinWidth="0"
+                                                      Toggled="StemMorphCrossfadeToggle_Toggled" VerticalAlignment="Center"/>
+                                    </Grid>
                                 </StackPanel>
                             </Border>
+
+                            <Border Height="1" Background="{ThemeResource AppBorder}"/>
+
+                            <!-- Normalización de Volumen -->
+                            <Grid ColumnSpacing="16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <Border Grid.Column="0" Width="40" Height="40" CornerRadius="10" Background="{ThemeResource AppAccentSurface}" VerticalAlignment="Center">
+                                    <FontIcon Glyph="&#xE995;" FontSize="17" Foreground="{ThemeResource AppAccent}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                    <TextBlock Text="Normalización de Volumen (-14 LUFS)" FontSize="14" FontWeight="SemiBold" Foreground="{ThemeResource AppTextPrimary}"/>
+                                    <TextBlock Text="Iguala automáticamente la sonoridad percibida entre canciones con protección anti-clipping para evitar saltos bruscos de volumen."
+                                               FontSize="12" Foreground="{ThemeResource AppTextSubtle}" TextWrapping="Wrap"/>
+                                </StackPanel>
+
+                                <ToggleSwitch Grid.Column="2" x:Name="VolumeNormalizationToggle"
+                                              OnContent="Activado" OffContent="Desactivado" MinWidth="0"
+                                              Toggled="VolumeNormalizationToggle_Toggled" VerticalAlignment="Center"/>
+                            </Grid>
 
                             <Border Height="1" Background="{ThemeResource AppBorder}"/>
 
@@ -193,7 +245,7 @@
                                 </StackPanel>
 
                                 <ToggleSwitch Grid.Column="2" x:Name="StartupToggle"
-                                              OnContent="Activado" OffContent="Desactivado"
+                                              OnContent="Activado" OffContent="Desactivado" MinWidth="0"
                                               Toggled="StartupToggle_Toggled" VerticalAlignment="Center"/>
                             </Grid>
 
@@ -212,14 +264,64 @@
                                 </Border>
 
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                                    <TextBlock Text="Información Técnica en Pantalla Completa" FontSize="14" FontWeight="SemiBold" Foreground="{ThemeResource AppTextPrimary}"/>
+                                    <TextBlock Text="Información Técnica en Pantalla Completa" FontSize="14" FontWeight="SemiBold" Foreground="{ThemeResource AppTextPrimary}" TextWrapping="Wrap"/>
                                     <TextBlock Text="Muestra el formato de archivo, bits, tasa de bits (kbps) y decibeles base en la vista Reproduciendo Ahora."
                                                FontSize="12" Foreground="{ThemeResource AppTextSubtle}" TextWrapping="Wrap"/>
                                 </StackPanel>
 
                                 <ToggleSwitch Grid.Column="2" x:Name="AudioTechInfoToggle"
-                                              OnContent="Activado" OffContent="Desactivado"
+                                              OnContent="Activado" OffContent="Desactivado" MinWidth="0"
                                               Toggled="AudioTechInfoToggle_Toggled" VerticalAlignment="Center"/>
+                            </Grid>
+
+                            <Border Height="1" Background="{ThemeResource AppBorder}"/>
+
+                            <!-- Analizador de Espectro de Frecuencias (FFT) -->
+                            <Grid ColumnSpacing="16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <Border Grid.Column="0" Width="40" Height="40" CornerRadius="10" Background="{ThemeResource AppAccentSurface}" VerticalAlignment="Center">
+                                    <FontIcon Glyph="&#xE9D2;" FontSize="17" Foreground="{ThemeResource AppAccent}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                    <TextBlock Text="Analizador de Espectro de Frecuencias (FFT)" FontSize="14" FontWeight="SemiBold" Foreground="{ThemeResource AppTextPrimary}" TextWrapping="Wrap"/>
+                                    <TextBlock Text="Grafica en tiempo real las frecuencias de 28 Hz a 16.5 kHz en el Ecualizador DSP y en la vista Reproduciendo Ahora."
+                                               FontSize="12" Foreground="{ThemeResource AppTextSubtle}" TextWrapping="Wrap"/>
+                                </StackPanel>
+
+                                <ToggleSwitch Grid.Column="2" x:Name="SpectrumAnalyzerToggle"
+                                              OnContent="Activado" OffContent="Desactivado" MinWidth="0"
+                                              Toggled="SpectrumAnalyzerToggle_Toggled" VerticalAlignment="Center"/>
+                            </Grid>
+
+                            <Border Height="1" Background="{ThemeResource AppBorder}"/>
+
+                            <!-- Modo WASAPI Exclusive (Bit-Perfect) -->
+                            <Grid ColumnSpacing="16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <Border Grid.Column="0" Width="40" Height="40" CornerRadius="10" Background="{ThemeResource AppAccentSurface}" VerticalAlignment="Center">
+                                    <FontIcon Glyph="&#xE7F6;" FontSize="17" Foreground="{ThemeResource AppAccent}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                    <TextBlock Text="Modo WASAPI Exclusive (Audio Bit-Perfect)" FontSize="14" FontWeight="SemiBold" Foreground="{ThemeResource AppTextPrimary}" TextWrapping="Wrap"/>
+                                    <TextBlock Text="Salta el mezclador de Windows para entregar el audio directo al DAC a resolución nativa. Silencia otras apps mientras está activo."
+                                               FontSize="12" Foreground="{ThemeResource AppTextSubtle}" TextWrapping="Wrap"/>
+                                </StackPanel>
+
+                                <ToggleSwitch Grid.Column="2" x:Name="WasapiExclusiveToggle"
+                                              OnContent="Activado" OffContent="Desactivado" MinWidth="0"
+                                              Toggled="WasapiExclusiveToggle_Toggled" VerticalAlignment="Center"/>
                             </Grid>
 
                         </StackPanel>
@@ -254,10 +356,10 @@
                             <!-- Technical Specs Badges -->
                             <Border Background="{ThemeResource AppSurfaceElevated}" BorderBrush="{ThemeResource AppBorder}" BorderThickness="1" CornerRadius="12" Padding="14,10">
                                 <StackPanel Spacing="6">
-                                    <TextBlock Text="• Motor de audio: ManagedBass (BASS DirectX Engine)" FontSize="12" Foreground="{ThemeResource AppTextSecondary}"/>
-                                    <TextBlock Text="• Plataforma: Windows App SDK / WinUI 3 / .NET 8" FontSize="12" Foreground="{ThemeResource AppTextSecondary}"/>
-                                    <TextBlock Text="• Ecualizador paramétrico DSP: 32 Hz a 16 kHz (-15 dB a +15 dB)" FontSize="12" Foreground="{ThemeResource AppTextSecondary}"/>
-                                    <TextBlock Text="• Integración de sistema: Windows SMTC, System Tray y Reproducción en segundo plano" FontSize="12" Foreground="{ThemeResource AppTextSecondary}"/>
+                                    <TextBlock Text="• Motor de audio: ManagedBass (BASS DirectX Engine)" FontSize="12" Foreground="{ThemeResource AppTextSecondary}" TextWrapping="Wrap"/>
+                                    <TextBlock Text="• Plataforma: Windows App SDK / WinUI 3 / .NET 8" FontSize="12" Foreground="{ThemeResource AppTextSecondary}" TextWrapping="Wrap"/>
+                                    <TextBlock Text="• Ecualizador paramétrico DSP: 32 Hz a 16 kHz (-15 dB a +15 dB)" FontSize="12" Foreground="{ThemeResource AppTextSecondary}" TextWrapping="Wrap"/>
+                                    <TextBlock Text="• Integración de sistema: Windows SMTC, System Tray y Reproducción en segundo plano" FontSize="12" Foreground="{ThemeResource AppTextSecondary}" TextWrapping="Wrap"/>
                                 </StackPanel>
                             </Border>
 

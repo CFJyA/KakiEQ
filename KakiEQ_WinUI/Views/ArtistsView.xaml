@@ -54,21 +54,25 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <Grid Grid.Row="0" Margin="0,0,0,20" helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
+        <Grid Grid.Row="0" Margin="0,0,0,20" RowSpacing="12" SizeChanged="ArtistsHeaderGrid_SizeChanged" helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
 
-            <StackPanel Grid.Column="0" helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
+            <StackPanel Grid.Row="0" Grid.Column="0" helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
                 <TextBlock Text="Artistas" FontSize="26" FontWeight="Bold" Foreground="{ThemeResource AppTextPrimary}"/>
-                <TextBlock Text="Todos los intérpretes y creadores en tu biblioteca" FontSize="13" Foreground="{ThemeResource AppTextSubtle}" Margin="0,4,0,0"/>
+                <TextBlock Text="Todos los intérpretes y creadores en tu biblioteca" FontSize="13" Foreground="{ThemeResource AppTextSubtle}" Margin="0,4,0,0" TextWrapping="Wrap"/>
             </StackPanel>
 
-            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="12"
+            <StackPanel Grid.Row="0" Grid.Column="1" x:Name="ArtistsSearchCountPanel" Orientation="Horizontal" VerticalAlignment="Center" Spacing="12"
                         helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
                 <!-- Search Bar -->
-                <TextBox Width="260"
+                <TextBox MinWidth="130" MaxWidth="260"
                          Text="{x:Bind ViewModel.SearchQuery, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                          PlaceholderText="Buscar artistas..."
                          Background="{ThemeResource AppSurfaceContainer}" BorderBrush="{ThemeResource AppBorder}" CornerRadius="12" Padding="12,6"/>

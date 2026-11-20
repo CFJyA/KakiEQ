@@ -31,6 +31,7 @@ namespace KakiEQ_WinUI.Services.Audio
 
         private bool _isPlaying = false;
         private float _masterVolume = 1.0f;
+        private float _normalizationMultiplier = 1.0f;
 
         private AudioOutputDevice[] _activeRoutingDevices = Array.Empty<AudioOutputDevice>();
         private bool _isSystemRoutingActive = false;
@@ -60,6 +61,34 @@ namespace KakiEQ_WinUI.Services.Audio
             {
                 _masterVolume = Math.Clamp(value, 0f, 1f);
                 UpdateAllDeviceVolumes();
+            }
+        }
+
+        public float NormalizationMultiplier
+        {
+            get => _normalizationMultiplier;
+            set => SetNormalizationMultiplier(value, applyPrimaryVolume: true);
+        }
+
+        public void SetNormalizationMultiplier(float multiplier, bool applyPrimaryVolume = true)
+        {
+            _normalizationMultiplier = Math.Clamp(multiplier, 0.2f, 2.8f);
+            lock (_lock)
+            {
+                if (applyPrimaryVolume)
+                {
+                    UpdatePrimaryDeviceVolume();
+                }
+
+                foreach (var d in _devices)
+                {
+                    if (d.PushStreamHandle != 0)
+                    {
+                        float preampMultiplier = d.EqIsEnabled ? MathF.Pow(10f, d.EqPreampGain / 20f) : 1.0f;
+                        float localVol = d.IsMuted ? 0f : Math.Clamp(d.Volume * _masterVolume * preampMultiplier * _normalizationMultiplier, 0f, 2.0f);
+                        Bass.ChannelSetAttribute(d.PushStreamHandle, ChannelAttribute.Volume, localVol);
+                    }
+                }
             }
         }
 
@@ -311,7 +340,7 @@ namespace KakiEQ_WinUI.Services.Audio
             }
         }
 
-        public void AttachToStream(int streamHandle)
+        public void AttachToStream(int streamHandle, bool updatePrimaryVolume = true)
         {
             lock (_lock)
             {
@@ -348,8 +377,11 @@ namespace KakiEQ_WinUI.Services.Audio
                 // Attach DSP to stream (priority 100 so it captures pristine PCM audio before primary EQ DSP)
                 _dspHandle = Bass.ChannelSetDSP(streamHandle, _dspProc, IntPtr.Zero, 100);
 
-                // Update primary volume
-                UpdatePrimaryDeviceVolume();
+                // Update primary volume unless crossfade fade-in is managing volume externally
+                if (updatePrimaryVolume)
+                {
+                    UpdatePrimaryDeviceVolume();
+                }
             }
         }
 
@@ -441,16 +473,17 @@ namespace KakiEQ_WinUI.Services.Audio
             {
                 device.Volume = volume;
                 float preampMultiplier = device.EqIsEnabled ? MathF.Pow(10f, device.EqPreampGain / 20f) : 1.0f;
-                float effectiveVol = device.IsMuted ? 0f : Math.Clamp(device.Volume * _masterVolume * preampMultiplier, 0f, 2.0f);
+                float localVol = device.IsMuted ? 0f : Math.Clamp(device.Volume * _masterVolume * preampMultiplier * _normalizationMultiplier, 0f, 2.0f);
+                float routingVol = device.IsMuted ? 0f : Math.Clamp(device.Volume * _masterVolume * preampMultiplier, 0f, 2.0f);
 
                 if (device.PushStreamHandle != 0)
                 {
-                    Bass.ChannelSetAttribute(device.PushStreamHandle, ChannelAttribute.Volume, effectiveVol);
+                    Bass.ChannelSetAttribute(device.PushStreamHandle, ChannelAttribute.Volume, localVol);
                 }
 
                 if (device.RoutingPushStreamHandle != 0)
                 {
-                    Bass.ChannelSetAttribute(device.RoutingPushStreamHandle, ChannelAttribute.Volume, effectiveVol);
+                    Bass.ChannelSetAttribute(device.RoutingPushStreamHandle, ChannelAttribute.Volume, routingVol);
                 }
 
                 if (device.IsPrimary)
@@ -467,16 +500,17 @@ namespace KakiEQ_WinUI.Services.Audio
             {
                 device.IsMuted = muted;
                 float preampMultiplier = device.EqIsEnabled ? MathF.Pow(10f, device.EqPreampGain / 20f) : 1.0f;
-                float effectiveVol = muted ? 0f : Math.Clamp(device.Volume * _masterVolume * preampMultiplier, 0f, 2.0f);
+                float localVol = muted ? 0f : Math.Clamp(device.Volume * _masterVolume * preampMultiplier * _normalizationMultiplier, 0f, 2.0f);
+                float routingVol = muted ? 0f : Math.Clamp(device.Volume * _masterVolume * preampMultiplier, 0f, 2.0f);
 
                 if (device.PushStreamHandle != 0)
                 {
-                    Bass.ChannelSetAttribute(device.PushStreamHandle, ChannelAttribute.Volume, effectiveVol);
+                    Bass.ChannelSetAttribute(device.PushStreamHandle, ChannelAttribute.Volume, localVol);
                 }
 
                 if (device.RoutingPushStreamHandle != 0)
                 {
-                    Bass.ChannelSetAttribute(device.RoutingPushStreamHandle, ChannelAttribute.Volume, effectiveVol);
+                    Bass.ChannelSetAttribute(device.RoutingPushStreamHandle, ChannelAttribute.Volume, routingVol);
                 }
 
                 if (device.IsPrimary)
@@ -495,14 +529,15 @@ namespace KakiEQ_WinUI.Services.Audio
                 foreach (var d in _devices)
                 {
                     float preampMultiplier = d.EqIsEnabled ? MathF.Pow(10f, d.EqPreampGain / 20f) : 1.0f;
-                    float vol = d.IsMuted ? 0f : Math.Clamp(d.Volume * _masterVolume * preampMultiplier, 0f, 2.0f);
+                    float localVol = d.IsMuted ? 0f : Math.Clamp(d.Volume * _masterVolume * preampMultiplier * _normalizationMultiplier, 0f, 2.0f);
+                    float routingVol = d.IsMuted ? 0f : Math.Clamp(d.Volume * _masterVolume * preampMultiplier, 0f, 2.0f);
                     if (d.PushStreamHandle != 0)
                     {
-                        Bass.ChannelSetAttribute(d.PushStreamHandle, ChannelAttribute.Volume, vol);
+                        Bass.ChannelSetAttribute(d.PushStreamHandle, ChannelAttribute.Volume, localVol);
                     }
                     if (d.RoutingPushStreamHandle != 0)
                     {
-                        Bass.ChannelSetAttribute(d.RoutingPushStreamHandle, ChannelAttribute.Volume, vol);
+                        Bass.ChannelSetAttribute(d.RoutingPushStreamHandle, ChannelAttribute.Volume, routingVol);
                     }
                 }
             }
@@ -516,13 +551,13 @@ namespace KakiEQ_WinUI.Services.Audio
                 if (primary.IsEnabled && !primary.IsMuted)
                 {
                     float preampMultiplier = primary.EqIsEnabled ? MathF.Pow(10f, primary.EqPreampGain / 20f) : 1.0f;
-                    return Math.Clamp(primary.Volume * _masterVolume * preampMultiplier, 0f, 2.0f);
+                    return Math.Clamp(primary.Volume * _masterVolume * preampMultiplier * _normalizationMultiplier, 0f, 2.0f);
                 }
                 return 0f;
             }
 
             float masterPreampMultiplier = Equalizer != null ? MathF.Pow(10f, Equalizer.MasterPreampGain / 20f) : 1.0f;
-            return Math.Clamp(_masterVolume * masterPreampMultiplier, 0f, 2.0f);
+            return Math.Clamp(_masterVolume * masterPreampMultiplier * _normalizationMultiplier, 0f, 2.0f);
         }
 
         public void UpdatePrimaryDeviceVolume()
@@ -533,7 +568,29 @@ namespace KakiEQ_WinUI.Services.Audio
             Bass.ChannelSetAttribute(_currentStreamHandle, ChannelAttribute.Volume, vol);
         }
 
-        private int CreateAndPrimePushStream(AudioOutputDevice device, int sampleRate, int channels, bool isFloat, bool shouldPlayImmediately)
+        public void SlidePrimaryDeviceVolume(int durationMs = 160)
+        {
+            lock (_lock)
+            {
+                if (_currentStreamHandle != 0)
+                {
+                    float vol = GetPrimaryDeviceEffectiveVolume();
+                    Bass.ChannelSlideAttribute(_currentStreamHandle, ChannelAttribute.Volume, vol, Math.Max(20, durationMs));
+                }
+
+                foreach (var d in _devices)
+                {
+                    if (d.PushStreamHandle != 0)
+                    {
+                        float preampMultiplier = d.EqIsEnabled ? MathF.Pow(10f, d.EqPreampGain / 20f) : 1.0f;
+                        float localVol = d.IsMuted ? 0f : Math.Clamp(d.Volume * _masterVolume * preampMultiplier * _normalizationMultiplier, 0f, 2.0f);
+                        Bass.ChannelSlideAttribute(d.PushStreamHandle, ChannelAttribute.Volume, localVol, Math.Max(20, durationMs));
+                    }
+                }
+            }
+        }
+
+        private int CreateAndPrimePushStream(AudioOutputDevice device, int sampleRate, int channels, bool isFloat, bool shouldPlayImmediately, bool applyNormalization = false)
         {
             int prevDevice = Bass.CurrentDevice;
             try
@@ -562,7 +619,9 @@ namespace KakiEQ_WinUI.Services.Audio
                     // Set compact low-latency buffer (65ms) on the push stream
                     Bass.ChannelSetAttribute(pushStream, ChannelAttribute.Buffer, 0.065f);
 
-                    float targetVol = device.IsMuted ? 0f : (device.Volume * _masterVolume);
+                    float preampMultiplier = device.EqIsEnabled ? MathF.Pow(10f, device.EqPreampGain / 20f) : 1.0f;
+                    float normFactor = applyNormalization ? _normalizationMultiplier : 1.0f;
+                    float targetVol = device.IsMuted ? 0f : Math.Clamp(device.Volume * _masterVolume * preampMultiplier * normFactor, 0f, 2.0f);
 
                     if (shouldPlayImmediately)
                     {
@@ -619,7 +678,7 @@ namespace KakiEQ_WinUI.Services.Audio
             }
 
             device.LocalDelayBuffer.Reset();
-            int handle = CreateAndPrimePushStream(device, _localSampleRate, _localChannels, _localIsFloat, _isPlaying);
+            int handle = CreateAndPrimePushStream(device, _localSampleRate, _localChannels, _localIsFloat, _isPlaying, applyNormalization: true);
             if (handle != 0)
             {
                 device.PushStreamHandle = handle;

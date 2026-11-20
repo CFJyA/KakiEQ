@@ -1246,13 +1246,156 @@ namespace KakiEQ_WinUI.Helpers
             return result;
         }
 
+        /// <summary>
+        /// Ordena armónicamente la cola pendiente tomando la pista en reproducción como ancla inicial.
+        /// </summary>
+        public static List<Track> SortUpcomingQueueHarmonically(Track? anchorTrack, IEnumerable<Track> upcomingTracks)
+        {
+            var remaining = upcomingTracks?
+                .Where(t => t != null && !t.IsDiscHeader)
+                .ToList() ?? new List<Track>();
+
+            if (remaining.Count <= 1)
+                return remaining;
+
+            if (anchorTrack == null)
+                return SortTracksHarmonically(remaining);
+
+            var result = new List<Track>(remaining.Count);
+            Track current = anchorTrack;
+
+            while (remaining.Count > 0)
+            {
+                bool curHasKey = TryParseCamelot(current.CamelotKey, out int curNum, out char curLetter);
+                double curBpm = current.Bpm > 0 ? current.Bpm : 120.0;
+
+                Track? bestNext = null;
+                double bestCost = double.MaxValue;
+
+                foreach (var candidate in remaining)
+                {
+                    double cost = ComputeHarmonicTransitionCost(curHasKey, curNum, curLetter, curBpm, candidate);
+                    if (cost < bestCost)
+                    {
+                        bestCost = cost;
+                        bestNext = candidate;
+                    }
+                }
+
+                bestNext ??= remaining[0];
+                remaining.Remove(bestNext);
+                result.Add(bestNext);
+                current = bestNext;
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Selecciona la mejor transición armónica para el Automix inteligente combinando Rueda Camelot,
+        /// cercanía de BPM (consciente de octavas 0.5x / 1x / 2x) y memoria anti-repetición.
+        /// </summary>
+        public static Track? SelectBestHarmonicNextTrack(
+            Track? currentTrack,
+            IEnumerable<Track> candidates,
+            ISet<string>? recentFilePaths = null,
+            bool allowTopTierVariety = false)
+        {
+            if (candidates == null) return null;
+
+            string? curPath = currentTrack?.FilePath;
+            var allValid = candidates
+                .Where(t => t != null
+                         && !t.IsDiscHeader
+                         && !ReferenceEquals(t, currentTrack)
+                         && (string.IsNullOrEmpty(curPath) || !string.Equals(t.FilePath, curPath, StringComparison.OrdinalIgnoreCase)))
+                .ToList();
+
+            if (allValid.Count == 0) return null;
+
+            List<Track> pool = allValid;
+            if (recentFilePaths != null && recentFilePaths.Count > 0)
+            {
+                var fresh = allValid
+                    .Where(t => string.IsNullOrEmpty(t.FilePath) || !recentFilePaths.Contains(t.FilePath))
+                    .ToList();
+                if (fresh.Count > 0)
+                {
+                    pool = fresh;
+                }
+            }
+
+            if (currentTrack == null)
+            {
+                return pool[Random.Shared.Next(pool.Count)];
+            }
+
+            bool curHasKey = TryParseCamelot(currentTrack.CamelotKey, out int curNum, out char curLetter);
+            double curBpm = currentTrack.Bpm > 0 ? currentTrack.Bpm : 120.0;
+
+            var scored = new List<(Track track, double cost)>(pool.Count);
+            double minCost = double.MaxValue;
+            Track bestTrack = pool[0];
+
+            foreach (var cand in pool)
+            {
+                double cost = ComputeHarmonicTransitionCost(curHasKey, curNum, curLetter, curBpm, cand);
+                scored.Add((cand, cost));
+                if (cost < minCost)
+                {
+                    minCost = cost;
+                    bestTrack = cand;
+                }
+            }
+
+            if (!allowTopTierVariety || scored.Count <= 1)
+                return bestTrack;
+
+            var topTier = scored
+                .Where(x => x.cost <= minCost + 1.15)
+                .OrderBy(x => x.cost)
+                .Take(4)
+                .ToList();
+
+            if (topTier.Count <= 1)
+                return bestTrack;
+
+            double totalWeight = 0;
+            var weights = new double[topTier.Count];
+            for (int i = 0; i < topTier.Count; i++)
+            {
+                double w = 1.0 / (0.25 + Math.Max(0.0, topTier[i].cost - minCost));
+                weights[i] = w;
+                totalWeight += w;
+            }
+
+            double pick = Random.Shared.NextDouble() * totalWeight;
+            double cum = 0;
+            for (int i = 0; i < topTier.Count; i++)
+            {
+                cum += weights[i];
+                if (pick <= cum)
+                    return topTier[i].track;
+            }
+
+            return topTier[0].track;
+        }
+
         private static double ComputeHarmonicTransitionCost(
             bool curHasKey, int curNum, char curLetter, double curBpm,
             Track candidate)
         {
             bool candHasKey = TryParseCamelot(candidate.CamelotKey, out int candNum, out char candLetter);
             double candBpm = candidate.Bpm > 0 ? candidate.Bpm : curBpm;
-            double bpmDiff = Math.Abs(curBpm - candBpm) / 200.0; // penalización suave por diferencia de BPM (0.0 a ~0.5)
+
+            // Distancia de BPM consciente de octavas rítmicas (1x, 0.5x y 2x)
+            double directDiff = Math.Abs(curBpm - candBpm);
+            double halfDiff = Math.Abs(curBpm - candBpm * 0.5);
+            double doubleDiff = Math.Abs(curBpm - candBpm * 2.0);
+            double minBpmDelta = Math.Min(directDiff, Math.Min(halfDiff + 1.5, doubleDiff + 1.5));
+            double bpmDiff = minBpmDelta <= 6.0
+                ? (minBpmDelta / 100.0)
+                : (0.06 + (minBpmDelta - 6.0) / 45.0);
 
             if (!curHasKey || !candHasKey)
             {

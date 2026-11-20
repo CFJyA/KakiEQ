@@ -32,6 +32,8 @@ namespace KakiEQ_WinUI.ViewModels
         private readonly KronatlService _kronatlService;
         private readonly DispatcherQueueTimer _timer;
         private readonly DispatcherQueue _dispatcherQueue;
+        private readonly Queue<string> _recentAutomixHistory = new();
+        private readonly HashSet<string> _recentAutomixSet = new(StringComparer.OrdinalIgnoreCase);
 
         public DatabaseService DbService => _dbService;
         public LibraryService LibService => _libService;
@@ -289,7 +291,15 @@ namespace KakiEQ_WinUI.ViewModels
             get => _isLyricsVisible;
             set
             {
+                if (_isLyricsVisible == value) return;
                 _isLyricsVisible = value;
+                if (value && _isConstellationVisible)
+                {
+                    _isConstellationVisible = false;
+                    OnPropertyChanged(nameof(IsConstellationVisible));
+                    OnPropertyChanged(nameof(ConstellationVisibility));
+                    OnPropertyChanged(nameof(ConstellationBrush));
+                }
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(LyricsVisibility));
                 OnPropertyChanged(nameof(AlbumCoverVisibility));
@@ -302,9 +312,34 @@ namespace KakiEQ_WinUI.ViewModels
             }
         }
 
+        private bool _isConstellationVisible = false;
+        public bool IsConstellationVisible
+        {
+            get => _isConstellationVisible;
+            set
+            {
+                if (_isConstellationVisible == value) return;
+                _isConstellationVisible = value;
+                if (value && _isLyricsVisible)
+                {
+                    _isLyricsVisible = false;
+                    OnPropertyChanged(nameof(IsLyricsVisible));
+                    OnPropertyChanged(nameof(LyricsVisibility));
+                    OnPropertyChanged(nameof(LyricsBrush));
+                    OnPropertyChanged(nameof(KaraokeButtonVisibility));
+                }
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(ConstellationVisibility));
+                OnPropertyChanged(nameof(AlbumCoverVisibility));
+                OnPropertyChanged(nameof(ConstellationBrush));
+            }
+        }
+
         public Visibility LyricsVisibility => IsLyricsVisible ? Visibility.Visible : Visibility.Collapsed;
-        public Visibility AlbumCoverVisibility => IsLyricsVisible ? Visibility.Collapsed : Visibility.Visible;
+        public Visibility ConstellationVisibility => IsConstellationVisible ? Visibility.Visible : Visibility.Collapsed;
+        public Visibility AlbumCoverVisibility => (!IsLyricsVisible && !IsConstellationVisible) ? Visibility.Visible : Visibility.Collapsed;
         public SolidColorBrush LyricsBrush => IsLyricsVisible ? AccentBrush : InactiveBrush;
+        public SolidColorBrush ConstellationBrush => IsConstellationVisible ? AccentBrush : InactiveBrush;
 
         public ObservableCollection<LrcLine> CurrentLyricsLines { get; } = new();
         public bool HasLyrics => CurrentLyricsLines.Count > 0;
@@ -710,6 +745,37 @@ namespace KakiEQ_WinUI.ViewModels
 
         public SolidColorBrush RepeatBrush => IsRepeat ? AccentBrush : InactiveBrush;
 
+        private bool _isHarmonicAutomix;
+        public bool IsHarmonicAutomix
+        {
+            get => _isHarmonicAutomix;
+            set
+            {
+                if (_isHarmonicAutomix != value)
+                {
+                    _isHarmonicAutomix = value;
+                    _audioEngine.HarmonicAutomixEnabled = value;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(HarmonicAutomixBrush));
+                    OnPropertyChanged(nameof(HarmonicAutomixTooltip));
+
+                    var settings = _settingsService.LoadSettings();
+                    settings.HarmonicAutomixEnabled = value;
+                    _settingsService.SaveSettings(settings);
+
+                    if (value)
+                    {
+                        ApplyHarmonicOrderToUpcomingQueue();
+                    }
+                }
+            }
+        }
+
+        public SolidColorBrush HarmonicAutomixBrush => IsHarmonicAutomix ? AccentBrush : InactiveBrush;
+        public string HarmonicAutomixTooltip => IsHarmonicAutomix
+            ? "Automix Armónico Inteligente: Activado (Rueda Camelot + BPM)"
+            : "Automix Armónico Inteligente: Desactivado";
+
         private double _volume = 80.0;
         public double Volume
         {
@@ -778,6 +844,23 @@ namespace KakiEQ_WinUI.ViewModels
 
         public Visibility NowPlayingExpandedVisibility => IsNowPlayingExpanded ? Visibility.Visible : Visibility.Collapsed;
         public Visibility BottomPlayerBarVisibility => IsNowPlayingExpanded ? Visibility.Collapsed : Visibility.Visible;
+
+        private bool _isSpectrumAnalyzerEnabled = true;
+        public bool IsSpectrumAnalyzerEnabled
+        {
+            get => _isSpectrumAnalyzerEnabled;
+            set
+            {
+                if (_isSpectrumAnalyzerEnabled != value)
+                {
+                    _isSpectrumAnalyzerEnabled = value;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(SpectrumAnalyzerVisibility));
+                }
+            }
+        }
+
+        public Visibility SpectrumAnalyzerVisibility => IsSpectrumAnalyzerEnabled ? Visibility.Visible : Visibility.Collapsed;
 
         // --- Audio Technical Specifications (NowPlaying only) ---
         private bool _showAudioTechnicalInfo;
@@ -978,11 +1061,13 @@ namespace KakiEQ_WinUI.ViewModels
         public ICommand PreviousCommand { get; }
         public ICommand ToggleShuffleCommand { get; }
         public ICommand ToggleRepeatCommand { get; }
+        public ICommand ToggleHarmonicAutomixCommand { get; }
         public ICommand LikeTrackCommand { get; }
         public ICommand OpenNowPlayingCommand { get; }
         public ICommand CloseNowPlayingCommand { get; }
         public ICommand ToggleNowPlayingQueueCommand { get; }
         public ICommand ToggleLyricsCommand { get; }
+        public ICommand ToggleConstellationCommand { get; }
         public ICommand AddTrackToPlaylistCommand { get; }
 
         public MainViewModel()
@@ -1004,6 +1089,12 @@ namespace KakiEQ_WinUI.ViewModels
             _audioEngine.SetVolume(savedSettings.Volume);
             _audioEngine.CrossfadeEnabled = savedSettings.CrossfadeEnabled;
             _audioEngine.CrossfadeDurationSeconds = savedSettings.CrossfadeDurationSeconds;
+            _audioEngine.VolumeNormalizationEnabled = savedSettings.VolumeNormalizationEnabled;
+            _isHarmonicAutomix = savedSettings.HarmonicAutomixEnabled;
+            _audioEngine.HarmonicAutomixEnabled = savedSettings.HarmonicAutomixEnabled;
+            _audioEngine.StemMorphCrossfadeEnabled = savedSettings.StemMorphCrossfadeEnabled;
+            _audioEngine.WasapiExclusiveEnabled = savedSettings.WasapiExclusiveEnabled;
+            _isSpectrumAnalyzerEnabled = savedSettings.SpectrumAnalyzerEnabled;
             _isLightTheme = !savedSettings.IsDarkMode;
             _showAudioTechnicalInfo = savedSettings.ShowAudioTechnicalInfo;
             RefreshNavBrushes();
@@ -1169,6 +1260,11 @@ namespace KakiEQ_WinUI.ViewModels
                 IsRepeat = !IsRepeat;
             });
 
+            ToggleHarmonicAutomixCommand = new RelayCommand(() =>
+            {
+                IsHarmonicAutomix = !IsHarmonicAutomix;
+            });
+
             LikeTrackCommand = new RelayCommand(async trackObj =>
             {
                 var trackToLike = trackObj as Track ?? CurrentTrack;
@@ -1209,6 +1305,10 @@ namespace KakiEQ_WinUI.ViewModels
             ToggleLyricsCommand = new RelayCommand(() =>
             {
                 IsLyricsVisible = !IsLyricsVisible;
+            });
+            ToggleConstellationCommand = new RelayCommand(() =>
+            {
+                IsConstellationVisible = !IsConstellationVisible;
             });
             ToggleKaraokeCommand = new RelayCommand(async () =>
             {
@@ -1321,6 +1421,128 @@ namespace KakiEQ_WinUI.ViewModels
             });
         }
 
+        private void RecordAutomixHistory(Track? track)
+        {
+            if (track == null || string.IsNullOrWhiteSpace(track.FilePath)) return;
+            _recentAutomixHistory.Enqueue(track.FilePath);
+            _recentAutomixSet.Add(track.FilePath);
+
+            while (_recentAutomixHistory.Count > 25)
+            {
+                string removed = _recentAutomixHistory.Dequeue();
+                if (!_recentAutomixHistory.Contains(removed, StringComparer.OrdinalIgnoreCase))
+                {
+                    _recentAutomixSet.Remove(removed);
+                }
+            }
+        }
+
+        public void ApplyHarmonicOrderToUpcomingQueue()
+        {
+            if (CurrentQueue == null || CurrentQueue.Count <= 1) return;
+
+            int anchorIdx = CurrentQueueIndex >= 0 && CurrentQueueIndex < CurrentQueue.Count
+                ? CurrentQueueIndex
+                : (CurrentTrack != null ? CurrentQueue.IndexOf(CurrentTrack) : -1);
+
+            int startIdx = anchorIdx + 1;
+            if (startIdx >= CurrentQueue.Count - 1) return;
+
+            var anchor = anchorIdx >= 0 ? CurrentQueue[anchorIdx] : CurrentTrack;
+            var upcoming = CurrentQueue.Skip(startIdx).ToList();
+            var sorted = HarmonicAnalysisHelper.SortUpcomingQueueHarmonically(anchor, upcoming);
+
+            for (int i = 0; i < sorted.Count && (startIdx + i) < CurrentQueue.Count; i++)
+            {
+                if (!ReferenceEquals(CurrentQueue[startIdx + i], sorted[i]))
+                {
+                    CurrentQueue[startIdx + i] = sorted[i];
+                }
+            }
+
+            if (CurrentTrack != null)
+            {
+                double nextBpm = (startIdx < CurrentQueue.Count) ? CurrentQueue[startIdx].Bpm : 0;
+                _audioEngine.SetTrackBpmContext(CurrentTrack.Bpm, nextBpm);
+            }
+            if (startIdx < CurrentQueue.Count)
+            {
+                _audioEngine.PrewarmTrackAudioProfile(CurrentQueue[startIdx].FilePath);
+            }
+        }
+
+        public Task<List<Track>> GetAllLibraryTracksAsync() => _dbService.GetAllTracksAsync();
+
+        public int ApplyConstellationRouteToQueue(IReadOnlyList<Track> routeTracks, bool playFirstImmediately = false)
+        {
+            if (routeTracks == null || routeTracks.Count == 0) return 0;
+
+            var orderedRoute = routeTracks
+                .Where(t => t != null && !string.IsNullOrWhiteSpace(t.FilePath))
+                .GroupBy(t => t.FilePath, StringComparer.OrdinalIgnoreCase)
+                .Select(g => g.First())
+                .ToList();
+
+            if (orderedRoute.Count == 0) return 0;
+
+            if (playFirstImmediately || CurrentTrack == null)
+            {
+                CurrentQueue = new ObservableCollection<Track>(orderedRoute);
+                CurrentQueueIndex = 0;
+                OnPropertyChanged(nameof(QueueCountText));
+                if (orderedRoute.Count > 1)
+                {
+                    _audioEngine.PrewarmTrackAudioProfile(orderedRoute[1].FilePath);
+                }
+                _ = PlayTrackAsync(orderedRoute[0]);
+                return orderedRoute.Count;
+            }
+
+            if (CurrentQueue == null)
+                CurrentQueue = new ObservableCollection<Track>();
+
+            if (CurrentQueueIndex < 0 || CurrentQueueIndex >= CurrentQueue.Count)
+            {
+                int foundIdx = CurrentQueue.IndexOf(CurrentTrack);
+                if (foundIdx >= 0)
+                {
+                    CurrentQueueIndex = foundIdx;
+                }
+                else
+                {
+                    CurrentQueue.Clear();
+                    CurrentQueue.Add(CurrentTrack);
+                    CurrentQueueIndex = 0;
+                }
+            }
+
+            while (CurrentQueue.Count > CurrentQueueIndex + 1)
+            {
+                CurrentQueue.RemoveAt(CurrentQueue.Count - 1);
+            }
+
+            int addedCount = 0;
+            foreach (var track in orderedRoute)
+            {
+                if (string.Equals(track.FilePath, CurrentTrack.FilePath, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                CurrentQueue.Add(track);
+                addedCount++;
+            }
+
+            OnPropertyChanged(nameof(QueueCountText));
+
+            if (addedCount > 0 && CurrentQueueIndex + 1 < CurrentQueue.Count)
+            {
+                var nextTrack = CurrentQueue[CurrentQueueIndex + 1];
+                _audioEngine.SetTrackBpmContext(CurrentTrack.Bpm, nextTrack.Bpm);
+                _audioEngine.PrewarmTrackAudioProfile(nextTrack.FilePath);
+            }
+
+            return addedCount;
+        }
+
         public async Task PlayTrackAsync(Track track, List<Track>? contextQueue = null, bool isCrossfade = false, bool recordStats = true)
         {
             if (contextQueue != null)
@@ -1339,6 +1561,18 @@ namespace KakiEQ_WinUI.ViewModels
             }
 
             CurrentTrack = track;
+            RecordAutomixHistory(track);
+
+            if (contextQueue != null && IsHarmonicAutomix)
+            {
+                ApplyHarmonicOrderToUpcomingQueue();
+            }
+
+            double nextBpm = (CurrentQueue != null && CurrentQueueIndex >= 0 && CurrentQueueIndex + 1 < CurrentQueue.Count)
+                ? CurrentQueue[CurrentQueueIndex + 1].Bpm
+                : 0;
+            _audioEngine.SetTrackBpmContext(track.Bpm, nextBpm);
+
             TotalDurationSeconds = track.Duration.TotalSeconds;
             CurrentPositionSeconds = 0;
 
@@ -1368,6 +1602,13 @@ namespace KakiEQ_WinUI.ViewModels
                 await _audioEngine.PlayAsync();
             }
 
+            if ((track.BaseDecibels == null || Math.Abs(track.BaseDecibels.Value) < 0.01) &&
+                Math.Abs(_audioEngine.CurrentNormalizationGainDb) >= 0.05f)
+            {
+                track.BaseDecibels = Math.Round(_audioEngine.CurrentNormalizationGainDb, 1);
+            }
+            UpdateCurrentTrackTechnicalInfo();
+
             IsPlaying = true;
             _timer.Start();
 
@@ -1386,12 +1627,13 @@ namespace KakiEQ_WinUI.ViewModels
                 _homeVm?.OnTrackPlayedRealtime(track);
             }
 
-            // Proactively prioritize current track & upcoming track for instant Karaoke
+            // Proactively prioritize current track & upcoming track for instant Karaoke + zero-delay Crossfade
             KaraokeService.PrioritizeTrack(track);
             if (CurrentQueue != null && CurrentQueueIndex >= 0 && CurrentQueueIndex + 1 < CurrentQueue.Count)
             {
                 var upcoming = CurrentQueue[CurrentQueueIndex + 1];
                 KaraokeService.PrioritizeTrack(upcoming);
+                _audioEngine.PrewarmTrackAudioProfile(upcoming.FilePath);
             }
         }
 
@@ -1420,35 +1662,66 @@ namespace KakiEQ_WinUI.ViewModels
         {
             if (CurrentQueue == null || CurrentQueue.Count == 0)
             {
-                // If queue is empty, pick a random song from library
+                // If queue is empty, pick a song from library (harmonic if Automix enabled, else random)
                 var allLibTracks = await _dbService.GetAllTracksAsync();
                 if (allLibTracks.Count > 0)
                 {
-                    var randomTrack = allLibTracks[Random.Shared.Next(allLibTracks.Count)];
-                    CurrentQueue = new ObservableCollection<Track> { randomTrack };
+                    Track? chosen = IsHarmonicAutomix
+                        ? HarmonicAnalysisHelper.SelectBestHarmonicNextTrack(CurrentTrack, allLibTracks, _recentAutomixSet, allowTopTierVariety: true)
+                        : null;
+                    chosen ??= allLibTracks[Random.Shared.Next(allLibTracks.Count)];
+
+                    CurrentQueue = new ObservableCollection<Track> { chosen };
                     CurrentQueueIndex = 0;
-                    await PlayTrackAsync(randomTrack, isCrossfade: isCrossfade);
+                    await PlayTrackAsync(chosen, isCrossfade: isCrossfade);
                 }
                 return;
             }
 
             if (IsShuffle)
             {
-                CurrentQueueIndex = Random.Shared.Next(CurrentQueue.Count);
+                if (IsHarmonicAutomix && CurrentQueue.Count > 1)
+                {
+                    var harmonicShuffle = HarmonicAnalysisHelper.SelectBestHarmonicNextTrack(
+                        CurrentTrack, CurrentQueue, _recentAutomixSet, allowTopTierVariety: true);
+                    if (harmonicShuffle != null)
+                    {
+                        int idx = CurrentQueue.IndexOf(harmonicShuffle);
+                        if (idx >= 0) CurrentQueueIndex = idx;
+                    }
+                    else
+                    {
+                        CurrentQueueIndex = Random.Shared.Next(CurrentQueue.Count);
+                    }
+                }
+                else
+                {
+                    CurrentQueueIndex = Random.Shared.Next(CurrentQueue.Count);
+                }
             }
             else
             {
-                // Infinite playback: when reaching the last song in an album/playlist/artist, pick a random track from library so music never stops
+                // Infinite playback: when reaching the last song in an album/playlist/artist, pick next from library so music never stops
                 if (CurrentQueueIndex + 1 >= CurrentQueue.Count)
                 {
                     var allLibTracks = await _dbService.GetAllTracksAsync();
                     if (allLibTracks.Count > 0)
                     {
-                        var candidates = allLibTracks.Where(t => t.FilePath != CurrentTrack?.FilePath).ToList();
-                        if (candidates.Count == 0) candidates = allLibTracks;
-                        var nextRandomTrack = candidates[Random.Shared.Next(candidates.Count)];
+                        Track? nextTrackFromLib = null;
+                        if (IsHarmonicAutomix)
+                        {
+                            nextTrackFromLib = HarmonicAnalysisHelper.SelectBestHarmonicNextTrack(
+                                CurrentTrack, allLibTracks, _recentAutomixSet, allowTopTierVariety: true);
+                        }
 
-                        CurrentQueue.Add(nextRandomTrack);
+                        if (nextTrackFromLib == null)
+                        {
+                            var candidates = allLibTracks.Where(t => t.FilePath != CurrentTrack?.FilePath).ToList();
+                            if (candidates.Count == 0) candidates = allLibTracks;
+                            nextTrackFromLib = candidates[Random.Shared.Next(candidates.Count)];
+                        }
+
+                        CurrentQueue.Add(nextTrackFromLib);
                         CurrentQueueIndex = CurrentQueue.Count - 1;
                     }
                     else
@@ -1458,6 +1731,23 @@ namespace KakiEQ_WinUI.ViewModels
                 }
                 else
                 {
+                    if (IsHarmonicAutomix && CurrentQueueIndex + 1 < CurrentQueue.Count)
+                    {
+                        var upcomingCandidates = CurrentQueue.Skip(CurrentQueueIndex + 1).ToList();
+                        var bestUpcoming = HarmonicAnalysisHelper.SelectBestHarmonicNextTrack(
+                            CurrentTrack, upcomingCandidates, _recentAutomixSet, allowTopTierVariety: false);
+
+                        if (bestUpcoming != null)
+                        {
+                            int bestIdx = CurrentQueue.IndexOf(bestUpcoming);
+                            int nextSlot = CurrentQueueIndex + 1;
+                            if (bestIdx > nextSlot)
+                            {
+                                CurrentQueue.Move(bestIdx, nextSlot);
+                            }
+                        }
+                    }
+
                     CurrentQueueIndex++;
                 }
             }
@@ -1476,6 +1766,14 @@ namespace KakiEQ_WinUI.ViewModels
                 ? CurrentQueueIndex + 1
                 : CurrentQueue.Count;
             CurrentQueue.Insert(insertIndex, track);
+            if (insertIndex == CurrentQueueIndex + 1)
+            {
+                if (CurrentTrack != null)
+                {
+                    _audioEngine.SetTrackBpmContext(CurrentTrack.Bpm, track.Bpm);
+                }
+                _audioEngine.PrewarmTrackAudioProfile(track.FilePath);
+            }
         }
 
         public void AddTrackToQueue(Track track)

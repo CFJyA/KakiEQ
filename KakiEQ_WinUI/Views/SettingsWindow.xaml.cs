@@ -88,6 +88,10 @@ namespace KakiEQ_WinUI.Views
             CrossfadeSliderContainer.Opacity = settings.CrossfadeEnabled ? 1.0 : 0.45;
             CrossfadeSliderContainer.IsHitTestVisible = settings.CrossfadeEnabled;
 
+            StemMorphCrossfadeToggle.IsOn = settings.StemMorphCrossfadeEnabled;
+            VolumeNormalizationToggle.IsOn = settings.VolumeNormalizationEnabled;
+            SpectrumAnalyzerToggle.IsOn = settings.SpectrumAnalyzerEnabled;
+            WasapiExclusiveToggle.IsOn = settings.WasapiExclusiveEnabled;
             AudioTechInfoToggle.IsOn = settings.ShowAudioTechnicalInfo;
 
             // Set current theme to window
@@ -212,6 +216,23 @@ namespace KakiEQ_WinUI.Views
             }
         }
 
+        private void VolumeNormalizationToggle_Toggled(object sender, RoutedEventArgs e)
+        {
+            if (_isInitializing) return;
+
+            bool enabled = VolumeNormalizationToggle.IsOn;
+
+            var vm = MainViewModel.Instance;
+            if (vm != null)
+            {
+                vm.AudioEngine.VolumeNormalizationEnabled = enabled;
+
+                var settings = vm.SettingsService.LoadSettings();
+                settings.VolumeNormalizationEnabled = enabled;
+                vm.SettingsService.SaveSettings(settings);
+            }
+        }
+
         private void StartupToggle_Toggled(object sender, RoutedEventArgs e)
         {
             if (_isInitializing) return;
@@ -242,6 +263,98 @@ namespace KakiEQ_WinUI.Views
                 var settings = vm.SettingsService.LoadSettings();
                 settings.ShowAudioTechnicalInfo = isEnabled;
                 vm.SettingsService.SaveSettings(settings);
+            }
+        }
+
+        private void StemMorphCrossfadeToggle_Toggled(object sender, RoutedEventArgs e)
+        {
+            if (_isInitializing) return;
+
+            bool enabled = StemMorphCrossfadeToggle.IsOn;
+
+            var vm = MainViewModel.Instance;
+            if (vm != null)
+            {
+                vm.AudioEngine.StemMorphCrossfadeEnabled = enabled;
+
+                var settings = vm.SettingsService.LoadSettings();
+                settings.StemMorphCrossfadeEnabled = enabled;
+                vm.SettingsService.SaveSettings(settings);
+            }
+        }
+
+        private void SpectrumAnalyzerToggle_Toggled(object sender, RoutedEventArgs e)
+        {
+            if (_isInitializing) return;
+
+            bool enabled = SpectrumAnalyzerToggle.IsOn;
+
+            var vm = MainViewModel.Instance;
+            if (vm != null)
+            {
+                vm.IsSpectrumAnalyzerEnabled = enabled;
+
+                var settings = vm.SettingsService.LoadSettings();
+                settings.SpectrumAnalyzerEnabled = enabled;
+                vm.SettingsService.SaveSettings(settings);
+            }
+        }
+
+        private void WasapiExclusiveToggle_Toggled(object sender, RoutedEventArgs e)
+        {
+            if (_isInitializing) return;
+
+            bool enabled = WasapiExclusiveToggle.IsOn;
+
+            var vm = MainViewModel.Instance;
+            if (vm != null)
+            {
+                vm.AudioEngine.WasapiExclusiveEnabled = enabled;
+
+                var settings = vm.SettingsService.LoadSettings();
+                settings.WasapiExclusiveEnabled = enabled;
+                vm.SettingsService.SaveSettings(settings);
+            }
+        }
+
+        private void SettingsRootGrid_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            double w = e.NewSize.Width;
+            if (w <= 0) return;
+
+            bool isNarrow = w < 560;
+            if (SettingsScrollViewer != null)
+            {
+                SettingsScrollViewer.Padding = isNarrow
+                    ? new Thickness(14, 14, 14, 24)
+                    : new Thickness(28, 20, 28, 32);
+            }
+
+            if (CrossfadeSliderContainer != null)
+            {
+                CrossfadeSliderContainer.Margin = isNarrow
+                    ? new Thickness(0, 4, 0, 0)
+                    : new Thickness(56, 0, 0, 0);
+            }
+
+            if (PickFolderButton != null)
+            {
+                if (isNarrow)
+                {
+                    Grid.SetRow(PickFolderButton, 1);
+                    Grid.SetColumn(PickFolderButton, 0);
+                    Grid.SetColumnSpan(PickFolderButton, 3);
+                    PickFolderButton.Margin = new Thickness(0, 10, 0, 0);
+                    PickFolderButton.HorizontalAlignment = HorizontalAlignment.Stretch;
+                }
+                else
+                {
+                    Grid.SetRow(PickFolderButton, 0);
+                    Grid.SetColumn(PickFolderButton, 2);
+                    Grid.SetColumnSpan(PickFolderButton, 1);
+                    PickFolderButton.Margin = new Thickness(0);
+                    PickFolderButton.HorizontalAlignment = HorizontalAlignment.Right;
+                }
             }
         }
     }

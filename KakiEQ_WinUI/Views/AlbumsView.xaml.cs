@@ -130,5 +130,24 @@ namespace KakiEQ_WinUI.Views
                 }
             }
         }
+
+        private void AlbumsHeaderGrid_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            if (AlbumsSearchCountPanel == null) return;
+            if (e.NewSize.Width < 680)
+            {
+                Grid.SetRow(AlbumsSearchCountPanel, 1);
+                Grid.SetColumn(AlbumsSearchCountPanel, 0);
+                Grid.SetColumnSpan(AlbumsSearchCountPanel, 2);
+                AlbumsSearchCountPanel.HorizontalAlignment = HorizontalAlignment.Left;
+            }
+            else
+            {
+                Grid.SetRow(AlbumsSearchCountPanel, 0);
+                Grid.SetColumn(AlbumsSearchCountPanel, 1);
+                Grid.SetColumnSpan(AlbumsSearchCountPanel, 1);
+                AlbumsSearchCountPanel.HorizontalAlignment = HorizontalAlignment.Right;
+            }
+        }
     }
 }

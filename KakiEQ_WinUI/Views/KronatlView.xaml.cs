@@ -51,5 +51,13 @@ namespace KakiEQ_WinUI.Views
                 ViewModel.PlaySeasonTop30Command.Execute(season);
             }
         }
+
+        private void KronatlLoreBanner_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            if (KronatlPaletteChipsPanel != null)
+            {
+                KronatlPaletteChipsPanel.Visibility = e.NewSize.Width < 760 ? Visibility.Collapsed : Visibility.Visible;
+            }
+        }
     }
 }

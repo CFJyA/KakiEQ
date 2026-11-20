@@ -19,13 +19,17 @@
         </Grid.RowDefinitions>
 
         <!-- Header -->
-        <Grid Grid.Row="0" Margin="0,0,0,20" helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
-            <StackPanel VerticalAlignment="Center" helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
+        <Grid Grid.Row="0" Margin="0,0,0,20" ColumnSpacing="12" helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0" VerticalAlignment="Center" helpers:FluidAnimationHelper.IsFluidLayoutEnabled="True">
                 <TextBlock Text="Playlists" FontSize="26" FontWeight="Bold" Foreground="{ThemeResource AppTextPrimary}"/>
-                <TextBlock Text="Crea listas de reproducción personalizadas para cada momento" FontSize="13" Foreground="{ThemeResource AppTextSubtle}" Margin="0,4,0,0"/>
+                <TextBlock Text="Crea listas de reproducción personalizadas para cada momento" FontSize="13" Foreground="{ThemeResource AppTextSubtle}" Margin="0,4,0,0" TextWrapping="Wrap"/>
             </StackPanel>
 
-            <Button HorizontalAlignment="Right" VerticalAlignment="Center"
+            <Button Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center"
                     Click="CreatePlaylist_Click"
                     Background="{ThemeResource AppAccent}" Foreground="#121212"
                     CornerRadius="20" Padding="16,8" FontWeight="SemiBold"
