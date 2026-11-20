@@ -32,6 +32,8 @@ namespace KakiEQ_WinUI.ViewModels
         private readonly KronatlService _kronatlService;
         private readonly DispatcherQueueTimer _timer;
         private readonly DispatcherQueue _dispatcherQueue;
+        private volatile bool _isSuppressingSeek;
+        public bool IsSuppressingSeek => _isSuppressingSeek;
         private readonly Queue<string> _recentAutomixHistory = new();
         private readonly HashSet<string> _recentAutomixSet = new(StringComparer.OrdinalIgnoreCase);
 
@@ -1122,6 +1124,7 @@ namespace KakiEQ_WinUI.ViewModels
             _timer.Interval = TimeSpan.FromMilliseconds(220);
             _timer.Tick += (s, e) =>
             {
+                if (_isSuppressingSeek) return;
                 if (_audioEngine.IsPlaying)
                 {
                     CurrentPositionSeconds = _audioEngine.CurrentPosition.TotalSeconds;
@@ -1573,33 +1576,51 @@ namespace KakiEQ_WinUI.ViewModels
                 : 0;
             _audioEngine.SetTrackBpmContext(track.Bpm, nextBpm);
 
-            TotalDurationSeconds = track.Duration.TotalSeconds;
-            CurrentPositionSeconds = 0;
-
-            if (IsKaraokeProcessing)
+            _isSuppressingSeek = true;
+            try
             {
-                _karaokeCts?.Cancel();
-                IsKaraokeProcessing = false;
-            }
+                CurrentPositionSeconds = 0;
+                TotalDurationSeconds = track.Duration.TotalSeconds;
 
-            string fileToPlay = track.FilePath;
-            if (IsKaraokeActive)
-            {
-                string? instPath = KaraokeService.GetInstrumentalPath(track);
-                if (!string.IsNullOrEmpty(instPath) && File.Exists(instPath))
+                if (IsKaraokeProcessing)
                 {
-                    fileToPlay = instPath;
+                    _karaokeCts?.Cancel();
+                    IsKaraokeProcessing = false;
                 }
-                else
-                {
-                    IsKaraokeActive = false;
-                }
-            }
 
-            await _audioEngine.LoadFileAsync(fileToPlay, isCrossfade);
-            if (!isCrossfade)
+                string fileToPlay = track.FilePath;
+                if (IsKaraokeActive)
+                {
+                    string? instPath = KaraokeService.GetInstrumentalPath(track);
+                    if (!string.IsNullOrEmpty(instPath) && File.Exists(instPath))
+                    {
+                        fileToPlay = instPath;
+                    }
+                    else
+                    {
+                        IsKaraokeActive = false;
+                    }
+                }
+
+                await _audioEngine.LoadFileAsync(fileToPlay, isCrossfade);
+                if (!isCrossfade)
+                {
+                    await _audioEngine.PlayAsync();
+                }
+
+                double loadedDurationSecs = _audioEngine.TotalDuration.TotalSeconds;
+                double effectiveDurationSecs = track.Duration.TotalSeconds > 0
+                    ? track.Duration.TotalSeconds
+                    : loadedDurationSecs;
+                if (effectiveDurationSecs > 0)
+                {
+                    TotalDurationSeconds = effectiveDurationSecs;
+                }
+                CurrentPositionSeconds = _audioEngine.CurrentPosition.TotalSeconds;
+            }
+            finally
             {
-                await _audioEngine.PlayAsync();
+                _isSuppressingSeek = false;
             }
 
             if ((track.BaseDecibels == null || Math.Abs(track.BaseDecibels.Value) < 0.01) &&
@@ -1612,18 +1633,14 @@ namespace KakiEQ_WinUI.ViewModels
             IsPlaying = true;
             _timer.Start();
 
-            double effectiveDurationSecs = track.Duration.TotalSeconds > 0
-                ? track.Duration.TotalSeconds
+            double recordDurationSecs = TotalDurationSeconds > 0
+                ? TotalDurationSeconds
                 : _audioEngine.TotalDuration.TotalSeconds;
-            if (TotalDurationSeconds <= 0 && effectiveDurationSecs > 0)
-            {
-                TotalDurationSeconds = effectiveDurationSecs;
-            }
 
             _smtcService?.UpdateMetadata(track, true);
             if (recordStats)
             {
-                _ = RecordPlayAndSyncKronatlAsync(track, effectiveDurationSecs);
+                _ = RecordPlayAndSyncKronatlAsync(track, recordDurationSecs);
                 _homeVm?.OnTrackPlayedRealtime(track);
             }
 

@@ -21,10 +21,12 @@ namespace KakiEQ_WinUI.Services.Audio
             public float HpStateR;
             public float AlphaLow = 0.029f;
             public float AlphaHigh = 0.43f;
+            public int Channels = 2;
 
-            public void Configure(int sampleRate)
+            public void Configure(int sampleRate, int channels = 2)
             {
                 int sr = Math.Max(8000, sampleRate);
+                Channels = Math.Max(1, channels);
                 AlphaLow = 1f - MathF.Exp(-2f * MathF.PI * 210f / sr);
                 AlphaHigh = 1f - MathF.Exp(-2f * MathF.PI * 4200f / sr);
                 Reset();
@@ -77,7 +79,6 @@ namespace KakiEQ_WinUI.Services.Audio
         private DSPProcedure? _newStemDspProc;
         private readonly StemFilterState _oldStemState = new();
         private readonly StemFilterState _newStemState = new();
-        private int _stemCrossfadeChannels = 2;
 
         // FFT Spectrum Analyzer & WASAPI Exclusive state
         private readonly float[] _fftBuffer = new float[1024];
@@ -282,10 +283,11 @@ namespace KakiEQ_WinUI.Services.Audio
 
         public BassAudioEngine()
         {
-            // Configure ultra-low latency BASS parameters to prevent multi-device audio drift (desfase)
-            Bass.Configure(Configuration.UpdatePeriod, 5);
-            Bass.Configure(Configuration.DeviceBufferLength, 15);
-            Bass.Configure(Configuration.PlaybackBufferLength, 80);
+            // Configure BASS for FloatDSP stem morphing and sufficient headroom during dual-stream crossfade transitions
+            Bass.Configure(Configuration.FloatDSP, true);
+            Bass.Configure(Configuration.UpdatePeriod, 10);
+            Bass.Configure(Configuration.DeviceBufferLength, 25);
+            Bass.Configure(Configuration.PlaybackBufferLength, 180);
 
             int primaryDevice = FindPrimaryPhysicalBassDevice();
             if (!Bass.Init(primaryDevice, 48000, DeviceInitFlags.Default, IntPtr.Zero))
@@ -348,7 +350,8 @@ namespace KakiEQ_WinUI.Services.Audio
                 if (_crossfadeTriggeredForCurrentTrack || _stream == 0 || (handle != 0 && channel != _stream)) return;
 
                 double totalSec = TotalDuration.TotalSeconds;
-                double effectiveEndSec = (_currentTrackMusicalEndSec > 5.0 && _currentTrackMusicalEndSec < totalSec)
+                double curPosSec = CurrentPosition.TotalSeconds;
+                double effectiveEndSec = (_currentTrackMusicalEndSec > 5.0 && _currentTrackMusicalEndSec < totalSec && curPosSec < _currentTrackMusicalEndSec - 1.2)
                     ? _currentTrackMusicalEndSec
                     : totalSec;
                 double crossSec = GetEffectiveCrossfadeDurationSeconds(effectiveEndSec);
@@ -357,7 +360,7 @@ namespace KakiEQ_WinUI.Services.Audio
 
                 if (effectiveEndSec > crossSec + 1.0)
                 {
-                    double remainingSeconds = effectiveEndSec - CurrentPosition.TotalSeconds;
+                    double remainingSeconds = effectiveEndSec - curPosSec;
                     if (remainingSeconds > crossSec + 2.2)
                     {
                         System.Diagnostics.Debug.WriteLine($"[Crossfade Guard] False trigger rejected. Remaining: {remainingSeconds:F1}s vs Crossfade: {crossSec:F1}s");
@@ -457,41 +460,42 @@ namespace KakiEQ_WinUI.Services.Audio
                         double scanTailSec = Math.Min(8.0, totalSec * 0.30);
                         double tailStart = Math.Max(0.0, totalSec - scanTailSec);
                         long tailByte = Bass.ChannelSeconds2Bytes(dec, tailStart);
-                        Bass.ChannelSetPosition(dec, tailByte, PositionFlags.Bytes);
-
-                        double curSec = tailStart;
-                        double lastActiveSec = tailStart;
-                        bool sawTailSignal = false;
-                        while (true)
+                        if (Bass.ChannelSetPosition(dec, tailByte, PositionFlags.Bytes))
                         {
-                            int read = Bass.ChannelGetData(dec, buf50, buf50.Length * sizeof(float));
-                            if (read <= 0) break;
-                            int samples = read / sizeof(float);
-                            int framesRead = samples / ch;
-                            if (framesRead <= 0) break;
-
-                            double blockDur = (double)framesRead / sr;
-                            double sumSq = 0;
-                            for (int i = 0; i < samples; i++)
+                            double curSec = tailStart;
+                            double lastActiveSec = tailStart;
+                            bool sawTailSignal = false;
+                            while (true)
                             {
-                                float s = buf50[i];
-                                float abs = MathF.Abs(s);
-                                if (abs > maxPeak) maxPeak = abs;
-                                sumSq += s * s;
+                                int read = Bass.ChannelGetData(dec, buf50, buf50.Length * sizeof(float));
+                                if (read <= 0) break;
+                                int samples = read / sizeof(float);
+                                int framesRead = samples / ch;
+                                if (framesRead <= 0) break;
+
+                                double blockDur = (double)framesRead / sr;
+                                double sumSq = 0;
+                                for (int i = 0; i < samples; i++)
+                                {
+                                    float s = buf50[i];
+                                    float abs = MathF.Abs(s);
+                                    if (abs > maxPeak) maxPeak = abs;
+                                    sumSq += s * s;
+                                }
+
+                                double rms = Math.Sqrt(sumSq / samples);
+                                curSec += blockDur;
+                                if (rms >= 0.0018) // > -55 dBFS
+                                {
+                                    lastActiveSec = curSec;
+                                    sawTailSignal = true;
+                                }
                             }
 
-                            double rms = Math.Sqrt(sumSq / samples);
-                            curSec += blockDur;
-                            if (rms >= 0.0079) // > -42 dBFS
+                            if (sawTailSignal)
                             {
-                                lastActiveSec = curSec;
-                                sawTailSignal = true;
+                                outroEndSec = Math.Min(totalSec, Math.Max(totalSec - 3.0, lastActiveSec + 0.20));
                             }
-                        }
-
-                        if (sawTailSignal)
-                        {
-                            outroEndSec = Math.Min(totalSec, Math.Max(totalSec * 0.72, lastActiveSec + 0.25));
                         }
                     }
 
@@ -664,12 +668,17 @@ namespace KakiEQ_WinUI.Services.Audio
             if (!_stemMorphCrossfadeEnabled || buffer == IntPtr.Zero || length <= 0) return;
 
             float p = Math.Clamp(_currentCrossfadeProgress, 0f, 1f);
-            float bassGain = MathF.Pow(1f - p, 2.8f);
-            float sideGain = MathF.Pow(1f - p, 1.9f);
-            float vocalGain = MathF.Min(1.22f, MathF.Pow(1f - p, 0.55f) * 1.15f);
-            float highGain = MathF.Pow(1f - p, 1.4f);
+            // Bass (<210 Hz) exits in the first 45% so incoming kick/bass takes over cleanly without mud
+            float bassGain = p < 0.45f ? MathF.Cos((p / 0.45f) * (MathF.PI * 0.5f)) : 0f;
+            // Stereo instrumental side fades smoothly across the transition
+            float sideGain = MathF.Pow(1f - p, 1.75f);
+            // Center Mid Vocal (210 Hz - 4.2 kHz) stays upfront during the first 58% (singing over the new beat), then fades out
+            float vocalGain = p < 0.58f
+                ? (1.0f - (p / 0.58f) * 0.10f)
+                : (0.90f * MathF.Cos(((p - 0.58f) / 0.42f) * (MathF.PI * 0.5f)));
+            float highGain = MathF.Pow(1f - p, 1.35f);
 
-            ApplyStemMorphInPlace((float*)buffer, length / sizeof(float), _stemCrossfadeChannels, _oldStemState, bassGain, vocalGain, sideGain, highGain);
+            ApplyStemMorphInPlace((float*)buffer, length / sizeof(float), _oldStemState.Channels, _oldStemState, bassGain, vocalGain, sideGain, highGain);
         }
 
         private unsafe void OnNewStreamStemDsp(int handle, int channel, IntPtr buffer, int length, IntPtr user)
@@ -677,12 +686,17 @@ namespace KakiEQ_WinUI.Services.Audio
             if (!_stemMorphCrossfadeEnabled || buffer == IntPtr.Zero || length <= 0) return;
 
             float p = Math.Clamp(_currentCrossfadeProgress, 0f, 1f);
-            float bassGain = MathF.Min(1f, MathF.Pow(p, 0.55f) * 1.08f);
-            float sideGain = MathF.Min(1f, MathF.Pow(p, 0.65f) * 1.05f);
-            float vocalGain = p < 0.42f ? (p / 0.42f) * 0.28f : (0.28f + ((p - 0.42f) / 0.58f) * 0.72f);
-            float highGain = MathF.Pow(p, 0.8f);
+            // Incoming Bass (<210 Hz) locks in during the first 45% to replace outgoing bass
+            float bassGain = p < 0.45f ? MathF.Sin((p / 0.45f) * (MathF.PI * 0.5f)) : 1.0f;
+            // Incoming Stereo Instrumental rises smoothly from the start
+            float sideGain = MathF.Sin(p * (MathF.PI * 0.5f));
+            // Incoming Center Mid Vocal stays ducked for the first 48% to avoid vocal clash, then rises to 100%
+            float vocalGain = p < 0.48f
+                ? (p / 0.48f) * 0.18f
+                : (0.18f + 0.82f * MathF.Sin(((p - 0.48f) / 0.52f) * (MathF.PI * 0.5f)));
+            float highGain = MathF.Sin(p * (MathF.PI * 0.5f));
 
-            ApplyStemMorphInPlace((float*)buffer, length / sizeof(float), _stemCrossfadeChannels, _newStemState, bassGain, vocalGain, sideGain, highGain);
+            ApplyStemMorphInPlace((float*)buffer, length / sizeof(float), _newStemState.Channels, _newStemState, bassGain, vocalGain, sideGain, highGain);
         }
 
         private static unsafe void ApplyStemMorphInPlace(
@@ -709,7 +723,7 @@ namespace KakiEQ_WinUI.Services.Audio
                     float low = st.LpL;
                     float band = st.HpStateL - low;
                     float high = s - st.HpStateL;
-                    data[i] = low * bassGain + band * vocalGain + high * highGain;
+                    data[i] = Math.Clamp(low * bassGain + band * vocalGain + high * highGain, -0.98f, 0.98f);
                 }
                 return;
             }
@@ -738,8 +752,8 @@ namespace KakiEQ_WinUI.Services.Audio
                 float morphMid = midVocal * vocalGain;
                 float morphSide = sideInst * sideGain;
 
-                data[i] = lowL * bassGain + morphMid + morphSide + highL * highGain;
-                data[i + 1] = lowR * bassGain + morphMid - morphSide + highR * highGain;
+                data[i] = Math.Clamp(lowL * bassGain + morphMid + morphSide + highL * highGain, -0.98f, 0.98f);
+                data[i + 1] = Math.Clamp(lowR * bassGain + morphMid - morphSide + highR * highGain, -0.98f, 0.98f);
             }
         }
 
@@ -788,13 +802,25 @@ namespace KakiEQ_WinUI.Services.Audio
                     {
                         double progress = Math.Clamp(sw.Elapsed.TotalMilliseconds / Math.Max(100, crossfadeMs), 0.0, 1.0);
                         _currentCrossfadeProgress = (float)progress;
-                        float inGain = (float)Math.Sin(progress * (Math.PI * 0.5));
-                        float outGain = (float)Math.Cos(progress * (Math.PI * 0.5));
 
                         lock (_lock)
                         {
                             if (token.IsCancellationRequested || _stream != newStream)
                                 break;
+
+                            bool stemMorphActive = _stemMorphCrossfadeEnabled && _oldStreamStemDspHandle != 0 && _newStreamStemDspHandle != 0;
+                            float inGain;
+                            float outGain;
+                            if (stemMorphActive)
+                            {
+                                inGain = Math.Clamp((float)(progress / 0.10), 0f, 1f);
+                                outGain = Math.Clamp((float)((1.0 - progress) / 0.10), 0f, 1f);
+                            }
+                            else
+                            {
+                                inGain = (float)Math.Sin(progress * (Math.PI * 0.5));
+                                outGain = (float)Math.Cos(progress * (Math.PI * 0.5));
+                            }
 
                             float targetVol = _multiOutput.GetPrimaryDeviceEffectiveVolume();
                             if (_wasapiExclusiveEnabled && _exclusiveOut != null)
@@ -1110,7 +1136,8 @@ namespace KakiEQ_WinUI.Services.Audio
                     {
                         int oldStream = _stream;
                         double oldTotalSec = TotalDuration.TotalSeconds;
-                        double effectiveCrossSec = GetEffectiveCrossfadeDurationSeconds(oldTotalSec);
+                        double oldRemainingSec = Math.Max(1.2, oldTotalSec - CurrentPosition.TotalSeconds);
+                        double effectiveCrossSec = Math.Min(GetEffectiveCrossfadeDurationSeconds(oldTotalSec), oldRemainingSec);
                         int crossfadeMs = (int)Math.Round(Math.Clamp(effectiveCrossSec, 1.0, 10.0) * 1000.0);
 
                         float currentOldVol;
@@ -1248,14 +1275,15 @@ namespace KakiEQ_WinUI.Services.Audio
             }
 
             int srNew = 44100;
+            int chNew = 2;
             if (Bass.ChannelGetInfo(newStream, out var infoNew))
             {
                 srNew = Math.Max(8000, infoNew.Frequency);
+                chNew = Math.Max(1, infoNew.Channels);
             }
 
-            _stemCrossfadeChannels = chOld;
-            _oldStemState.Configure(srOld);
-            _newStemState.Configure(srNew);
+            _oldStemState.Configure(srOld, chOld);
+            _newStemState.Configure(srNew, chNew);
             _currentCrossfadeProgress = 0.0f;
 
             _oldStreamStemDspHandle = Bass.ChannelSetDSP(oldStream, _oldStemDspProc!, IntPtr.Zero, 50);
@@ -1425,15 +1453,16 @@ namespace KakiEQ_WinUI.Services.Audio
             if (!IsPlaying) return;
 
             double totalSec = TotalDuration.TotalSeconds;
-            double effectiveEndSec = (_currentTrackMusicalEndSec > 5.0 && _currentTrackMusicalEndSec < totalSec)
+            double curPosSec = CurrentPosition.TotalSeconds;
+            double effectiveEndSec = (_currentTrackMusicalEndSec > 5.0 && _currentTrackMusicalEndSec < totalSec && curPosSec < _currentTrackMusicalEndSec - 1.2)
                 ? _currentTrackMusicalEndSec
                 : totalSec;
             double crossSec = GetEffectiveCrossfadeDurationSeconds(effectiveEndSec);
 
             if (crossSec < 1.0 || effectiveEndSec <= crossSec + 1.0) return;
 
-            double remaining = effectiveEndSec - CurrentPosition.TotalSeconds;
-            if (remaining <= crossSec + 0.18 && remaining >= -0.5)
+            double remaining = effectiveEndSec - curPosSec;
+            if (remaining <= crossSec + 0.25 && (totalSec - curPosSec) >= 0.7)
             {
                 OnCrossfadeTriggerSync(0, _stream, 0, IntPtr.Zero);
             }
@@ -1521,6 +1550,20 @@ namespace KakiEQ_WinUI.Services.Audio
             {
                 if (_stream != 0)
                 {
+                    if (_fadingOutStream != 0)
+                    {
+                        StopAndFreeFadingOutStreamLocked();
+                        float restoreVol = _multiOutput.GetPrimaryDeviceEffectiveVolume();
+                        if (_wasapiExclusiveEnabled && _exclusiveOut != null)
+                        {
+                            _exclusiveNewGain = restoreVol;
+                        }
+                        else
+                        {
+                            _multiOutput.UpdatePrimaryDeviceVolume();
+                        }
+                    }
+
                     _multiOutput.FlushSecondaryBuffers();
                     long bytes = Bass.ChannelSeconds2Bytes(_stream, position.TotalSeconds);
                     Bass.ChannelSetPosition(_stream, bytes, PositionFlags.Bytes);
@@ -1532,13 +1575,13 @@ namespace KakiEQ_WinUI.Services.Audio
                         if (totalBytes > 0)
                         {
                             double totalSec = Bass.ChannelBytes2Seconds(_stream, totalBytes);
-                            double effectiveEndSec = (_currentTrackMusicalEndSec > 5.0 && _currentTrackMusicalEndSec < totalSec)
+                            double effectiveEndSec = (_currentTrackMusicalEndSec > 5.0 && _currentTrackMusicalEndSec < totalSec && position.TotalSeconds < _currentTrackMusicalEndSec - 1.2)
                                 ? _currentTrackMusicalEndSec
                                 : totalSec;
                             double crossSec = GetEffectiveCrossfadeDurationSeconds(effectiveEndSec);
                             double triggerSec = Math.Max(0.5, effectiveEndSec - crossSec - 0.18);
 
-                            if (crossSec >= 1.0 && position.TotalSeconds < triggerSec && effectiveEndSec > crossSec + 1.0)
+                            if (totalSec - position.TotalSeconds > 0.8)
                             {
                                 _crossfadeTriggeredForCurrentTrack = false;
                                 if (_crossfadeSyncHandle != 0)
@@ -1546,10 +1589,14 @@ namespace KakiEQ_WinUI.Services.Audio
                                     Bass.ChannelRemoveSync(_stream, _crossfadeSyncHandle);
                                     _crossfadeSyncHandle = 0;
                                 }
-                                long triggerBytes = Bass.ChannelSeconds2Bytes(_stream, triggerSec);
-                                if (triggerBytes > 0 && triggerBytes < totalBytes)
+
+                                if (crossSec >= 1.0 && position.TotalSeconds < triggerSec && effectiveEndSec > crossSec + 1.0)
                                 {
-                                    _crossfadeSyncHandle = Bass.ChannelSetSync(_stream, SyncFlags.Position, triggerBytes, _crossfadeSyncProc!, IntPtr.Zero);
+                                    long triggerBytes = Bass.ChannelSeconds2Bytes(_stream, triggerSec);
+                                    if (triggerBytes > 0 && triggerBytes < totalBytes)
+                                    {
+                                        _crossfadeSyncHandle = Bass.ChannelSetSync(_stream, SyncFlags.Position, triggerBytes, _crossfadeSyncProc!, IntPtr.Zero);
+                                    }
                                 }
                             }
                         }

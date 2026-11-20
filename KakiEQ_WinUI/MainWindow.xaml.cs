@@ -648,6 +648,7 @@ namespace KakiEQ_WinUI
 
         private void SeekSlider_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
         {
+            if (ViewModel.IsSuppressingSeek) return;
             if (sender is Slider && Math.Abs(e.NewValue - ViewModel.CurrentPositionSeconds) > 1.8)
             {
                 ViewModel.SeekTo(e.NewValue);
