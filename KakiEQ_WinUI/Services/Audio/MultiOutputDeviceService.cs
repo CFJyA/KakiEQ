@@ -15,6 +15,16 @@ namespace KakiEQ_WinUI.Services.Audio
         private int _currentStreamHandle = 0;
         private int _dspHandle = 0;
         private readonly DSPProcedure _dspProc;
+        private int _fadeOutStreamHandle = 0;
+        private int _fadeOutDspHandle = 0;
+        private readonly DSPProcedure _fadeOutDspProc;
+        private int _fadeOutSampleRate = 48000;
+        private int _fadeOutChannels = 2;
+        private bool _fadeOutIsFloat = true;
+        private readonly Dictionary<int, (int PushHandle, float StartVol)> _fadeOutSecondaryPushEntries = new();
+        private volatile int[] _activeFadeOutPushHandles = Array.Empty<int>();
+        private volatile float _secondaryOldCrossfadeRatio = 1.0f;
+        private volatile float _secondaryNewCrossfadeRatio = 1.0f;
         private AudioOutputDevice[] _activeSecondaryDevices = Array.Empty<AudioOutputDevice>();
         private AudioOutputDevice? _primaryDevice;
 
@@ -51,6 +61,7 @@ namespace KakiEQ_WinUI.Services.Audio
             _dispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
             Devices = new ReadOnlyObservableCollection<AudioOutputDevice>(_devices);
             _dspProc = OnDspAudioBlock;
+            _fadeOutDspProc = OnFadeOutDspAudioBlock;
             RefreshDevices();
         }
 
@@ -85,7 +96,7 @@ namespace KakiEQ_WinUI.Services.Audio
                     if (d.PushStreamHandle != 0)
                     {
                         float preampMultiplier = d.EqIsEnabled ? MathF.Pow(10f, d.EqPreampGain / 20f) : 1.0f;
-                        float localVol = d.IsMuted ? 0f : Math.Clamp(d.Volume * _masterVolume * preampMultiplier * _normalizationMultiplier, 0f, 2.0f);
+                        float localVol = d.IsMuted ? 0f : Math.Clamp(d.Volume * _masterVolume * preampMultiplier * _normalizationMultiplier, 0f, 2.0f) * _secondaryNewCrossfadeRatio;
                         Bass.ChannelSetAttribute(d.PushStreamHandle, ChannelAttribute.Volume, localVol);
                     }
                 }
@@ -340,10 +351,25 @@ namespace KakiEQ_WinUI.Services.Audio
             }
         }
 
-        public void AttachToStream(int streamHandle, bool updatePrimaryVolume = true)
+        public void AttachToStream(int streamHandle, bool updatePrimaryVolume = true, int fadeOutStreamHandle = 0)
         {
             lock (_lock)
             {
+                StopFadeOutSecondaryStreamsLocked();
+
+                // Prepare parallel fade-out secondary push streams when transitioning between two active streams with multi-output devices
+                if (fadeOutStreamHandle != 0 && _activeSecondaryDevices.Length > 0)
+                {
+                    StartFadeOutSecondaryStreamsLocked(fadeOutStreamHandle);
+                    _secondaryOldCrossfadeRatio = 1.0f;
+                    _secondaryNewCrossfadeRatio = 0.0f;
+                }
+                else
+                {
+                    _secondaryOldCrossfadeRatio = 1.0f;
+                    _secondaryNewCrossfadeRatio = 1.0f;
+                }
+
                 if (_currentStreamHandle != 0 && _dspHandle != 0)
                 {
                     Bass.ChannelRemoveDSP(_currentStreamHandle, _dspHandle);
@@ -381,6 +407,153 @@ namespace KakiEQ_WinUI.Services.Audio
                 if (updatePrimaryVolume)
                 {
                     UpdatePrimaryDeviceVolume();
+                }
+            }
+        }
+
+        private void StartFadeOutSecondaryStreamsLocked(int fadeOutStreamHandle)
+        {
+            if (fadeOutStreamHandle == 0 || !Bass.ChannelGetInfo(fadeOutStreamHandle, out var fInfo))
+                return;
+
+            _fadeOutStreamHandle = fadeOutStreamHandle;
+            _fadeOutSampleRate = fInfo.Frequency > 0 ? fInfo.Frequency : 48000;
+            _fadeOutChannels = fInfo.Channels > 0 ? fInfo.Channels : 2;
+            _fadeOutIsFloat = fInfo.Flags.HasFlag(BassFlags.Float);
+
+            var handlesList = new List<int>();
+            int prevDev = Bass.CurrentDevice;
+            try
+            {
+                foreach (var dev in _activeSecondaryDevices)
+                {
+                    if (dev.IsPrimary || !dev.IsEnabled) continue;
+
+                    float startVol = 0f;
+                    if (dev.PushStreamHandle == 0 || !Bass.ChannelGetAttribute(dev.PushStreamHandle, ChannelAttribute.Volume, out startVol))
+                    {
+                        float preampMult = dev.EqIsEnabled ? MathF.Pow(10f, dev.EqPreampGain / 20f) : 1.0f;
+                        startVol = dev.IsMuted ? 0f : Math.Clamp(dev.Volume * _masterVolume * preampMult * _normalizationMultiplier, 0f, 2.0f);
+                    }
+
+                    Bass.Init(dev.DeviceIndex, _fadeOutSampleRate, DeviceInitFlags.Default, IntPtr.Zero);
+                    Bass.CurrentDevice = dev.DeviceIndex;
+                    Bass.Start();
+
+                    var flags = _fadeOutIsFloat ? BassFlags.Float : BassFlags.Default;
+                    int fadePush = Bass.CreateStream(_fadeOutSampleRate, _fadeOutChannels, flags, StreamProcedureType.Push);
+                    if (fadePush == 0)
+                    {
+                        fadePush = Bass.CreateStream(_fadeOutSampleRate, _fadeOutChannels, BassFlags.Default, StreamProcedureType.Push);
+                    }
+                    if (fadePush != 0)
+                    {
+                        Bass.ChannelSetAttribute(fadePush, ChannelAttribute.Buffer, 0.065f);
+                        Bass.ChannelSetAttribute(fadePush, ChannelAttribute.Volume, startVol);
+                        Bass.ChannelPlay(fadePush, false);
+                        _fadeOutSecondaryPushEntries[dev.DeviceIndex] = (fadePush, startVol);
+                        handlesList.Add(fadePush);
+                    }
+                }
+            }
+            catch { }
+            finally
+            {
+                Bass.CurrentDevice = prevDev;
+            }
+
+            _activeFadeOutPushHandles = handlesList.ToArray();
+            if (_activeFadeOutPushHandles.Length > 0)
+            {
+                _fadeOutDspHandle = Bass.ChannelSetDSP(fadeOutStreamHandle, _fadeOutDspProc, IntPtr.Zero, 100);
+            }
+        }
+
+        private void StopFadeOutSecondaryStreamsLocked()
+        {
+            if (_fadeOutStreamHandle != 0 && _fadeOutDspHandle != 0)
+            {
+                Bass.ChannelRemoveDSP(_fadeOutStreamHandle, _fadeOutDspHandle);
+            }
+            _fadeOutDspHandle = 0;
+            _fadeOutStreamHandle = 0;
+            _activeFadeOutPushHandles = Array.Empty<int>();
+            _secondaryOldCrossfadeRatio = 1.0f;
+            _secondaryNewCrossfadeRatio = 1.0f;
+
+            foreach (var entry in _fadeOutSecondaryPushEntries.Values)
+            {
+                if (entry.PushHandle != 0)
+                {
+                    Bass.ChannelStop(entry.PushHandle);
+                    Bass.StreamFree(entry.PushHandle);
+                }
+            }
+            _fadeOutSecondaryPushEntries.Clear();
+        }
+
+        public void StopFadeOutSecondaryStreams()
+        {
+            lock (_lock)
+            {
+                bool hadFade = _fadeOutSecondaryPushEntries.Count > 0 || _secondaryNewCrossfadeRatio < 0.999f;
+                StopFadeOutSecondaryStreamsLocked();
+                if (hadFade)
+                {
+                    foreach (var d in _devices)
+                    {
+                        if (d.PushStreamHandle != 0)
+                        {
+                            float preampMult = d.EqIsEnabled ? MathF.Pow(10f, d.EqPreampGain / 20f) : 1.0f;
+                            float localVol = d.IsMuted ? 0f : Math.Clamp(d.Volume * _masterVolume * preampMult * _normalizationMultiplier, 0f, 2.0f);
+                            Bass.ChannelSetAttribute(d.PushStreamHandle, ChannelAttribute.Volume, localVol);
+                        }
+                    }
+                }
+            }
+        }
+
+        public void SetCrossfadeGainRatios(float oldRatio, float newRatio)
+        {
+            _secondaryOldCrossfadeRatio = Math.Clamp(oldRatio, 0f, 1.5f);
+            _secondaryNewCrossfadeRatio = Math.Clamp(newRatio, 0f, 1.5f);
+
+            lock (_lock)
+            {
+                foreach (var kvp in _fadeOutSecondaryPushEntries)
+                {
+                    if (kvp.Value.PushHandle != 0)
+                    {
+                        Bass.ChannelSetAttribute(kvp.Value.PushHandle, ChannelAttribute.Volume, Math.Max(0f, kvp.Value.StartVol * _secondaryOldCrossfadeRatio));
+                    }
+                }
+
+                foreach (var d in _devices)
+                {
+                    if (d.PushStreamHandle != 0)
+                    {
+                        float preampMult = d.EqIsEnabled ? MathF.Pow(10f, d.EqPreampGain / 20f) : 1.0f;
+                        float localVol = d.IsMuted ? 0f : Math.Clamp(d.Volume * _masterVolume * preampMult * _normalizationMultiplier, 0f, 2.0f) * _secondaryNewCrossfadeRatio;
+                        Bass.ChannelSetAttribute(d.PushStreamHandle, ChannelAttribute.Volume, localVol);
+                    }
+                }
+            }
+        }
+
+        private void OnFadeOutDspAudioBlock(int handle, int channel, IntPtr buffer, int length, IntPtr user)
+        {
+            if (length <= 0 || buffer == IntPtr.Zero) return;
+            var pushHandles = _activeFadeOutPushHandles;
+            if (pushHandles.Length == 0) return;
+
+            int bytesPerSample = _fadeOutIsFloat ? 4 : 2;
+            int bytesPerMs = Math.Max(4, (_fadeOutSampleRate * _fadeOutChannels * bytesPerSample) / 1000);
+            for (int i = 0; i < pushHandles.Length; i++)
+            {
+                int ps = pushHandles[i];
+                if (ps != 0)
+                {
+                    PushDataWithDriftGuard(ps, buffer, length, bytesPerMs);
                 }
             }
         }
@@ -473,7 +646,7 @@ namespace KakiEQ_WinUI.Services.Audio
             {
                 device.Volume = volume;
                 float preampMultiplier = device.EqIsEnabled ? MathF.Pow(10f, device.EqPreampGain / 20f) : 1.0f;
-                float localVol = device.IsMuted ? 0f : Math.Clamp(device.Volume * _masterVolume * preampMultiplier * _normalizationMultiplier, 0f, 2.0f);
+                float localVol = device.IsMuted ? 0f : Math.Clamp(device.Volume * _masterVolume * preampMultiplier * _normalizationMultiplier, 0f, 2.0f) * _secondaryNewCrossfadeRatio;
                 float routingVol = device.IsMuted ? 0f : Math.Clamp(device.Volume * _masterVolume * preampMultiplier, 0f, 2.0f);
 
                 if (device.PushStreamHandle != 0)
@@ -500,7 +673,7 @@ namespace KakiEQ_WinUI.Services.Audio
             {
                 device.IsMuted = muted;
                 float preampMultiplier = device.EqIsEnabled ? MathF.Pow(10f, device.EqPreampGain / 20f) : 1.0f;
-                float localVol = muted ? 0f : Math.Clamp(device.Volume * _masterVolume * preampMultiplier * _normalizationMultiplier, 0f, 2.0f);
+                float localVol = muted ? 0f : Math.Clamp(device.Volume * _masterVolume * preampMultiplier * _normalizationMultiplier, 0f, 2.0f) * _secondaryNewCrossfadeRatio;
                 float routingVol = muted ? 0f : Math.Clamp(device.Volume * _masterVolume * preampMultiplier, 0f, 2.0f);
 
                 if (device.PushStreamHandle != 0)
@@ -529,7 +702,7 @@ namespace KakiEQ_WinUI.Services.Audio
                 foreach (var d in _devices)
                 {
                     float preampMultiplier = d.EqIsEnabled ? MathF.Pow(10f, d.EqPreampGain / 20f) : 1.0f;
-                    float localVol = d.IsMuted ? 0f : Math.Clamp(d.Volume * _masterVolume * preampMultiplier * _normalizationMultiplier, 0f, 2.0f);
+                    float localVol = d.IsMuted ? 0f : Math.Clamp(d.Volume * _masterVolume * preampMultiplier * _normalizationMultiplier, 0f, 2.0f) * _secondaryNewCrossfadeRatio;
                     float routingVol = d.IsMuted ? 0f : Math.Clamp(d.Volume * _masterVolume * preampMultiplier, 0f, 2.0f);
                     if (d.PushStreamHandle != 0)
                     {
@@ -583,7 +756,7 @@ namespace KakiEQ_WinUI.Services.Audio
                     if (d.PushStreamHandle != 0)
                     {
                         float preampMultiplier = d.EqIsEnabled ? MathF.Pow(10f, d.EqPreampGain / 20f) : 1.0f;
-                        float localVol = d.IsMuted ? 0f : Math.Clamp(d.Volume * _masterVolume * preampMultiplier * _normalizationMultiplier, 0f, 2.0f);
+                        float localVol = d.IsMuted ? 0f : Math.Clamp(d.Volume * _masterVolume * preampMultiplier * _normalizationMultiplier, 0f, 2.0f) * _secondaryNewCrossfadeRatio;
                         Bass.ChannelSlideAttribute(d.PushStreamHandle, ChannelAttribute.Volume, localVol, Math.Max(20, durationMs));
                     }
                 }
@@ -620,7 +793,7 @@ namespace KakiEQ_WinUI.Services.Audio
                     Bass.ChannelSetAttribute(pushStream, ChannelAttribute.Buffer, 0.065f);
 
                     float preampMultiplier = device.EqIsEnabled ? MathF.Pow(10f, device.EqPreampGain / 20f) : 1.0f;
-                    float normFactor = applyNormalization ? _normalizationMultiplier : 1.0f;
+                    float normFactor = applyNormalization ? (_normalizationMultiplier * _secondaryNewCrossfadeRatio) : 1.0f;
                     float targetVol = device.IsMuted ? 0f : Math.Clamp(device.Volume * _masterVolume * preampMultiplier * normFactor, 0f, 2.0f);
 
                     if (shouldPlayImmediately)
@@ -964,6 +1137,7 @@ namespace KakiEQ_WinUI.Services.Audio
                     _dspHandle = 0;
                 }
 
+                StopFadeOutSecondaryStreamsLocked();
                 StopAllSecondaryStreams();
                 StopSystemRoutingPushStreams();
             }

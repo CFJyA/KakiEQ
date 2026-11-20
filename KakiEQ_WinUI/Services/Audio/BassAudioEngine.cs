@@ -446,7 +446,7 @@ namespace KakiEQ_WinUI.Services.Audio
                                 sumSq += s * s;
                             }
                             double rms = Math.Sqrt(sumSq / Math.Max(1, samples));
-                            if (rms >= 0.0056) // > -45 dBFS
+                            if (rms >= 0.0008) // > -62 dBFS (solo saltar silencio digital real)
                             {
                                 introStartSec = Math.Max(0.0, b * 0.05 - 0.04);
                                 break;
@@ -485,7 +485,7 @@ namespace KakiEQ_WinUI.Services.Audio
 
                                 double rms = Math.Sqrt(sumSq / samples);
                                 curSec += blockDur;
-                                if (rms >= 0.0018) // > -55 dBFS
+                                if (rms >= 0.0009) // > -61 dBFS
                                 {
                                     lastActiveSec = curSec;
                                     sawTailSignal = true;
@@ -494,7 +494,7 @@ namespace KakiEQ_WinUI.Services.Audio
 
                             if (sawTailSignal)
                             {
-                                outroEndSec = Math.Min(totalSec, Math.Max(totalSec - 3.0, lastActiveSec + 0.20));
+                                outroEndSec = Math.Min(totalSec, Math.Max(totalSec - 2.5, lastActiveSec + 0.20));
                             }
                         }
                     }
@@ -653,6 +653,7 @@ namespace KakiEQ_WinUI.Services.Audio
             _crossfadeRampCts = null;
 
             RemoveStemDspHandlesLocked();
+            _multiOutput.StopFadeOutSecondaryStreams();
             _exclusiveOldGain = 0f;
 
             if (_fadingOutStream != 0)
@@ -668,15 +669,11 @@ namespace KakiEQ_WinUI.Services.Audio
             if (!_stemMorphCrossfadeEnabled || buffer == IntPtr.Zero || length <= 0) return;
 
             float p = Math.Clamp(_currentCrossfadeProgress, 0f, 1f);
-            // Bass (<210 Hz) exits in the first 45% so incoming kick/bass takes over cleanly without mud
-            float bassGain = p < 0.45f ? MathF.Cos((p / 0.45f) * (MathF.PI * 0.5f)) : 0f;
-            // Stereo instrumental side fades smoothly across the transition
-            float sideGain = MathF.Pow(1f - p, 1.75f);
-            // Center Mid Vocal (210 Hz - 4.2 kHz) stays upfront during the first 58% (singing over the new beat), then fades out
-            float vocalGain = p < 0.58f
-                ? (1.0f - (p / 0.58f) * 0.10f)
-                : (0.90f * MathF.Cos(((p - 0.58f) / 0.42f) * (MathF.PI * 0.5f)));
-            float highGain = MathF.Pow(1f - p, 1.35f);
+            // Combinado con la envolvente cos(p*pi/2), el grave cede de forma continua y natural sin cortes bruscos
+            float bassGain = 1.0f - 0.65f * p;
+            float sideGain = 1.0f - 0.25f * p;
+            float vocalGain = 1.0f + 0.16f * MathF.Sin(MathF.Min(p / 0.78f, 1f) * MathF.PI) - 0.10f * p;
+            float highGain = 1.0f - 0.20f * p;
 
             ApplyStemMorphInPlace((float*)buffer, length / sizeof(float), _oldStemState.Channels, _oldStemState, bassGain, vocalGain, sideGain, highGain);
         }
@@ -686,15 +683,11 @@ namespace KakiEQ_WinUI.Services.Audio
             if (!_stemMorphCrossfadeEnabled || buffer == IntPtr.Zero || length <= 0) return;
 
             float p = Math.Clamp(_currentCrossfadeProgress, 0f, 1f);
-            // Incoming Bass (<210 Hz) locks in during the first 45% to replace outgoing bass
-            float bassGain = p < 0.45f ? MathF.Sin((p / 0.45f) * (MathF.PI * 0.5f)) : 1.0f;
-            // Incoming Stereo Instrumental rises smoothly from the start
-            float sideGain = MathF.Sin(p * (MathF.PI * 0.5f));
-            // Incoming Center Mid Vocal stays ducked for the first 48% to avoid vocal clash, then rises to 100%
-            float vocalGain = p < 0.48f
-                ? (p / 0.48f) * 0.18f
-                : (0.18f + 0.82f * MathF.Sin(((p - 0.48f) / 0.52f) * (MathF.PI * 0.5f)));
-            float highGain = MathF.Sin(p * (MathF.PI * 0.5f));
+            // Combinado con la envolvente sin(p*pi/2), el grave y el cuerpo compensan potencia constante y la voz entra suave
+            float bassGain = (0.86f + 0.14f * p) * (1.0f + 0.24f * MathF.Sin(p * MathF.PI));
+            float sideGain = 0.94f + 0.06f * p + 0.08f * MathF.Sin(p * MathF.PI);
+            float vocalGain = 0.44f + 0.56f * MathF.Pow(p, 0.85f);
+            float highGain = 0.95f + 0.05f * p + 0.06f * MathF.Sin(p * MathF.PI);
 
             ApplyStemMorphInPlace((float*)buffer, length / sizeof(float), _newStemState.Channels, _newStemState, bassGain, vocalGain, sideGain, highGain);
         }
@@ -796,6 +789,7 @@ namespace KakiEQ_WinUI.Services.Audio
             return Task.Run(async () =>
             {
                 var sw = System.Diagnostics.Stopwatch.StartNew();
+                float smoothedTargetVol = _multiOutput.GetPrimaryDeviceEffectiveVolume();
                 try
                 {
                     while (!token.IsCancellationRequested)
@@ -808,24 +802,20 @@ namespace KakiEQ_WinUI.Services.Audio
                             if (token.IsCancellationRequested || _stream != newStream)
                                 break;
 
-                            bool stemMorphActive = _stemMorphCrossfadeEnabled && _oldStreamStemDspHandle != 0 && _newStreamStemDspHandle != 0;
-                            float inGain;
-                            float outGain;
-                            if (stemMorphActive)
+                            float inGain = (float)Math.Sin(progress * (Math.PI * 0.5));
+                            float outGain = (float)Math.Cos(progress * (Math.PI * 0.5));
+
+                            float rawTargetVol = _multiOutput.GetPrimaryDeviceEffectiveVolume();
+                            // Slew smoothly so late normalization profile updates never cause mid-fade volume jumps
+                            smoothedTargetVol += (rawTargetVol - smoothedTargetVol) * 0.16f;
+                            if (MathF.Abs(rawTargetVol - smoothedTargetVol) < 0.002f)
                             {
-                                inGain = Math.Clamp((float)(progress / 0.10), 0f, 1f);
-                                outGain = Math.Clamp((float)((1.0 - progress) / 0.10), 0f, 1f);
-                            }
-                            else
-                            {
-                                inGain = (float)Math.Sin(progress * (Math.PI * 0.5));
-                                outGain = (float)Math.Cos(progress * (Math.PI * 0.5));
+                                smoothedTargetVol = rawTargetVol;
                             }
 
-                            float targetVol = _multiOutput.GetPrimaryDeviceEffectiveVolume();
                             if (_wasapiExclusiveEnabled && _exclusiveOut != null)
                             {
-                                _exclusiveNewGain = targetVol * inGain;
+                                _exclusiveNewGain = smoothedTargetVol * inGain;
                                 if (_fadingOutStream == oldStream)
                                 {
                                     _exclusiveOldGain = Math.Max(0f, startOldVol * outGain);
@@ -833,10 +823,11 @@ namespace KakiEQ_WinUI.Services.Audio
                             }
                             else
                             {
-                                Bass.ChannelSetAttribute(newStream, ChannelAttribute.Volume, targetVol * inGain);
+                                Bass.ChannelSetAttribute(newStream, ChannelAttribute.Volume, smoothedTargetVol * inGain);
                                 if (_fadingOutStream == oldStream)
                                 {
                                     Bass.ChannelSetAttribute(oldStream, ChannelAttribute.Volume, Math.Max(0f, startOldVol * outGain));
+                                    _multiOutput.SetCrossfadeGainRatios(outGain, inGain);
                                 }
                             }
                         }
@@ -844,7 +835,7 @@ namespace KakiEQ_WinUI.Services.Audio
                         if (progress >= 1.0)
                             break;
 
-                        await Task.Delay(25, token);
+                        await Task.Delay(20, token);
                     }
                 }
                 catch (OperationCanceledException) { }
@@ -854,6 +845,7 @@ namespace KakiEQ_WinUI.Services.Audio
                     lock (_lock)
                     {
                         RemoveStemDspHandlesLocked();
+                        _multiOutput.StopFadeOutSecondaryStreams();
 
                         if (!token.IsCancellationRequested && _stream == newStream)
                         {
@@ -882,11 +874,11 @@ namespace KakiEQ_WinUI.Services.Audio
 
         private int CreateBassAudioStream(string filePath, bool decodeOnly)
         {
-            BassFlags flags = BassFlags.Float | (decodeOnly ? BassFlags.Decode : BassFlags.Default);
+            BassFlags flags = BassFlags.Float | BassFlags.Prescan | (decodeOnly ? BassFlags.Decode : BassFlags.Default);
             int s = Bass.CreateStream(filePath, 0, 0, flags);
             if (s == 0)
             {
-                BassFlags fallback = decodeOnly ? BassFlags.Decode : BassFlags.Default;
+                BassFlags fallback = BassFlags.Prescan | (decodeOnly ? BassFlags.Decode : BassFlags.Default);
                 s = Bass.CreateStream(filePath, 0, 0, fallback);
             }
             return s;
@@ -1136,9 +1128,9 @@ namespace KakiEQ_WinUI.Services.Audio
                     {
                         int oldStream = _stream;
                         double oldTotalSec = TotalDuration.TotalSeconds;
-                        double oldRemainingSec = Math.Max(1.2, oldTotalSec - CurrentPosition.TotalSeconds);
+                        double oldRemainingSec = Math.Max(0.8, oldTotalSec - CurrentPosition.TotalSeconds - 0.10);
                         double effectiveCrossSec = Math.Min(GetEffectiveCrossfadeDurationSeconds(oldTotalSec), oldRemainingSec);
-                        int crossfadeMs = (int)Math.Round(Math.Clamp(effectiveCrossSec, 1.0, 10.0) * 1000.0);
+                        int crossfadeMs = (int)Math.Round(Math.Clamp(effectiveCrossSec, 0.8, 10.0) * 1000.0);
 
                         float currentOldVol;
                         if (_wasapiExclusiveEnabled && _exclusiveOut != null)
@@ -1159,9 +1151,10 @@ namespace KakiEQ_WinUI.Services.Audio
                             long newLen = Bass.ChannelGetLength(newStream, PositionFlags.Bytes);
                             double newTotalSec = newLen > 0 ? Bass.ChannelBytes2Seconds(newStream, newLen) : 0.0;
 
-                            if (profile.IntroStartSec >= 0.12 && newTotalSec > 10.0 && profile.IntroStartSec < newTotalSec * 0.15)
+                            double effectiveIntroSkip = Math.Min(profile.IntroStartSec, 0.85);
+                            if (effectiveIntroSkip >= 0.08 && newTotalSec > 10.0 && effectiveIntroSkip < newTotalSec * 0.15)
                             {
-                                long introByte = Bass.ChannelSeconds2Bytes(newStream, profile.IntroStartSec);
+                                long introByte = Bass.ChannelSeconds2Bytes(newStream, effectiveIntroSkip);
                                 if (introByte > 0) Bass.ChannelSetPosition(newStream, introByte, PositionFlags.Bytes);
                             }
 
@@ -1187,7 +1180,7 @@ namespace KakiEQ_WinUI.Services.Audio
                             else
                             {
                                 Bass.ChannelSetAttribute(newStream, ChannelAttribute.Volume, 0f);
-                                _multiOutput.AttachToStream(newStream, updatePrimaryVolume: false);
+                                _multiOutput.AttachToStream(newStream, updatePrimaryVolume: false, fadeOutStreamHandle: oldStream);
                                 Bass.ChannelSetAttribute(newStream, ChannelAttribute.Volume, 0f);
 
                                 _fadingOutStream = oldStream;

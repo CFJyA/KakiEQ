@@ -32,8 +32,9 @@ namespace KakiEQ_WinUI.ViewModels
         private readonly KronatlService _kronatlService;
         private readonly DispatcherQueueTimer _timer;
         private readonly DispatcherQueue _dispatcherQueue;
-        private volatile bool _isSuppressingSeek;
-        public bool IsSuppressingSeek => _isSuppressingSeek;
+        private int _suppressSeekDepth;
+        private int _playGeneration;
+        public bool IsSuppressingSeek => Volatile.Read(ref _suppressSeekDepth) > 0;
         private readonly Queue<string> _recentAutomixHistory = new();
         private readonly HashSet<string> _recentAutomixSet = new(StringComparer.OrdinalIgnoreCase);
 
@@ -1124,7 +1125,7 @@ namespace KakiEQ_WinUI.ViewModels
             _timer.Interval = TimeSpan.FromMilliseconds(220);
             _timer.Tick += (s, e) =>
             {
-                if (_isSuppressingSeek) return;
+                if (IsSuppressingSeek) return;
                 if (_audioEngine.IsPlaying)
                 {
                     CurrentPositionSeconds = _audioEngine.CurrentPosition.TotalSeconds;
@@ -1576,11 +1577,14 @@ namespace KakiEQ_WinUI.ViewModels
                 : 0;
             _audioEngine.SetTrackBpmContext(track.Bpm, nextBpm);
 
-            _isSuppressingSeek = true;
+            int myPlayGen = Interlocked.Increment(ref _playGeneration);
+            Interlocked.Increment(ref _suppressSeekDepth);
             try
             {
                 CurrentPositionSeconds = 0;
-                TotalDurationSeconds = track.Duration.TotalSeconds;
+                TotalDurationSeconds = track.Duration.TotalSeconds > 0
+                    ? track.Duration.TotalSeconds
+                    : Math.Max(1.0, TotalDurationSeconds);
 
                 if (IsKaraokeProcessing)
                 {
@@ -1603,9 +1607,12 @@ namespace KakiEQ_WinUI.ViewModels
                 }
 
                 await _audioEngine.LoadFileAsync(fileToPlay, isCrossfade);
+                if (myPlayGen != _playGeneration) return;
+
                 if (!isCrossfade)
                 {
                     await _audioEngine.PlayAsync();
+                    if (myPlayGen != _playGeneration) return;
                 }
 
                 double loadedDurationSecs = _audioEngine.TotalDuration.TotalSeconds;
@@ -1620,7 +1627,7 @@ namespace KakiEQ_WinUI.ViewModels
             }
             finally
             {
-                _isSuppressingSeek = false;
+                Interlocked.Decrement(ref _suppressSeekDepth);
             }
 
             if ((track.BaseDecibels == null || Math.Abs(track.BaseDecibels.Value) < 0.01) &&

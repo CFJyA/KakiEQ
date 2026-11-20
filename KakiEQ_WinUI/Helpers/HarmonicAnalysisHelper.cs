@@ -600,7 +600,9 @@ namespace KakiEQ_WinUI.Helpers
                         stream = Bass.CreateStream(filePath, 0, 0, BassFlags.Decode | BassFlags.Float);
                         if (stream == 0)
                         {
+                            int prevDev = Bass.CurrentDevice;
                             Bass.Init(0, 44100, DeviceInitFlags.Default);
+                            if (prevDev > 0) Bass.CurrentDevice = prevDev;
                             stream = Bass.CreateStream(filePath, 0, 0, BassFlags.Decode | BassFlags.Float);
                         }
                     }
